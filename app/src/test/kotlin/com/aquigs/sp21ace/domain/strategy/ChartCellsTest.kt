@@ -8,7 +8,7 @@ class ChartCellsTest {
     @Test
     fun everyRuleSetMatchesItsFixture() {
         val mismatches = RuleSet.entries.flatMap { ruleSet ->
-            val expected = fixtureSquares(ruleSet.name.lowercase().replace('_', '-') + ".tsv")
+            val expected = fixtureSquares(ruleSet)
             val chart = StrategyCharts.forRules(ruleSet)
             val actual = ChartTable.entries.flatMap { table ->
                 chart.hands(table).flatMap { hand ->
@@ -25,23 +25,20 @@ class ChartCellsTest {
 
     private data class Square(val table: ChartTable, val hand: String, val upcard: Upcard)
 
-    private fun fixtureSquares(name: String): Map<Square, Play> {
-        val text = requireNotNull(javaClass.getResource("/strategy/$name")) { "Missing fixture $name" }.readText()
-        val squares = text.lines().drop(1).filter(String::isNotBlank).map { line ->
-            val fields = line.split('\t')
-            require(fields.size == 6) { "$name: expected 6 fields in \"$line\"" }
+    private fun fixtureSquares(ruleSet: RuleSet): Map<Square, Play> {
+        val squares = Fixtures.rows(ruleSet).map { fields ->
             val (table, hand, upcard, code, debated) = fields
             val sources = fields[5]
-            require(sources.isNotBlank()) { "$name: no source cited in \"$line\"" }
+            require(sources.isNotBlank()) { "$ruleSet: no source cited in $fields" }
             val isDebated = when (debated) {
                 "yes" -> true
                 "no" -> false
-                else -> error("$name: debated must be yes or no in \"$line\"")
+                else -> error("$ruleSet: debated must be yes or no in $fields")
             }
 
             Square(ChartTable.valueOf(table), hand, Upcard.fromLabel(upcard)) to Play.parse(code).copy(debated = isDebated)
         }
 
-        return squares.toMap().also { require(it.size == squares.size) { "$name lists a square twice" } }
+        return squares.toMap().also { require(it.size == squares.size) { "$ruleSet lists a square twice" } }
     }
 }

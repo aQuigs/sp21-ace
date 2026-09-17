@@ -1,6 +1,8 @@
 package com.aquigs.sp21ace.domain.strategy
 
 import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.cards.Rank
+import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.isBlackjack
@@ -30,7 +32,9 @@ class FirstMoveTest {
         assertEquals(Move.STAND, h17.firstMove(cards("5c 9d"), card("4s")))
         assertEquals(Move.STAND, h17.firstMove(cards("6s 8h"), card("5s")))
         assertEquals(Move.HIT, h17.firstMove(cards("6h 8h"), card("5s")))
+        assertEquals(Move.HIT, h17.firstMove(cards("6s 8s"), card("5s")))
         assertEquals(Move.STAND, h17.firstMove(cards("6h 8h"), card("6s")))
+        assertEquals(Move.STAND, h17.firstMove(cards("6s 8h"), card("6s")))
         assertEquals(Move.HIT, h17.firstMove(cards("6s 8s"), card("6s")))
     }
 
@@ -51,20 +55,63 @@ class FirstMoveTest {
     }
 
     @Test
-    fun answersEveryTwoCardStartingHandUnderEveryRuleSet() {
+    fun everyTwoCardAnswerFollowsItsFixtureSquareReadByTheChartLegend() {
         val deck = spanishShoe(decks = 1)
+        val hands = deck.flatMap { first -> deck.map { second -> listOf(first, second) } }.filterNot { it.isBlackjack() }
+        val upcards = Rank.entries.map { Card(it, Suit.CLUBS) }
 
-        for (ruleSet in RuleSet.entries) {
+        val mismatches = RuleSet.entries.flatMap { ruleSet ->
             val chart = StrategyCharts.forRules(ruleSet)
-            for (first in deck) for (second in deck) for (upcard in deck) {
-                val hand = listOf(first, second)
-                if (!hand.isBlackjack()) chart.firstMove(hand, upcard)
+            val codes = Fixtures.rows(ruleSet).associate { (table, hand, upcard, code) -> listOf(table, hand, upcard) to code }
+
+            hands.flatMap { hand -> upcards.map { hand to it } }.mapNotNull { (hand, upcard) ->
+                val expected = legendMove(codes.getValue(printedSquare(hand, upcard)), hand, upcard)
+                val actual = chart.firstMove(hand, upcard)
+                if (expected == actual) null else "$ruleSet $hand vs $upcard: legend $expected, firstMove $actual"
             }
         }
+
+        assertEquals(emptyList<String>(), mismatches)
     }
 
     @Test
     fun tenValueCardsAreTheTenUpcard() {
         assertEquals(listOf(Upcard.TEN, Upcard.TEN, Upcard.TEN, Upcard.ACE, Upcard.NINE), cards("Jc Qd Ks Ah 9c").map(Card::upcard))
+    }
+
+    // The oracle reads the fixture's text codes by the printed legend, sharing no code with chartRow or firstMove, so a
+    // mistake in either can't hide behind itself
+    private fun printedSquare(hand: List<Card>, upcard: Card): List<String> {
+        val (first, second) = hand.map { it.rank.value }
+        val label = { value: Int -> if (value == 1) "A" else "$value" }
+        val row = when {
+            first == second -> listOf("PAIRS", "${label(first)}-${label(first)}")
+            first == 1 || second == 1 -> listOf("SOFT", "A-${first + second - 1}")
+            else -> listOf("HARD", "${first + second}")
+        }
+
+        return row + label(upcard.rank.value)
+    }
+
+    private fun legendMove(code: String, hand: List<Card>, upcard: Card): Move {
+        val ranks = hand.map { it.rank }.toSet()
+        val sixSevenEight = ranks.size == 2 && ranks.all { it in setOf(Rank.SIX, Rank.SEVEN, Rank.EIGHT) }
+        val suited = hand[0].suit == hand[1].suit
+        val hits = when (code.removeSuffix("†").last()) {
+            '*' -> sixSevenEight
+            '\'' -> sixSevenEight && suited
+            '"' -> sixSevenEight && hand.all { it.suit == Suit.SPADES }
+            '$' -> suited && upcard.rank == Rank.SEVEN
+            else -> false
+        }
+        if (hits) return Move.HIT
+
+        return when (code.first()) {
+            'H' -> Move.HIT
+            'S' -> Move.STAND
+            'D' -> Move.DOUBLE
+            'P' -> Move.SPLIT
+            else -> Move.SURRENDER
+        }
     }
 }
