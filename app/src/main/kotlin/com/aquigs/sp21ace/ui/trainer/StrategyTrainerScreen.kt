@@ -47,16 +47,20 @@ import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.domain.trainer.Grade
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
+import com.aquigs.sp21ace.ui.chart.ChartTile
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
+
+private val ButtonSize = 64.dp
 
 @Composable
 fun StrategyTrainerScreen(
     state: TrainerState,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onOpenDrawer: () -> Unit,
+    onOpenChart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -80,11 +84,19 @@ fun StrategyTrainerScreen(
                 }
             }
 
-            AnswerButtons(
-                // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
-                onAnswer = { move -> onAnswer(state.hand, move) },
-                modifier = Modifier.align(Alignment.Bottom),
-            )
+            // As wide as a button, the tile takes no room from the cards
+            Column(
+                modifier = Modifier.fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End,
+            ) {
+                ChartTile(onClick = onOpenChart, modifier = Modifier.size(ButtonSize))
+                AnswerButtons(
+                    // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
+                    onAnswer = { move -> onAnswer(state.hand, move) },
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
         }
     }
 }
@@ -180,7 +192,7 @@ private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifie
                 // Shrink evenly on a screen too short for five, such as a small phone at a large font size, rather than squeezing out the last
                 modifier = Modifier
                     .weight(1f, fill = false)
-                    .sizeIn(maxWidth = 64.dp, maxHeight = 64.dp)
+                    .sizeIn(maxWidth = ButtonSize, maxHeight = ButtonSize)
                     .aspectRatio(1f)
                     .semantics { contentDescription = name },
                 shape = CircleShape,

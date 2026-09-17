@@ -42,3 +42,7 @@ data class Play(
         }
     }
 }
+
+/** The square as the charts print it, which [Play.parse] reads back as the same play. */
+val Play.code: String
+    get() = listOfNotNull(action.code, hitWithCards?.toString(), bonusException?.mark, "†".takeIf { debated }).joinToString("")

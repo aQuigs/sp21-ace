@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Spanish 21 Ace</string>
     <string name="basic_strategy">Basic Strategy</string>
     <string name="strategy_trainer">Strategy Trainer</string>
+    <string name="strategy_chart">Strategy Chart</string>
     <string name="open_menu">Open navigation menu</string>
+    <string name="back">Back</string>
 
     <string name="dealer">Dealer</string>
     <string name="you">You</string>
@@ -22,6 +24,29 @@
 
     <string name="streak">Streak</string>
     <string name="streak_count">Streak: %1$d</string>
+
+    <string name="open_strategy_chart">Open the strategy chart</string>
+    <string name="table_hard">Hard</string>
+    <string name="table_soft">Soft</string>
+    <string name="table_pairs">Pairs</string>
+    <string name="table_rescue">Double Down Rescue</string>
+    <string name="table_after_double_hard">After doubling: hard</string>
+    <string name="table_after_double_soft">After doubling: soft</string>
+    <string name="rules_dealer_stands_soft_17">Dealer stands on soft 17</string>
+    <string name="rules_dealer_hits_soft_17">Dealer hits soft 17</string>
+    <string name="rules_redoubling">Redoubling allowed</string>
+    <string name="rules_six_decks">6 decks</string>
+    <string name="dealers_upcard">Dealer\'s upcard</string>
+    <string name="your_hand">Your hand</string>
+    <string name="square_description">%1$s vs %2$s: %3$s</string>
+    <string name="legend_surrender_or_hit">Surrender, otherwise hit</string>
+    <string name="legend_card_count">Hit with that many cards or more</string>
+    <!-- 6-7-8 names the bonus hand rather than a range, so its hyphens stay -->
+    <string name="legend_any_678" tools:ignore="TypographyDashes">Hit while any 6-7-8 is possible</string>
+    <string name="legend_suited_678" tools:ignore="TypographyDashes">Hit while a suited 6-7-8 is possible</string>
+    <string name="legend_spaded_678" tools:ignore="TypographyDashes">Hit while a spaded 6-7-8 is possible</string>
+    <string name="legend_suited_777">Hit suited 7s against a 7</string>
+    <string name="legend_debated">Sources still debate this square</string>
 
     <string name="face_down_card">Face-down card</string>
     <string name="card_name">%1$s of %2$s</string>

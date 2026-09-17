@@ -34,6 +34,7 @@ import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.answer
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,6 +64,7 @@ class StrategyTrainerScreenTest {
                     state = trainer,
                     onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart, next::next) },
                     onOpenDrawer = {},
+                    onOpenChart = {},
                     modifier = modifier,
                 )
             }
@@ -154,6 +156,16 @@ class StrategyTrainerScreenTest {
         val heights = Move.entries.map { button(it).getBoundsInRoot().height.value }
 
         heights.forEach { assertEquals(heights.first(), it, 1f) }
+    }
+
+    @Test
+    fun theChartTileSitsAboveTheButtonsAndClearOfTheCards() {
+        showTrainer()
+
+        val tile = compose.onNodeWithContentDescription(string(R.string.open_strategy_chart)).getBoundsInRoot()
+
+        assertTrue(tile.bottom <= button(Move.HIT).getBoundsInRoot().top)
+        assertTrue(tile.left >= compose.onNodeWithContentDescription("Ace of spades").getBoundsInRoot().right)
     }
 
     @Test
