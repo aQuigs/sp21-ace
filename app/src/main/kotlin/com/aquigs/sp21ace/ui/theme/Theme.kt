@@ -10,10 +10,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 /**
- * Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy, and answer
- * feedback turns it green or red.
+ * Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy, answer
+ * feedback turns it green or red, and the recap of the previous hand takes a tint of the same green or red.
  */
 @Immutable
 data class Sp21AceColors(
@@ -21,7 +22,12 @@ data class Sp21AceColors(
     val onAppBar: Color,
     val correct: Color,
     val wrong: Color,
-)
+    val correctTint: Color,
+    val wrongTint: Color,
+) {
+    constructor(appBar: Color, onAppBar: Color, correct: Color, wrong: Color, surface: Color, tintFraction: Float) :
+        this(appBar, onAppBar, correct, wrong, lerp(surface, correct, tintFraction), lerp(surface, wrong, tintFraction))
+}
 
 // The brand saffron #D99A1E only reaches about 2.3:1 on the light surfaces, so text-bearing roles use a darker tone.
 private val LightColors = lightColorScheme(
@@ -95,14 +101,19 @@ private val LightSp21AceColors = Sp21AceColors(
     onAppBar = LightColors.onPrimary,
     correct = Color(0xFF2E7D32),
     wrong = LightColors.error,
+    surface = LightColors.surface,
+    tintFraction = 0.15f,
 )
 
-// Deeper than the light theme's tones so a full-width bar doesn't glare against charcoal.
+// Deeper than the light theme's tones so a full-width bar doesn't glare against charcoal, and a stronger tint, because
+// charcoal swallows a faint one.
 private val DarkSp21AceColors = Sp21AceColors(
     appBar = Color(0xFF1B2C42),
     onAppBar = DarkColors.onSurface,
     correct = Color(0xFF2F6F3A),
     wrong = Color(0xFF9E2A24),
+    surface = DarkColors.surface,
+    tintFraction = 0.3f,
 )
 
 private val LocalSp21AceColors = staticCompositionLocalOf { LightSp21AceColors }

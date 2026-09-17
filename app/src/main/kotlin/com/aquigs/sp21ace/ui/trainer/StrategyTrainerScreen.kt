@@ -60,6 +60,7 @@ fun StrategyTrainerScreen(
     Scaffold(
         modifier = modifier,
         topBar = { FeedbackBar(state.lastGrade, onOpenDrawer) },
+        bottomBar = { PreviousHandPanel(state.lastGrade) },
     ) { padding ->
         Row(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             Column(
@@ -165,7 +166,7 @@ private fun HandArea(label: String, modifier: Modifier = Modifier, cards: @Compo
 @Composable
 private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
-    val surrender = stringResource(R.string.surrender)
+    val surrender = stringResource(R.string.move_surrender)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Move.entries.forEach { move ->

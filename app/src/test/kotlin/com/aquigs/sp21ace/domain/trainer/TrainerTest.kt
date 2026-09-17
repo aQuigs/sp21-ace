@@ -45,4 +45,20 @@ class TrainerTest {
 
         assertSame(state, state.answer(sixteenVsAce, Move.HIT, s17) { error("A stale answer must not deal") })
     }
+
+    @Test
+    fun keepsOnlyTheLatestAnswerWithItsHandAndBothMoves() {
+        // 8-8 vs 6 is P
+        val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
+
+        val last = TrainerState(sixteenVsAce)
+            .answer(sixteenVsAce, Move.HIT, s17) { eightsVsSix }
+            .answer(eightsVsSix, Move.STAND, s17) { softSeventeenVsTen }
+            .lastGrade!!
+
+        assertEquals(cards("8h 8s"), last.hand.player)
+        assertEquals(card("6d"), last.hand.upcard)
+        assertEquals(Move.STAND, last.answer)
+        assertEquals(Move.SPLIT, last.correctMove)
+    }
 }

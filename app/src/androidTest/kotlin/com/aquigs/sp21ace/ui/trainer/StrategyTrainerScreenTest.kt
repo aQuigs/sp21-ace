@@ -5,8 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -75,7 +80,8 @@ class StrategyTrainerScreenTest {
 
         compose.onNodeWithContentDescription("6 of diamonds").assertIsDisplayed()
         compose.onNodeWithContentDescription("8 of hearts").assertIsDisplayed()
-        compose.onNodeWithContentDescription("9 of clubs").assertDoesNotExist()
+        // Only the Previous Hand panel still shows the answered hand
+        compose.onAllNodesWithContentDescription("9 of clubs").assertCountEquals(1)
     }
 
     @Test
@@ -97,5 +103,36 @@ class StrategyTrainerScreenTest {
 
         compose.onNodeWithText("Hard 16 vs A | Hit").assertIsDisplayed()
         compose.onNodeWithContentDescription("8 of hearts").assertIsDisplayed()
+    }
+
+    @Test
+    fun beforeAnyAnswerThePreviousHandPanelShowsOnlyItsTitle() {
+        compose.onNodeWithText(string(R.string.previous_hand)).assertIsDisplayed()
+
+        compose.onNodeWithText(string(R.string.action)).assertDoesNotExist()
+        compose.onNodeWithText(string(R.string.strategy)).assertDoesNotExist()
+        compose.onAllNodesWithText(string(R.string.you)).assertCountEquals(1)
+        compose.onAllNodesWithContentDescription(string(R.string.face_down_card)).assertCountEquals(1)
+    }
+
+    @Test
+    fun aWrongAnswerRecapsTheCardsTheChosenMoveAndTheStrategy() {
+        compose.onNodeWithText(string(R.string.stand)).performClick()
+
+        val you = hasText(string(R.string.you)) and hasContentDescription("9 of clubs") and hasContentDescription("7 of diamonds")
+        val dealer = hasText(string(R.string.dealer)) and hasContentDescription(string(R.string.face_down_card)) and
+            hasContentDescription("Ace of spades")
+        compose.onNode(you).assertIsDisplayed()
+        compose.onNode(dealer).assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.action)) and hasText(string(R.string.move_stand))).assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.strategy)) and hasText(string(R.string.move_hit))).assertIsDisplayed()
+    }
+
+    @Test
+    fun aRightAnswerShowsTheSameMoveInBothTiles() {
+        compose.onNodeWithText(string(R.string.hit)).performClick()
+
+        compose.onNode(hasText(string(R.string.action)) and hasText(string(R.string.move_hit))).assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.strategy)) and hasText(string(R.string.move_hit))).assertIsDisplayed()
     }
 }
