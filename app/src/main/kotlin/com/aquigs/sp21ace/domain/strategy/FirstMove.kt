@@ -18,13 +18,11 @@ fun chartRow(hand: List<Card>): ChartRow {
     require(total.value <= 21) { "A busted hand has no chart row" }
 
     return when {
-        hand.size == 2 && hand[0].rank.value == hand[1].rank.value -> ChartRow(ChartTable.PAIRS, hand[0].rowLabel + "-" + hand[0].rowLabel)
+        hand.size == 2 && hand[0].upcard == hand[1].upcard -> hand[0].upcard.label.let { ChartRow(ChartTable.PAIRS, "$it-$it") }
         total.soft -> ChartRow(ChartTable.SOFT, "A-${total.value - 11}")
         else -> ChartRow(ChartTable.HARD, "${total.value}")
     }
 }
-
-private val Card.rowLabel get() = if (rank.value == 10) "10" else rank.label
 
 /**
  * The chart's answer to a two-card starting hand. Late surrender is always allowed on the first decision, so RH means
@@ -50,8 +48,8 @@ fun StrategyChart.firstMove(hand: List<Card>, upcard: Card): Move {
 private val SIX_SEVEN_EIGHT = setOf(Rank.SIX, Rank.SEVEN, Rank.EIGHT)
 
 private fun BonusException.canStillMake(hand: List<Card>, upcard: Card): Boolean {
-    val canMake678 = hand.all { it.rank in SIX_SEVEN_EIGHT } && hand.map { it.rank }.toSet().size == hand.size
-    val suited = hand.map { it.suit }.toSet().size == 1
+    val canMake678 = hand.all { it.rank in SIX_SEVEN_EIGHT } && hand.distinctBy { it.rank }.size == hand.size
+    val suited = hand.distinctBy { it.suit }.size == 1
 
     return when (this) {
         BonusException.ANY_678 -> canMake678

@@ -11,9 +11,8 @@ data class TrainerHand(val player: List<Card>, val upcard: Card)
 // Six decks, the shoe size every chart is published for
 private val SHOE = spanishShoe(decks = 6)
 
-/** Draws three cards from a full shoe, redealing a player blackjack because it leaves nothing to decide. */
+/** Deals the top three cards of a freshly shuffled shoe, redealing a player blackjack because it leaves nothing to decide. */
 fun dealTrainerHand(random: Random = Random.Default): TrainerHand =
-    generateSequence {
-        val (first, up, second) = generateSequence { random.nextInt(SHOE.size) }.distinct().take(3).map(SHOE::get).toList()
-        TrainerHand(listOf(first, second), up)
-    }.first { !it.player.isBlackjack() }
+    generateSequence { SHOE.shuffled(random) }
+        .map { (first, up, second) -> TrainerHand(listOf(first, second), up) }
+        .first { !it.player.isBlackjack() }

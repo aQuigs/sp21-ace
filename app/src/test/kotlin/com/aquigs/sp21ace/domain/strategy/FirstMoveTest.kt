@@ -64,10 +64,12 @@ class FirstMoveTest {
             val chart = StrategyCharts.forRules(ruleSet)
             val codes = Fixtures.rows(ruleSet).associate { (table, hand, upcard, code) -> listOf(table, hand, upcard) to code }
 
-            hands.flatMap { hand -> upcards.map { hand to it } }.mapNotNull { (hand, upcard) ->
-                val expected = legendMove(codes.getValue(printedSquare(hand, upcard)), hand, upcard)
-                val actual = chart.firstMove(hand, upcard)
-                if (expected == actual) null else "$ruleSet $hand vs $upcard: legend $expected, firstMove $actual"
+            hands.flatMap { hand ->
+                upcards.mapNotNull { upcard ->
+                    val expected = legendMove(codes.getValue(printedSquare(hand, upcard)), hand, upcard)
+                    val actual = chart.firstMove(hand, upcard)
+                    if (expected == actual) null else "$ruleSet $hand vs $upcard: legend $expected, firstMove $actual"
+                }
             }
         }
 
@@ -94,10 +96,9 @@ class FirstMoveTest {
     }
 
     private fun legendMove(code: String, hand: List<Card>, upcard: Card): Move {
-        val ranks = hand.map { it.rank }.toSet()
-        val sixSevenEight = ranks.size == 2 && ranks.all { it in setOf(Rank.SIX, Rank.SEVEN, Rank.EIGHT) }
+        val sixSevenEight = hand[0].rank != hand[1].rank && hand.all { it.rank.value in 6..8 }
         val suited = hand[0].suit == hand[1].suit
-        val hits = when (code.removeSuffix("†").last()) {
+        val hits = when (code.last()) {
             '*' -> sixSevenEight
             '\'' -> sixSevenEight && suited
             '"' -> sixSevenEight && hand.all { it.suit == Suit.SPADES }
