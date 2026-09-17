@@ -1,7 +1,6 @@
 package com.aquigs.sp21ace.ui.trainer
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,17 +23,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -53,20 +43,23 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.domain.trainer.Grade
-import com.aquigs.sp21ace.domain.trainer.Trainer
+import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
 @Composable
-fun StrategyTrainerScreen(trainer: Trainer, onOpenDrawer: () -> Unit, modifier: Modifier = Modifier) {
-    var hand by remember(trainer) { mutableStateOf(trainer.hand) }
-    var lastGrade by remember(trainer) { mutableStateOf<Grade?>(null) }
-
+fun StrategyTrainerScreen(
+    state: TrainerState,
+    onAnswer: (asked: TrainerHand, move: Move) -> Unit,
+    onOpenDrawer: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier,
-        topBar = { FeedbackBar(lastGrade, onOpenDrawer) },
+        topBar = { FeedbackBar(state.lastGrade, onOpenDrawer) },
     ) { padding ->
         Row(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             Column(
@@ -75,18 +68,16 @@ fun StrategyTrainerScreen(trainer: Trainer, onOpenDrawer: () -> Unit, modifier: 
             ) {
                 HandArea(label = stringResource(R.string.dealer), modifier = Modifier.weight(1f)) {
                     CardBack()
-                    PlayingCard(hand.upcard)
+                    PlayingCard(state.hand.upcard)
                 }
                 HandArea(label = stringResource(R.string.you), modifier = Modifier.weight(1f)) {
-                    hand.player.forEach { PlayingCard(it) }
+                    state.hand.player.forEach { PlayingCard(it) }
                 }
             }
 
             AnswerButtons(
-                onAnswer = { move ->
-                    lastGrade = trainer.answer(move)
-                    hand = trainer.hand
-                },
+                // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
+                onAnswer = { move -> onAnswer(state.hand, move) },
                 modifier = Modifier.align(Alignment.Bottom),
             )
         }
@@ -102,7 +93,6 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
         true -> colors.correct
         false -> colors.wrong
     }
-    val content = colors.onAppBar
 
     TopAppBar(
         title = {
@@ -112,7 +102,16 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
                 FeedbackText(lastGrade)
             }
         },
-        navigationIcon = { lastGrade?.let { AnswerMark(it.isCorrect, circle = content, mark = container) } },
+        navigationIcon = {
+            lastGrade?.let {
+                // FeedbackText speaks the verdict, so the mark stays silent
+                Icon(
+                    painterResource(if (it.isCorrect) R.drawable.ic_check_circle else R.drawable.ic_cancel),
+                    contentDescription = null,
+                    modifier = Modifier.padding(start = 4.dp, end = 8.dp).size(52.dp),
+                )
+            }
+        },
         actions = {
             IconButton(onClick = onOpenDrawer) {
                 Icon(painterResource(R.drawable.ic_menu), contentDescription = stringResource(R.string.open_menu))
@@ -120,50 +119,34 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = container,
-            titleContentColor = content,
-            actionIconContentColor = content,
+            navigationIconContentColor = colors.onAppBar,
+            titleContentColor = colors.onAppBar,
+            actionIconContentColor = colors.onAppBar,
         ),
     )
 }
 
 @Composable
 private fun FeedbackText(grade: Grade) {
+    val verdict = stringResource(if (grade.isCorrect) R.string.right_answer else R.string.wrong_answer)
+    val words = grade.play.inPlainWords(grade.correctMove)
+
     Text(
         text = buildAnnotatedString {
             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(grade.hand.matchup) }
             append(" | ")
-            append(grade.play.inPlainWords())
+            append(words)
         },
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        // Right and wrong otherwise differ only in colour and mark, which a screen reader can't announce
+        modifier = Modifier.semantics {
+            liveRegion = LiveRegionMode.Polite
+            contentDescription = "$verdict. ${grade.hand.matchup}. $words"
+        },
         // The longest squares need three lines, and an em line height keeps them inside the bar as autoSize shrinks the text
         autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 16.sp),
         maxLines = 3,
         style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 1.2.em),
     )
-}
-
-@Composable
-private fun AnswerMark(correct: Boolean, circle: Color, mark: Color) {
-    Canvas(
-        modifier = Modifier.padding(start = 8.dp, end = 12.dp).size(44.dp),
-        contentDescription = stringResource(if (correct) R.string.right_answer else R.string.wrong_answer),
-    ) {
-        drawCircle(circle)
-
-        val path = Path().apply {
-            if (correct) {
-                moveTo(size.width * 0.27f, size.height * 0.52f)
-                lineTo(size.width * 0.43f, size.height * 0.68f)
-                lineTo(size.width * 0.74f, size.height * 0.36f)
-            } else {
-                moveTo(size.width * 0.33f, size.height * 0.33f)
-                lineTo(size.width * 0.67f, size.height * 0.67f)
-                moveTo(size.width * 0.67f, size.height * 0.33f)
-                lineTo(size.width * 0.33f, size.height * 0.67f)
-            }
-        }
-        drawPath(path, mark, style = Stroke(width = size.width * 0.08f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-    }
 }
 
 @Composable

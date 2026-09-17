@@ -18,9 +18,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.strategy.RuleSet
-import com.aquigs.sp21ace.domain.strategy.StrategyCharts
-import com.aquigs.sp21ace.domain.trainer.Trainer
+import com.aquigs.sp21ace.domain.trainer.TrainerState
+import com.aquigs.sp21ace.domain.trainer.dealTrainerHand
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,7 +40,7 @@ class AppShellTest {
     fun setUp() {
         // Edge to edge like MainActivity, or the status bar inset never reaches the composables
         compose.runOnUiThread { compose.activity.enableEdgeToEdge() }
-        compose.setContent { Sp21AceTheme(darkTheme = false) { AppShell(Trainer(StrategyCharts.forRules(RuleSet.S17))) } }
+        compose.setContent { Sp21AceTheme(darkTheme = false) { AppShell(TrainerState(dealTrainerHand()), onAnswer = { _, _ -> }) } }
     }
 
     @Test

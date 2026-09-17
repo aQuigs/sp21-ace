@@ -24,6 +24,11 @@ fun chartRow(hand: List<Card>): ChartRow {
     }
 }
 
+fun StrategyChart.play(hand: List<Card>, upcard: Card): Play {
+    val row = chartRow(hand)
+    return requireNotNull(play(row.table, row.hand, upcard.upcard)) { "No chart square for ${row.hand} vs ${upcard.upcard.label}" }
+}
+
 /**
  * The chart's answer to a two-card starting hand. Late surrender is always allowed on the first decision, so RH means
  * surrender. Card-count exceptions start at 3 cards and never apply here, but a bonus exception turns the play into a
@@ -31,8 +36,7 @@ fun chartRow(hand: List<Card>): ChartRow {
  */
 fun StrategyChart.firstMove(hand: List<Card>, upcard: Card): Move {
     require(hand.size == 2) { "A first decision has two cards, not ${hand.size}" }
-    val row = chartRow(hand)
-    val play = requireNotNull(play(row.table, row.hand, upcard.upcard)) { "No chart square for ${row.hand} vs ${upcard.upcard.label}" }
+    val play = play(hand, upcard)
 
     if (play.bonusException?.canStillMake(hand, upcard) == true) return Move.HIT
 

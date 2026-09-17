@@ -63,13 +63,14 @@ private val Suit.glyph: String
 // Pip centres as fractions of the card's width and height. Pips below the middle print upside down.
 private val PIPS: Map<Rank, List<Offset>> = run {
     val (left, middle, right) = listOf(0.28f, 0.5f, 0.72f)
+    val ends = listOf(Offset(middle, 0.2f), Offset(middle, 0.8f))
     val corners = listOf(Offset(left, 0.2f), Offset(right, 0.2f), Offset(left, 0.8f), Offset(right, 0.8f))
     val sides = corners + Offset(left, 0.5f) + Offset(right, 0.5f)
     val centre = Offset(middle, 0.5f)
 
     mapOf(
-        Rank.TWO to listOf(Offset(middle, 0.2f), Offset(middle, 0.8f)),
-        Rank.THREE to listOf(Offset(middle, 0.2f), centre, Offset(middle, 0.8f)),
+        Rank.TWO to ends,
+        Rank.THREE to ends + centre,
         Rank.FOUR to corners,
         Rank.FIVE to corners + centre,
         Rank.SIX to sides,
@@ -100,12 +101,12 @@ fun OverlappingCards(modifier: Modifier = Modifier, maxCardHeight: Dp = 256.dp, 
     Layout(content, modifier) { measurables, constraints ->
         val steps = (measurables.size - 1).coerceAtLeast(0)
         val widthPerHeight = ASPECT_RATIO * (1 + OVERLAP_STEP * steps)
-        val cardHeight = minOf(maxCardHeight.toPx(), constraints.maxHeight.toFloat(), constraints.maxWidth / widthPerHeight)
+        val cardHeight = minOf(maxCardHeight.toPx(), constraints.maxHeight.toFloat(), constraints.maxWidth / widthPerHeight).roundToInt()
         val cardWidth = (cardHeight * ASPECT_RATIO).roundToInt()
         val step = (cardWidth * OVERLAP_STEP).roundToInt()
-        val cards = measurables.map { it.measure(Constraints.fixed(cardWidth, cardHeight.roundToInt())) }
+        val cards = measurables.map { it.measure(Constraints.fixed(cardWidth, cardHeight)) }
 
-        layout(cardWidth + step * steps, cardHeight.roundToInt()) {
+        layout(cardWidth + step * steps, cardHeight) {
             cards.forEachIndexed { index, card -> card.place(index * step, 0) }
         }
     }

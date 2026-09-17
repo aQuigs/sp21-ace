@@ -94,7 +94,7 @@ private val LightSp21AceColors = Sp21AceColors(
     appBar = LightColors.primary,
     onAppBar = LightColors.onPrimary,
     correct = Color(0xFF2E7D32),
-    wrong = Color(0xFFB3261E),
+    wrong = LightColors.error,
 )
 
 // Deeper than the light theme's tones so a full-width bar doesn't glare against charcoal.

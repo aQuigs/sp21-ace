@@ -9,6 +9,9 @@ import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TrainerTest {
@@ -17,31 +20,29 @@ class TrainerTest {
     private val softSeventeenVsTen = TrainerHand(cards("As 6d"), card("Kh"))
 
     @Test
-    fun gradesARightAnswer() {
-        val trainer = Trainer(s17) { sixteenVsAce }
+    fun gradesTheHandOnTheTableThenDealsTheNext() {
+        val next = TrainerState(sixteenVsAce).answer(sixteenVsAce, Move.HIT, s17) { softSeventeenVsTen }
 
-        assertEquals(Grade(sixteenVsAce, Play(Action.HIT), Move.HIT, isCorrect = true), trainer.answer(Move.HIT))
+        assertEquals(TrainerState(softSeventeenVsTen, Grade(sixteenVsAce, Play(Action.HIT), Move.HIT, Move.HIT)), next)
+        assertTrue(next.lastGrade!!.isCorrect)
     }
 
     @Test
     fun gradesAWrongAnswerWithTheMoveTheSquareCallsFor() {
         // Hard 14 vs 4 is S4*, so a 6-8 hits while the 6-7-8 bonus is possible
         val sixEightVsFour = TrainerHand(cards("6c 8d"), card("4s"))
-        val trainer = Trainer(s17) { sixEightVsFour }
 
-        assertEquals(
-            Grade(sixEightVsFour, Play(Action.STAND, hitWithCards = 4, bonusException = BonusException.ANY_678), Move.HIT, isCorrect = false),
-            trainer.answer(Move.STAND),
-        )
+        val grade = TrainerState(sixEightVsFour).answer(sixEightVsFour, Move.STAND, s17) { sixteenVsAce }.lastGrade!!
+
+        val square = Play(Action.STAND, hitWithCards = 4, bonusException = BonusException.ANY_678)
+        assertEquals(Grade(sixEightVsFour, square, Move.STAND, Move.HIT), grade)
+        assertFalse(grade.isCorrect)
     }
 
     @Test
-    fun dealsTheNextHandOnceAnswered() {
-        val trainer = Trainer(s17, listOf(sixteenVsAce, softSeventeenVsTen).iterator()::next)
-        assertEquals(sixteenVsAce, trainer.hand)
+    fun ignoresAnAnswerToAHandNoLongerOnTheTable() {
+        val state = TrainerState(softSeventeenVsTen, Grade(sixteenVsAce, Play(Action.HIT), Move.HIT, Move.HIT))
 
-        trainer.answer(Move.STAND)
-
-        assertEquals(softSeventeenVsTen, trainer.hand)
+        assertSame(state, state.answer(sixteenVsAce, Move.HIT, s17) { error("A stale answer must not deal") })
     }
 }
