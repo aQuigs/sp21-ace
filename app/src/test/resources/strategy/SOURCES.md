@@ -1,6 +1,14 @@
 # Strategy chart sources
 
-`StrategyChartData.kt` holds six-deck Spanish 21 charts for three rule sets. Every square was transcribed twice from the published charts below, independently, then checked against the originals. The fixtures in this folder list each square with the sources that print its play, and `ChartCellsTest` pins every square to them.
+`StrategyChartData.kt` holds six-deck Spanish 21 charts for three rule sets. Every square was transcribed twice, independently, from the published charts and quoted excerpts below, then checked against the originals. The fixtures in this folder list each square with the sources that print its play, and `ChartCellsTest` pins every square to them.
+
+## Reading the grids
+
+- **Plays:** H hit, S stand, D double, P split, R surrender, RH surrender if allowed, otherwise hit.
+- **Card counts:** a digit means hit instead once the hand has that many cards or more. D3 doubles a two-card hand but hits with 3 or more cards.
+- **Bonus marks:** `*` means hit if any 6-7-8 bonus is possible, `'` if a suited 6-7-8 is possible (spades included), and `"` if a spaded 6-7-8 is possible. `$` means hit suited 7-7 against a dealer 7, for the Super Bonus.
+- **Debated squares:** `†` marks a square the sources still debate. They're listed below.
+- **Rescue tables:** `.` means no rescue: stand on the doubled hand. When redoubling is allowed, the rescues are the R squares of the after-doubling tables.
 
 ## Rule sets
 
@@ -49,3 +57,10 @@ The app marks these squares †, and the fixtures mark them `yes` in the debated
 
 - **15 vs 6 · Hard totals: `S6"`.** Pick: keep Wizard of Odds' spade 6-7-8 exception. The only source without it is HitOrSplit.com, a copy of an older version of the same chart.
 - **Soft 20 vs 10 · Soft totals: `S`.** Pick: stand. A dealer showing 10 can never have soft 17, so the soft-17 rule can't change this play, yet Wizard of Odds prints the exception only on its stands-on-soft-17 chart, on a row that also covers soft 21. Walker's book (per readers) and HitOrSplit.com stand.
+
+## Known gaps
+
+The charts print plays, not what to do when a play isn't allowed. The trainer needs a sourced answer to each of these before it deals such hands.
+
+- **8-8 vs A:** where the charts say surrender, they don't say what to do when surrender isn't possible, for example after a split. The only published fallback is HitOrSplit.com's generic legend: "if Surrender not possible - Hit".
+- **Redoubling limit:** the after-doubling tables say when to redouble, but not what to do once no more doubles are allowed. Stephen How's chart allows up to 3 doubles; Wizard of Odds doesn't state a limit.

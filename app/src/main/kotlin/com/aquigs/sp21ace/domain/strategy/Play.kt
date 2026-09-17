@@ -44,7 +44,16 @@ data class Play(
         fun parse(code: String): Play {
             val match = requireNotNull(CODE.matchEntire(code)) { "Unknown chart code: $code" }
             val (base, cards, mark, dagger) = match.destructured
-            return Play(ACTIONS.getValue(base), cards.toIntOrNull(), MARKS[mark], dagger.isNotEmpty())
+            val play = Play(ACTIONS.getValue(base), cards.toIntOrNull(), MARKS[mark], dagger.isNotEmpty())
+            require(play.isPrinted()) { "Unknown chart code: $code" }
+            return play
+        }
+
+        // The notation only puts card counts on doubles and stands, 6-7-8 marks on counted stands, and $ on a plain split
+        private fun Play.isPrinted() = when (bonusException) {
+            null -> hitWithCards == null || action == Action.DOUBLE || action == Action.STAND
+            BonusException.SUITED_777 -> action == Action.SPLIT && hitWithCards == null
+            else -> action == Action.STAND && hitWithCards != null
         }
     }
 }

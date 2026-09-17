@@ -3,7 +3,18 @@ package com.aquigs.sp21ace.domain.strategy
 /** The rule combinations with published charts, all for six decks. */
 enum class RuleSet { H17_REDOUBLE, H17, S17 }
 
-enum class ChartTable { HARD, SOFT, PAIRS, RESCUE, AFTER_DOUBLE_HARD, AFTER_DOUBLE_SOFT }
+enum class ChartTable {
+    HARD,
+    SOFT,
+    PAIRS,
+
+    /** Double Down Rescue when redoubling isn't allowed. A blank square means no rescue: stand on the doubled hand. */
+    RESCUE,
+
+    /** Plays for a hand already doubled when redoubling is allowed. Its R squares are the rescues. */
+    AFTER_DOUBLE_HARD,
+    AFTER_DOUBLE_SOFT,
+}
 
 enum class Upcard(val label: String) {
     TWO("2"), THREE("3"), FOUR("4"), FIVE("5"), SIX("6"), SEVEN("7"), EIGHT("8"), NINE("9"), TEN("10"), ACE("A");
@@ -14,7 +25,10 @@ enum class Upcard(val label: String) {
     }
 }
 
-/** Hands are keyed as the charts print them: "16" for hard totals, "A-7" for soft totals, "8-8" for pairs. */
+/**
+ * Hands are keyed as the charts print them: "16" for hard totals, "A-7" for soft totals, "8-8" for pairs.
+ * [play] is null wherever the chart prints nothing: a table this rule set doesn't have, a hand without a row, or a blank square.
+ */
 class StrategyChart(private val tables: Map<ChartTable, Map<String, Map<Upcard, Play>>>) {
     val tableIds: Set<ChartTable> get() = tables.keys
 
@@ -32,7 +46,10 @@ class StrategyChart(private val tables: Map<ChartTable, Map<String, Map<Upcard, 
 
         private fun parseGrid(table: ChartTable, grid: String): Map<String, Map<Upcard, Play>> {
             val rows = grid.lines().map(String::trim).filter(String::isNotEmpty).map { it.split(WHITESPACE) }
+            require(rows.isNotEmpty()) { "$table has no header row" }
             val upcards = rows.first().drop(1).map(Upcard::fromLabel)
+            require(upcards.toSet().size == upcards.size) { "$table repeats an upcard" }
+            require(rows.drop(1).map { it.first() }.toSet().size == rows.size - 1) { "$table repeats a hand" }
 
             return rows.drop(1).associate { row ->
                 require(row.size == upcards.size + 1) { "$table ${row.first()} has ${row.size - 1} squares, expected ${upcards.size}" }

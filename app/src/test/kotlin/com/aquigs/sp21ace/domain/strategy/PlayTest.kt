@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.domain.strategy
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class PlayTest {
@@ -26,8 +27,10 @@ class PlayTest {
         assertEquals(Play(Action.DOUBLE, hitWithCards = 3, debated = true), Play.parse("D3†"))
     }
 
-    @Test(expected = IllegalArgumentException::class)
-    fun rejectsUnknownCodes() {
-        Play.parse("X")
+    @Test
+    fun rejectsCodesTheChartsNeverPrint() {
+        for (code in listOf("X", "H3", "RH4", "R*", "D3*", "S*", "P6$")) {
+            assertThrows(code, IllegalArgumentException::class.java) { Play.parse(code) }
+        }
     }
 }

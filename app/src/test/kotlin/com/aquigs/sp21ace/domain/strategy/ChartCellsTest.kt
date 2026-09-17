@@ -3,7 +3,7 @@ package com.aquigs.sp21ace.domain.strategy
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-// The fixtures list every square with the sources that print it, so a square can only change together with its cited row
+// The fixtures list every square with the sources that print its play, so a square can't change without its fixture row and every square cites a source
 class ChartCellsTest {
     @Test
     fun h17WithRedoublingMatchesFixture() = assertMatchesFixture(RuleSet.H17_REDOUBLE, "h17-redouble.tsv")
@@ -32,9 +32,15 @@ class ChartCellsTest {
 
     private fun fixtureSquares(name: String): Map<Square, Play> {
         val text = requireNotNull(javaClass.getResource("/strategy/$name")) { "Missing fixture $name" }.readText()
-        return text.lines().drop(1).filter(String::isNotBlank).associate { line ->
-            val (table, hand, upcard, code, debated) = line.split('\t')
+        val squares = text.lines().drop(1).filter(String::isNotBlank).map { line ->
+            val fields = line.split('\t')
+            require(fields.size == 6) { "$name: expected 6 fields in \"$line\"" }
+            val (table, hand, upcard, code, debated) = fields
+            require(debated == "yes" || debated == "no") { "$name: debated must be yes or no in \"$line\"" }
+            require(fields[5].isNotBlank()) { "$name: no source cited in \"$line\"" }
             Square(ChartTable.valueOf(table), hand, Upcard.fromLabel(upcard)) to Play.parse(code).copy(debated = debated == "yes")
         }
+        require(squares.map { it.first }.toSet().size == squares.size) { "$name lists a square twice" }
+        return squares.toMap()
     }
 }

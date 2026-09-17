@@ -128,7 +128,7 @@ HARD	16	7	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 HARD	16	8	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 HARD	16	9	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 HARD	16	10	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
-HARD	16	A	RH	no	Wizard of Odds
+HARD	16	A	RH	no	Wizard of Odds; Stephen How
 HARD	17	2	S	no	Wizard of Odds; Stephen How; HitOrSplit.com
 HARD	17	3	S	no	Wizard of Odds; Stephen How; HitOrSplit.com
 HARD	17	4	S	no	Wizard of Odds; Stephen How; HitOrSplit.com
@@ -190,7 +190,7 @@ SOFT	A-2	9	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-2	10	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-2	A	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-3	2	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
-SOFT	A-3	3	D3	yes	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
+SOFT	A-3	3	D3	yes	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Walker (quoted)
 SOFT	A-3	4	D4	yes	Wizard of Odds; HitOrSplit.com
 SOFT	A-3	5	D	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-3	6	D	no	Wizard of Odds; Stephen How; HitOrSplit.com
@@ -201,9 +201,9 @@ SOFT	A-3	10	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-3	A	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-4	2	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-4	3	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
-SOFT	A-4	4	D4	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
-SOFT	A-4	5	D4	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
-SOFT	A-4	6	D5	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
+SOFT	A-4	4	D4	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
+SOFT	A-4	5	D4	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
+SOFT	A-4	6	D5	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
 SOFT	A-4	7	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-4	8	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-4	9	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
@@ -211,9 +211,9 @@ SOFT	A-4	10	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-4	A	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-5	2	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-5	3	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
-SOFT	A-5	4	D3	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
-SOFT	A-5	5	D4	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
-SOFT	A-5	6	D5	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
+SOFT	A-5	4	D3	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
+SOFT	A-5	5	D4	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
+SOFT	A-5	6	D5	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
 SOFT	A-5	7	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-5	8	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-5	9	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
@@ -223,7 +223,7 @@ SOFT	A-6	2	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-6	3	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-6	4	D3	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-6	5	D4	no	Wizard of Odds; Stephen How; HitOrSplit.com
-SOFT	A-6	6	D5	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
+SOFT	A-6	6	D5	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
 SOFT	A-6	7	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-6	8	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-6	9	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
@@ -232,8 +232,8 @@ SOFT	A-6	A	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-7	2	S4	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-7	3	S4	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-7	4	D4	no	Wizard of Odds; Stephen How; HitOrSplit.com
-SOFT	A-7	5	D5	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
-SOFT	A-7	6	D6	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
+SOFT	A-7	5	D5	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
+SOFT	A-7	6	D6	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
 SOFT	A-7	7	S6	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-7	8	S4	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-7	9	H	no	Wizard of Odds; Stephen How; HitOrSplit.com
@@ -247,8 +247,8 @@ SOFT	A-8	6	S	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-8	7	S	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-8	8	S	no	Wizard of Odds; Stephen How; HitOrSplit.com
 SOFT	A-8	9	S	no	Wizard of Odds; Stephen How; HitOrSplit.com
-SOFT	A-8	10	S6	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
-SOFT	A-8	A	S6	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
+SOFT	A-8	10	S6	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
+SOFT	A-8	A	S6	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
 SOFT	A-9	2	S	no	Stephen How; HitOrSplit.com
 SOFT	A-9	3	S	no	Stephen How; HitOrSplit.com
 SOFT	A-9	4	S	no	Stephen How; HitOrSplit.com
@@ -337,7 +337,7 @@ PAIRS	8-8	6	P	no	Wizard of Odds; Stephen How; HitOrSplit.com
 PAIRS	8-8	7	P	no	Wizard of Odds; Stephen How; HitOrSplit.com
 PAIRS	8-8	8	P	no	Wizard of Odds; Stephen How; HitOrSplit.com
 PAIRS	8-8	9	P	no	Wizard of Odds; Stephen How; HitOrSplit.com
-PAIRS	8-8	10	P	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07); Wizard of Odds, 2010
+PAIRS	8-8	10	P	no	Wizard of Odds; HitOrSplit.com; Jeff Wu (Wizard of Odds, 2003–07)
 PAIRS	8-8	A	R	no	Wizard of Odds; Stephen How
 PAIRS	9-9	2	S	no	Wizard of Odds; Stephen How; HitOrSplit.com
 PAIRS	9-9	3	P	no	Wizard of Odds; Stephen How; HitOrSplit.com
