@@ -8,9 +8,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.answer
@@ -24,17 +25,22 @@ class MainActivity : ComponentActivity() {
         // The app bar is dark in both themes and the drawer stops below the status bar, so the status bar icons stay light
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
 
-        // Dealer stands on soft 17 until the table rules let the player choose
-        val rules = RuleSet.S17
+        val store = TableRulesStore(this)
 
         setContent {
             var trainer by rememberSaveable { mutableStateOf(TrainerState(dealTrainerHand())) }
+            // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
+            var rules by remember { mutableStateOf(store.load()) }
 
             Sp21AceTheme {
                 AppShell(
                     trainer = trainer,
                     rules = rules,
-                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, StrategyCharts.forRules(rules)) },
+                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, StrategyCharts.forRules(rules.ruleSet)) },
+                    onRulesChange = {
+                        rules = it
+                        store.save(it)
+                    },
                 )
             }
         }
