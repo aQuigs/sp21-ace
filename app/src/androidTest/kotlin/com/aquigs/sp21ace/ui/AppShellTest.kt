@@ -1,21 +1,24 @@
 package com.aquigs.sp21ace.ui
 
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.core.view.WindowCompat
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -33,6 +36,8 @@ class AppShellTest {
 
     @Before
     fun setUp() {
+        // Edge to edge like MainActivity, or the status bar inset never reaches the composables
+        compose.runOnUiThread { compose.activity.enableEdgeToEdge() }
         compose.setContent { Sp21AceTheme(darkTheme = false) { AppShell() } }
     }
 
@@ -58,20 +63,10 @@ class AppShellTest {
     }
 
     @Test
-    fun statusBarIconsTurnDarkOnlyOverTheOpenLightDrawer() {
-        assertFalse(lightStatusBar())
-
+    fun theOpenLightDrawerStopsBelowTheStatusBar() {
         Espresso.pressBack()
 
-        assertTrue(lightStatusBar())
-
-        Espresso.pressBack()
-
-        assertFalse(lightStatusBar())
-    }
-
-    private fun lightStatusBar() = compose.runOnIdle {
-        val window = compose.activity.window
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars
+        val screen = compose.onRoot().captureToImage().toPixelMap()
+        assertTrue(screen[screen.width / 10, 0].luminance() < 0.5f)
     }
 }
