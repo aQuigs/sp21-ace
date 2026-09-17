@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Spanish 21 Ace</string>
+    <string name="basic_strategy">Basic Strategy</string>
+    <string name="strategy_trainer">Strategy Trainer</string>
+    <string name="open_menu">Open navigation menu</string>
 </resources>
