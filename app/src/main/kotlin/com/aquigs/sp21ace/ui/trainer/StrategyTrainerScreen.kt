@@ -65,6 +65,8 @@ fun StrategyTrainerScreen(
         bottomBar = { PreviousHandPanel(state.lastGrade) },
     ) { padding ->
         Row(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+            StreakMeter(state.streak, modifier = Modifier.fillMaxHeight().padding(end = 8.dp))
+
             Column(
                 modifier = Modifier.weight(1f).fillMaxHeight().wrapContentWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),

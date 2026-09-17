@@ -51,22 +51,32 @@ class StrategyTrainerScreenTest {
 
     private fun button(move: Move) = compose.onNodeWithContentDescription(string(move.displayName))
 
-    private fun showTrainer(modifier: Modifier = Modifier) {
+    private fun showTrainer(modifier: Modifier = Modifier, deals: List<TrainerHand> = listOf(eightsVsSix)) {
         val chart = StrategyCharts.forRules(RuleSet.S17)
-        // Only one hand left to deal, so grading a second hand would throw
-        val deals = listOf(eightsVsSix).iterator()
+        // Only these hands are left to deal, so grading one answer more would throw
+        val next = deals.iterator()
         var trainer by mutableStateOf(TrainerState(sixteenVsAce))
 
         compose.setContent {
             Sp21AceTheme {
                 StrategyTrainerScreen(
                     state = trainer,
-                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart, deals::next) },
+                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart, next::next) },
                     onOpenDrawer = {},
                     modifier = modifier,
                 )
             }
         }
+    }
+
+    private fun assertStreakOnItsRung(streak: Int) {
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, streak)).assertIsDisplayed()
+
+        // The circle repeats the label of the rung it sits on, so exactly that number shows twice, level. Nothing else on the
+        // trainer is a bare number.
+        val levels = compose.onAllNodesWithText("$streak", useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot.center.y }
+        assertEquals(2, levels.size)
+        assertEquals(levels[0], levels[1], 2f)
     }
 
     @Test
@@ -154,5 +164,19 @@ class StrategyTrainerScreenTest {
         val heights = Move.entries.map { button(it).getBoundsInRoot().height.value }
 
         heights.forEach { assertEquals(heights.first(), it, 1f) }
+    }
+
+    @Test
+    fun rightAnswersClimbTheStreakMeterAndAWrongOneDropsItToZero() {
+        showTrainer(deals = listOf(eightsVsSix, sixteenVsAce, eightsVsSix))
+
+        button(Move.HIT).performClick()
+        button(Move.SPLIT).performClick()
+
+        assertStreakOnItsRung(2)
+
+        button(Move.STAND).performClick()
+
+        assertStreakOnItsRung(0)
     }
 }

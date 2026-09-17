@@ -20,6 +20,9 @@
     <string name="move_surrender">Surrender</string>
     <string name="surrender_short">SURR.</string>
 
+    <string name="streak">Streak</string>
+    <string name="streak_count">Streak: %1$d</string>
+
     <string name="face_down_card">Face-down card</string>
     <string name="card_name">%1$s of %2$s</string>
     <string name="ace">Ace</string>
