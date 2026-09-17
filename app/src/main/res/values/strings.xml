@@ -4,4 +4,26 @@
     <string name="basic_strategy">Basic Strategy</string>
     <string name="strategy_trainer">Strategy Trainer</string>
     <string name="open_menu">Open navigation menu</string>
+
+    <string name="dealer">Dealer</string>
+    <string name="you">You</string>
+    <string name="hit">HIT</string>
+    <string name="stand">STAND</string>
+    <string name="double_down">DOUBLE</string>
+    <string name="split">SPLIT</string>
+    <string name="surrender_short">SURR.</string>
+    <string name="surrender">Surrender</string>
+    <string name="right_answer">Right answer</string>
+    <string name="wrong_answer">Wrong answer</string>
+
+    <string name="face_down_card">Face-down card</string>
+    <string name="card_name">%1$s of %2$s</string>
+    <string name="ace">Ace</string>
+    <string name="jack">Jack</string>
+    <string name="queen">Queen</string>
+    <string name="king">King</string>
+    <string name="spades">spades</string>
+    <string name="hearts">hearts</string>
+    <string name="diamonds">diamonds</string>
+    <string name="clubs">clubs</string>
 </resources>

@@ -6,6 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.remember
+import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
+import com.aquigs.sp21ace.domain.trainer.Trainer
 import com.aquigs.sp21ace.ui.AppShell
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
@@ -17,7 +21,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             Sp21AceTheme {
-                AppShell()
+                // Dealer stands on soft 17 until the table rules let the player choose
+                AppShell(trainer = remember { Trainer(StrategyCharts.forRules(RuleSet.S17)) })
             }
         }
     }
