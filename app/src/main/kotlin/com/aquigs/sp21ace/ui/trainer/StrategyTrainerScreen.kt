@@ -23,7 +23,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +50,7 @@ import com.aquigs.sp21ace.ui.chart.ChartTile
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
+import com.aquigs.sp21ace.ui.components.appBarColors
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
 private val ButtonSize = 64.dp
@@ -134,12 +134,7 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
                 Icon(painterResource(R.drawable.ic_menu), contentDescription = stringResource(R.string.open_menu))
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = container,
-            navigationIconContentColor = colors.onAppBar,
-            titleContentColor = colors.onAppBar,
-            actionIconContentColor = colors.onAppBar,
-        ),
+        colors = appBarColors(container),
     )
 }
 

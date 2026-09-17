@@ -1,19 +1,24 @@
 package com.aquigs.sp21ace.domain.strategy
 
-/** The rule combinations with published charts, all for six decks. */
-enum class RuleSet { H17_REDOUBLE, H17, S17 }
+/** The rule combinations with published charts, all for six decks. Casinos only offer redoubling where the dealer hits soft 17. */
+enum class RuleSet(val dealerHitsSoft17: Boolean, val redoubling: Boolean) {
+    H17_REDOUBLE(dealerHitsSoft17 = true, redoubling = true),
+    H17(dealerHitsSoft17 = true, redoubling = false),
+    S17(dealerHitsSoft17 = false, redoubling = false),
+}
 
-enum class ChartTable {
+/** [afterDoubling] marks the tables for a hand already doubled, where D is a redouble and R a rescue. */
+enum class ChartTable(val afterDoubling: Boolean = false) {
     HARD,
     SOFT,
     PAIRS,
 
     /** Double Down Rescue when redoubling isn't allowed. A blank square means no rescue: stand on the doubled hand. */
-    RESCUE,
+    RESCUE(afterDoubling = true),
 
     /** Plays for a hand already doubled when redoubling is allowed. Its R squares are the rescues. */
-    AFTER_DOUBLE_HARD,
-    AFTER_DOUBLE_SOFT,
+    AFTER_DOUBLE_HARD(afterDoubling = true),
+    AFTER_DOUBLE_SOFT(afterDoubling = true),
 }
 
 enum class Upcard(val label: String) {
@@ -29,10 +34,13 @@ enum class Upcard(val label: String) {
  * Hands are keyed as the charts print them: "16" for hard totals, "A-7" for soft totals, "8-8" for pairs.
  * [play] is null wherever the chart prints nothing: a table this rule set doesn't have, a hand without a row, or a blank square.
  */
-class StrategyChart(private val tables: Map<ChartTable, Map<String, Map<Upcard, Play>>>) {
-    fun hands(table: ChartTable): List<String> = tables[table]?.keys?.toList().orEmpty()
+class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard, Play>>>) {
+    /** The tables this rule set prints, in chart order. */
+    val tables: List<ChartTable> = ChartTable.entries.filter { squares[it].orEmpty().isNotEmpty() }
 
-    fun play(table: ChartTable, hand: String, upcard: Upcard): Play? = tables[table]?.get(hand)?.get(upcard)
+    fun hands(table: ChartTable): List<String> = squares[table]?.keys?.toList().orEmpty()
+
+    fun play(table: ChartTable, hand: String, upcard: Upcard): Play? = squares[table]?.get(hand)?.get(upcard)
 
     companion object {
         // Sparse tables such as Double Down Rescue only print the squares where their play applies

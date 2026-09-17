@@ -16,6 +16,9 @@ enum class BonusException(val mark: String) {
     SUITED_777("$"),
 }
 
+/** Printed after a square the sources still debate. */
+internal const val DEBATED_MARK = "†"
+
 /**
  * One chart square in Wizard of Odds notation: the play, the card count from which to hit instead, and a bonus mark.
  * S5' means stand, but hit with 5 or more cards or while a suited 6-7-8 is possible.
@@ -28,7 +31,7 @@ data class Play(
 ) : Serializable {
     companion object {
         // The notation only puts card counts on doubles and stands, 6-7-8 marks on counted stands, and $ on a bare split
-        private val CODE = Regex("""(RH|[HSDPR])((?<=[DS])[3-6])?((?<=S[3-6])[*'"]|(?<=P)\$)?(†)?""")
+        private val CODE = Regex("""(RH|[HSDPR])((?<=[DS])[3-6])?((?<=S[3-6])[*'"]|(?<=P)\$)?($DEBATED_MARK)?""")
 
         fun parse(code: String): Play {
             val match = requireNotNull(CODE.matchEntire(code)) { "Unknown chart code: $code" }
@@ -45,4 +48,4 @@ data class Play(
 
 /** The square as the charts print it, which [Play.parse] reads back as the same play. */
 val Play.code: String
-    get() = listOfNotNull(action.code, hitWithCards?.toString(), bonusException?.mark, "†".takeIf { debated }).joinToString("")
+    get() = listOfNotNull(action.code, hitWithCards?.toString(), bonusException?.mark, DEBATED_MARK.takeIf { debated }).joinToString("")

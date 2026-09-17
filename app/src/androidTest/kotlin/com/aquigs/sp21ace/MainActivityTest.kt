@@ -3,6 +3,7 @@ package com.aquigs.sp21ace
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -39,6 +40,17 @@ class MainActivityTest {
         compose.activityRule.scenario.recreate()
 
         assertEquals(answered, everythingOnScreen())
+    }
+
+    @Test
+    fun keepsTheOpenChartAndItsTabWhenRecreated() {
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.open_strategy_chart)).performClick()
+        compose.onNodeWithText(compose.activity.getString(R.string.table_pairs)).performClick()
+
+        compose.activityRule.scenario.recreate()
+
+        compose.onNode(hasText(compose.activity.getString(R.string.strategy_chart)) and isHeading()).assertIsDisplayed()
+        compose.onNodeWithText(compose.activity.getString(R.string.table_pairs)).assertIsSelected()
     }
 
     // Hands are dealt at random, so compare every card, bar and recap word rather than expected values

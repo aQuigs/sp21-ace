@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -64,7 +65,7 @@ class AppShellTest {
         var trainer by mutableStateOf(TrainerState(sixteenVsAce))
         compose.setContent {
             Sp21AceTheme(darkTheme = false) {
-                AppShell(trainer, RuleSet.S17, chart, onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart) { eightsVsSix } })
+                AppShell(trainer, RuleSet.S17, onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart) { eightsVsSix } })
             }
         }
     }
@@ -126,5 +127,19 @@ class AppShellTest {
 
         appBarTitle(R.string.strategy_trainer).assertIsDisplayed()
         compose.onNodeWithContentDescription("9 of clubs").assertIsDisplayed()
+    }
+
+    @Test
+    fun twoBacksBeforeARedrawStopAtTheRootScreen() {
+        compose.onNodeWithContentDescription(string(R.string.open_strategy_chart)).performClick()
+        val tapBackArrow = compose.onNodeWithContentDescription(string(R.string.back)).fetchSemanticsNode().config[SemanticsActions.OnClick].action
+
+        // A double tap on the arrow while the app is too busy to redraw between the taps
+        compose.runOnUiThread {
+            tapBackArrow?.invoke()
+            tapBackArrow?.invoke()
+        }
+
+        appBarTitle(R.string.strategy_trainer).assertIsDisplayed()
     }
 }

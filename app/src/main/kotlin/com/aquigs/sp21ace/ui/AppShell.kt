@@ -1,7 +1,6 @@
 package com.aquigs.sp21ace.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
@@ -32,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
-import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
@@ -40,10 +38,13 @@ import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
 
 /** Root screens carry the menu. Every other destination opens over one as a sub-page with a back arrow. */
-enum class Destination(@StringRes val title: Int, @DrawableRes val icon: Int, val isRoot: Boolean) {
-    StrategyTrainer(R.string.strategy_trainer, R.drawable.ic_home, isRoot = true),
-    StrategyChart(R.string.strategy_chart, R.drawable.ic_chart, isRoot = false),
+enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
+    StrategyTrainer(R.string.strategy_trainer, isRoot = true),
+    StrategyChart(R.string.strategy_chart, isRoot = false),
 }
+
+// The drawer keeps its own list, because not every destination belongs in it, such as a picker opened from another page
+private val BASIC_STRATEGY_ITEMS = listOf(Destination.StrategyTrainer to R.drawable.ic_home, Destination.StrategyChart to R.drawable.ic_chart)
 
 // Blackjack Ace's drawer leaves about a third of the screen uncovered; Material's 360dp default covers almost all of it.
 private val DrawerWidth = 280.dp
@@ -52,7 +53,6 @@ private val DrawerWidth = 280.dp
 fun AppShell(
     trainer: TrainerState,
     rules: RuleSet,
-    chart: StrategyChart,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -67,8 +67,9 @@ fun AppShell(
         backStack = if (page.isRoot) listOf(page) else backStack.takeWhile { it != page } + page
     }
 
+    // Two backs before a redraw, such as a double tap on the arrow, would otherwise pop the root screen too
     fun back() {
-        backStack = backStack.dropLast(1)
+        if (backStack.size > 1) backStack = backStack.dropLast(1)
     }
 
     // Back closes the drawer, then retraces the sub-pages. A root screen has nothing behind it, so there Back opens the
@@ -103,7 +104,7 @@ fun AppShell(
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenChart = { open(Destination.StrategyChart) },
             )
-            Destination.StrategyChart -> StrategyChartScreen(chart, rules, onBack = { back() })
+            Destination.StrategyChart -> StrategyChartScreen(rules, onBack = { back() })
         }
     }
 }
@@ -124,13 +125,13 @@ private fun Drawer(selected: Destination, onSelect: (Destination) -> Unit) {
             style = MaterialTheme.typography.titleSmall,
         )
 
-        Destination.entries.forEach { destination ->
+        BASIC_STRATEGY_ITEMS.forEach { (destination, icon) ->
             NavigationDrawerItem(
                 label = { Text(stringResource(destination.title)) },
                 selected = destination == selected,
                 onClick = { onSelect(destination) },
                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                icon = { Icon(painterResource(destination.icon), contentDescription = null) },
+                icon = { Icon(painterResource(icon), contentDescription = null) },
             )
         }
     }

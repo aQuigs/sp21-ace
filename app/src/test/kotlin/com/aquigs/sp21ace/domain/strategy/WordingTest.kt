@@ -1,10 +1,13 @@
 package com.aquigs.sp21ace.domain.strategy
 
 import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.domain.strategy.ChartTable.AFTER_DOUBLE_HARD
 import com.aquigs.sp21ace.domain.strategy.ChartTable.HARD
 import com.aquigs.sp21ace.domain.strategy.ChartTable.PAIRS
+import com.aquigs.sp21ace.domain.strategy.ChartTable.RESCUE
 import com.aquigs.sp21ace.domain.strategy.ChartTable.SOFT
 import com.aquigs.sp21ace.domain.strategy.RuleSet.H17
+import com.aquigs.sp21ace.domain.strategy.RuleSet.H17_REDOUBLE
 import com.aquigs.sp21ace.domain.strategy.RuleSet.S17
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -57,6 +60,49 @@ class WordingTest {
         assertEquals(
             "Hit while a spaded 6-7-8 is possible. Otherwise stand, but hit with 6 or more cards † (debated)",
             words(S17, HARD, "15", Upcard.SIX, Move.HIT),
+        )
+    }
+
+    @Test
+    fun wordsTheSquaresOfAHandAlreadyDoubledBlankOnesIncluded() {
+        assertEquals("Redouble", StrategyCharts.forRules(H17_REDOUBLE).inPlainWords(AFTER_DOUBLE_HARD, "11", Upcard.TWO))
+        assertEquals("Rescue", StrategyCharts.forRules(H17_REDOUBLE).inPlainWords(AFTER_DOUBLE_HARD, "16", Upcard.EIGHT))
+        assertEquals("Rescue", StrategyCharts.forRules(S17).inPlainWords(RESCUE, "16", Upcard.TEN))
+        assertEquals("Stand, no rescue", StrategyCharts.forRules(S17).inPlainWords(RESCUE, "12", Upcard.TWO))
+    }
+
+    @Test
+    fun theLegendListsOnlyWhatTheTableUses() {
+        assertEquals(
+            listOf(
+                LegendEntry("H", "Hit", Action.HIT),
+                LegendEntry("S", "Stand", Action.STAND),
+                LegendEntry("D", "Double", Action.DOUBLE),
+                LegendEntry("RH", "Surrender, otherwise hit", Action.SURRENDER_OR_HIT),
+                LegendEntry("3-6", "Hit with that many cards or more"),
+                LegendEntry("*", "Hit while any 6-7-8 is possible"),
+                LegendEntry("\"", "Hit while a spaded 6-7-8 is possible"),
+                LegendEntry("†", "Sources still debate this square"),
+            ),
+            StrategyCharts.forRules(S17).legend(HARD),
+        )
+        assertEquals(listOf("H", "S", "D", "P", "$"), StrategyCharts.forRules(S17).legend(PAIRS).map { it.symbol })
+    }
+
+    @Test
+    fun aDoubledHandsLegendNamesRedoublesRescuesAndBlankSquares() {
+        assertEquals(
+            listOf(
+                LegendEntry("S", "Stand", Action.STAND),
+                LegendEntry("D", "Redouble", Action.DOUBLE),
+                LegendEntry("R", "Rescue", Action.SURRENDER),
+                LegendEntry("†", "Sources still debate this square"),
+            ),
+            StrategyCharts.forRules(H17_REDOUBLE).legend(AFTER_DOUBLE_HARD),
+        )
+        assertEquals(
+            listOf(LegendEntry("R", "Rescue", Action.SURRENDER), LegendEntry("", "Stand, no rescue")),
+            StrategyCharts.forRules(S17).legend(RESCUE),
         )
     }
 
