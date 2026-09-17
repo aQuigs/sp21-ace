@@ -16,7 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.rules.TableRules
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -72,9 +72,10 @@ class TableRulesScreenTest {
     }
 
     @Test
-    fun theSoft17PageMarksTheCurrentChoiceAndChoosingDealerHitsKeepsRedoubling() {
+    fun theSoft17PageMarksTheCurrentChoiceAndChoosingDealerHitsKeepsRedoublingAndGoesBack() {
         rules = TableRules(redoubling = true)
-        compose.setContent { Sp21AceTheme { Soft17Screen(rules, onChange = { rules = it }, onBack = {}) } }
+        var backs = 0
+        compose.setContent { Sp21AceTheme { Soft17Screen(rules, onChange = { rules = it }, onBack = { backs++ }) } }
 
         compose.onNodeWithText(string(R.string.dealer_stands)).assertIsSelected()
 
@@ -82,5 +83,6 @@ class TableRulesScreenTest {
 
         compose.onNodeWithText(string(R.string.dealer_stands)).assertIsNotSelected()
         assertEquals(TableRules(dealerHitsSoft17 = true, redoubling = true), rules)
+        assertEquals(1, backs)
     }
 }

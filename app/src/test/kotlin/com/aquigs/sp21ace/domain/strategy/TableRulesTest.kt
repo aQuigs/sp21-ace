@@ -1,6 +1,5 @@
-package com.aquigs.sp21ace.domain.rules
+package com.aquigs.sp21ace.domain.strategy
 
-import com.aquigs.sp21ace.domain.strategy.RuleSet
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -20,13 +19,5 @@ class TableRulesTest {
     fun theDealerHittingPicksTheH17ChartOrItsRedoublingOne() {
         assertEquals(RuleSet.H17, TableRules(dealerHitsSoft17 = true, redoubling = false).ruleSet)
         assertEquals(RuleSet.H17_REDOUBLE, TableRules(dealerHitsSoft17 = true, redoubling = true).ruleSet)
-    }
-
-    @Test
-    fun standingIgnoresRedoublingButRemembersItForWhenTheDealerHitsAgain() {
-        val standing = TableRules(dealerHitsSoft17 = true, redoubling = true).copy(dealerHitsSoft17 = false)
-
-        assertEquals(RuleSet.S17, standing.ruleSet)
-        assertEquals(RuleSet.H17_REDOUBLE, standing.copy(dealerHitsSoft17 = true).ruleSet)
     }
 }

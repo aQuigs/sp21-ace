@@ -29,8 +29,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.rules.TableRules
 import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
@@ -47,11 +47,12 @@ enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     Soft17(R.string.soft_17, isRoot = false),
 }
 
-// The drawer keeps its own list, because not every destination belongs in it, such as a picker opened from another page
+// In Blackjack Ace's order. The drawer keeps its own list, because not every destination belongs in it, such as a picker
+// opened from another page.
 private val BASIC_STRATEGY_ITEMS = listOf(
     Destination.StrategyTrainer to R.drawable.ic_home,
-    Destination.StrategyChart to R.drawable.ic_chart,
     Destination.TableRules to R.drawable.ic_table_rules,
+    Destination.StrategyChart to R.drawable.ic_chart,
 )
 
 // Blackjack Ace's drawer leaves about a third of the screen uncovered; Material's 360dp default covers almost all of it.
@@ -73,7 +74,7 @@ fun AppShell(
 
     // A page already open is returned to rather than stacked again, as a double tap would
     fun open(page: Destination) {
-        backStack = if (page.isRoot) listOf(page) else backStack.takeWhile { it != page } + page
+        backStack = backStack.takeWhile { it != page } + page
     }
 
     // Two backs before a redraw, such as a double tap on the arrow, would otherwise pop the root screen too
@@ -96,7 +97,9 @@ fun AppShell(
             Drawer(
                 selected = destination,
                 onSelect = {
-                    open(it)
+                    // Straight over the root, so a second pick before the drawer has closed replaces the first instead of
+                    // stacking on it
+                    backStack = if (it.isRoot) listOf(it) else listOf(backStack.first(), it)
                     scope.launch { drawerState.close() }
                 },
             )

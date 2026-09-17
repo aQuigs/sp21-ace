@@ -1,25 +1,14 @@
 package com.aquigs.sp21ace.ui.rules
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.rules.TableRules
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.components.ChoicePage
 import com.aquigs.sp21ace.ui.components.ChoiceRow
-import com.aquigs.sp21ace.ui.components.SubPage
+import com.aquigs.sp21ace.ui.components.SettingsIntro
+import com.aquigs.sp21ace.ui.components.SettingsPage
 import com.aquigs.sp21ace.ui.components.SwitchRow
 
 /** Offers only the rules that choose between the published charts, because a rule without a chart would leave nothing to grade against. */
@@ -31,31 +20,20 @@ fun TableRulesScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SubPage(title = stringResource(R.string.table_rules), onBack = onBack, modifier = modifier) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-            // The icon sits beside the first line, as in Blackjack Ace, where a list item would centre it on the paragraph
-            Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Icon(painterResource(R.drawable.ic_info), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    text = stringResource(R.string.table_rules_intro),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            ChoiceRow(
-                title = stringResource(R.string.soft_17),
-                value = stringResource(soft17Choice(rules.dealerHitsSoft17)),
-                onClick = onOpenSoft17,
+    SettingsPage(title = stringResource(R.string.table_rules), onBack = onBack, modifier = modifier) {
+        SettingsIntro(stringResource(R.string.table_rules_intro))
+        ChoiceRow(
+            title = stringResource(R.string.soft_17),
+            value = stringResource(soft17Choice(rules.dealerHitsSoft17)),
+            onClick = onOpenSoft17,
+        )
+        if (rules.offersRedoubling) {
+            SwitchRow(
+                title = stringResource(R.string.redoubling),
+                summary = stringResource(R.string.redoubling_summary),
+                checked = rules.redoubling,
+                onCheckedChange = { onChange(rules.copy(redoubling = it)) },
             )
-            // Casinos only offer redoubling where the dealer hits soft 17
-            if (rules.dealerHitsSoft17) {
-                SwitchRow(
-                    title = stringResource(R.string.redoubling),
-                    summary = stringResource(R.string.redoubling_summary),
-                    checked = rules.redoubling,
-                    onCheckedChange = { onChange(rules.copy(redoubling = it)) },
-                )
-            }
         }
     }
 }
