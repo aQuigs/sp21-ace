@@ -1,11 +1,12 @@
 package com.aquigs.sp21ace.ui
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -16,7 +17,7 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,7 +25,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
 
@@ -56,14 +57,16 @@ fun AppShell(modifier: Modifier = Modifier) {
         }
     }
 
-    // MainActivity keeps the status bar icons light for the dark app bar, but an open light-theme drawer covers the bar
-    // up to the top of the screen, where light icons would vanish
-    val lightDrawer = MaterialTheme.colorScheme.surfaceContainerLow.luminance() > 0.5f
-    val view = LocalView.current
-    LaunchedEffect(drawerState.targetValue, lightDrawer) {
-        val window = (view.context as? Activity)?.window ?: return@LaunchedEffect
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
-            lightDrawer && drawerState.targetValue == DrawerValue.Open
+    // Edge to edge, the status bar icons sit over whatever reaches the top of the screen, and only dark icons read over
+    // a light colour such as the light theme's drawer
+    val underStatusBar = when (drawerState.targetValue) {
+        DrawerValue.Open -> DrawerDefaults.modalContainerColor
+        DrawerValue.Closed -> Sp21AceTheme.colors.appBar
+    }
+    val lightStatusBar = underStatusBar.luminance() > 0.5f
+    val window = LocalActivity.current?.window
+    SideEffect {
+        window?.let { WindowCompat.getInsetsController(it, it.decorView).isAppearanceLightStatusBars = lightStatusBar }
     }
 
     ModalNavigationDrawer(
@@ -79,10 +82,8 @@ fun AppShell(modifier: Modifier = Modifier) {
         modifier = modifier,
         drawerState = drawerState,
     ) {
-        val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
-
         when (destination) {
-            Destination.StrategyTrainer -> StrategyTrainerScreen(onOpenDrawer = openDrawer)
+            Destination.StrategyTrainer -> StrategyTrainerScreen(onOpenDrawer = { scope.launch { drawerState.open() } })
         }
     }
 }
@@ -91,10 +92,13 @@ fun AppShell(modifier: Modifier = Modifier) {
 private fun Drawer(selected: Destination, onSelect: (Destination) -> Unit) {
     // The overload taking drawerState registers its own back handler, which would compete with AppShell's.
     ModalDrawerSheet(modifier = Modifier.width(DrawerWidth)) {
-        // 28dp is the item padding plus the item's own start padding, so the header lines up with the icons
+        // The extra 16dp is the item's own start padding, so the header lines up with the icons
         Text(
             text = stringResource(R.string.basic_strategy),
-            modifier = Modifier.padding(horizontal = 28.dp, vertical = 18.dp).semantics { heading() },
+            modifier = Modifier
+                .padding(NavigationDrawerItemDefaults.ItemPadding)
+                .padding(start = 16.dp, top = 18.dp, bottom = 18.dp)
+                .semantics { heading() },
             color = MaterialTheme.colorScheme.secondary,
             style = MaterialTheme.typography.titleSmall,
         )

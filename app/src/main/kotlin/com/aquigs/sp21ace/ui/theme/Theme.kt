@@ -11,15 +11,11 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/** Colours with no Material role: the root app bar, and the right and wrong answer feedback that recolours it. */
+/** Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy. */
 @Immutable
 data class Sp21AceColors(
     val appBar: Color,
     val onAppBar: Color,
-    val correct: Color,
-    val onCorrect: Color,
-    val wrong: Color,
-    val onWrong: Color,
 )
 
 // The brand saffron #D99A1E only reaches about 2.3:1 on the light surfaces, so text-bearing roles use a darker tone.
@@ -90,22 +86,14 @@ private val DarkColors = darkColorScheme(
 )
 
 private val LightSp21AceColors = Sp21AceColors(
-    appBar = Color(0xFF1F3A5F),
-    onAppBar = Color.White,
-    correct = Color(0xFF2E7D32),
-    onCorrect = Color.White,
-    wrong = Color(0xFFB3261E),
-    onWrong = Color.White,
+    appBar = LightColors.primary,
+    onAppBar = LightColors.onPrimary,
 )
 
-// Deeper than the light tones so a full-width bar doesn't glare against charcoal.
+// Deeper than the light theme's navy so a full-width bar doesn't glare against charcoal.
 private val DarkSp21AceColors = Sp21AceColors(
     appBar = Color(0xFF1B2C42),
-    onAppBar = Color(0xFFEAE3D9),
-    correct = Color(0xFF2F6F3A),
-    onCorrect = Color(0xFFEAE3D9),
-    wrong = Color(0xFF9E2A24),
-    onWrong = Color(0xFFEAE3D9),
+    onAppBar = DarkColors.onSurface,
 )
 
 private val LocalSp21AceColors = staticCompositionLocalOf { LightSp21AceColors }

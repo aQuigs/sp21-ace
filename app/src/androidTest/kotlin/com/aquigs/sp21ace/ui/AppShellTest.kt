@@ -10,10 +10,13 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.core.view.WindowCompat
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -30,7 +33,7 @@ class AppShellTest {
 
     @Before
     fun setUp() {
-        compose.setContent { Sp21AceTheme { AppShell() } }
+        compose.setContent { Sp21AceTheme(darkTheme = false) { AppShell() } }
     }
 
     @Test
@@ -52,5 +55,23 @@ class AppShellTest {
         Espresso.pressBack()
 
         trainerItem.assertIsNotDisplayed()
+    }
+
+    @Test
+    fun statusBarIconsTurnDarkOnlyOverTheOpenLightDrawer() {
+        assertFalse(lightStatusBar())
+
+        Espresso.pressBack()
+
+        assertTrue(lightStatusBar())
+
+        Espresso.pressBack()
+
+        assertFalse(lightStatusBar())
+    }
+
+    private fun lightStatusBar() = compose.runOnIdle {
+        val window = compose.activity.window
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars
     }
 }
