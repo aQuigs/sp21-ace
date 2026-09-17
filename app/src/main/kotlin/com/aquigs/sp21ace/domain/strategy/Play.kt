@@ -1,17 +1,17 @@
 package com.aquigs.sp21ace.domain.strategy
 
-enum class Action { HIT, STAND, DOUBLE, SPLIT, SURRENDER, SURRENDER_OR_HIT }
+enum class Action(val code: String) { HIT("H"), STAND("S"), DOUBLE("D"), SPLIT("P"), SURRENDER("R"), SURRENDER_OR_HIT("RH") }
 
 /** A play gives way to a hit while one of these bonus hands is still possible. */
-enum class BonusException {
-    ANY_678,
+enum class BonusException(val mark: String) {
+    ANY_678("*"),
 
     /** Suited 6-7-8, spades included. */
-    SUITED_678,
-    SPADED_678,
+    SUITED_678("'"),
+    SPADED_678("\""),
 
     /** Suited 7-7-7 against a dealer 7, the Super Bonus. */
-    SUITED_777,
+    SUITED_777("$"),
 }
 
 /**
@@ -25,35 +25,18 @@ data class Play(
     val debated: Boolean = false,
 ) {
     companion object {
-        private val CODE = Regex("""(RH|[HSDPR])([3-6])?([*'"$])?(†)?""")
-        private val ACTIONS = mapOf(
-            "H" to Action.HIT,
-            "S" to Action.STAND,
-            "D" to Action.DOUBLE,
-            "P" to Action.SPLIT,
-            "R" to Action.SURRENDER,
-            "RH" to Action.SURRENDER_OR_HIT,
-        )
-        private val MARKS = mapOf(
-            "*" to BonusException.ANY_678,
-            "'" to BonusException.SUITED_678,
-            "\"" to BonusException.SPADED_678,
-            "$" to BonusException.SUITED_777,
-        )
+        // The notation only puts card counts on doubles and stands, 6-7-8 marks on counted stands, and $ on a bare split
+        private val CODE = Regex("""(RH|[HSDPR])((?<=[DS])[3-6])?((?<=S[3-6])[*'"]|(?<=P)\$)?(†)?""")
 
         fun parse(code: String): Play {
             val match = requireNotNull(CODE.matchEntire(code)) { "Unknown chart code: $code" }
             val (base, cards, mark, dagger) = match.destructured
-            val play = Play(ACTIONS.getValue(base), cards.toIntOrNull(), MARKS[mark], dagger.isNotEmpty())
-            require(play.isPrinted()) { "Unknown chart code: $code" }
-            return play
-        }
-
-        // The notation only puts card counts on doubles and stands, 6-7-8 marks on counted stands, and $ on a plain split
-        private fun Play.isPrinted() = when (bonusException) {
-            null -> hitWithCards == null || action == Action.DOUBLE || action == Action.STAND
-            BonusException.SUITED_777 -> action == Action.SPLIT && hitWithCards == null
-            else -> action == Action.STAND && hitWithCards != null
+            return Play(
+                Action.entries.first { it.code == base },
+                cards.toIntOrNull(),
+                BonusException.entries.firstOrNull { it.mark == mark },
+                dagger.isNotEmpty(),
+            )
         }
     }
 }

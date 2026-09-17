@@ -30,8 +30,6 @@ enum class Upcard(val label: String) {
  * [play] is null wherever the chart prints nothing: a table this rule set doesn't have, a hand without a row, or a blank square.
  */
 class StrategyChart(private val tables: Map<ChartTable, Map<String, Map<Upcard, Play>>>) {
-    val tableIds: Set<ChartTable> get() = tables.keys
-
     fun hands(table: ChartTable): List<String> = tables[table]?.keys?.toList().orEmpty()
 
     fun play(table: ChartTable, hand: String, upcard: Upcard): Play? = tables[table]?.get(hand)?.get(upcard)
@@ -46,17 +44,16 @@ class StrategyChart(private val tables: Map<ChartTable, Map<String, Map<Upcard, 
 
         private fun parseGrid(table: ChartTable, grid: String): Map<String, Map<Upcard, Play>> {
             val rows = grid.lines().map(String::trim).filter(String::isNotEmpty).map { it.split(WHITESPACE) }
-            require(rows.isNotEmpty()) { "$table has no header row" }
-            val upcards = rows.first().drop(1).map(Upcard::fromLabel)
-            require(upcards.toSet().size == upcards.size) { "$table repeats an upcard" }
-            require(rows.drop(1).map { it.first() }.toSet().size == rows.size - 1) { "$table repeats a hand" }
+            val header = requireNotNull(rows.firstOrNull()) { "$table has no header row" }
+            require(header.drop(1) == Upcard.entries.map(Upcard::label)) { "$table header must list every upcard from 2 to A" }
+            val body = rows.drop(1)
 
-            return rows.drop(1).associate { row ->
-                require(row.size == upcards.size + 1) { "$table ${row.first()} has ${row.size - 1} squares, expected ${upcards.size}" }
-                row.first() to upcards.zip(row.drop(1))
+            return body.associate { row ->
+                require(row.size == Upcard.entries.size + 1) { "$table ${row.first()} has ${row.size - 1} squares, expected ${Upcard.entries.size}" }
+                row.first() to Upcard.entries.zip(row.drop(1))
                     .filter { (_, code) -> code != NO_PLAY }
                     .associate { (upcard, code) -> upcard to Play.parse(code) }
-            }
+            }.also { require(it.size == body.size) { "$table repeats a hand" } }
         }
     }
 }

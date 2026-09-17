@@ -11,8 +11,8 @@ class StrategyChartTest {
         val chart = StrategyChart.parse(
             mapOf(
                 ChartTable.RESCUE to """
-                    hand  2     A
-                    16    .     R†
+                    hand  2     3     4     5     6     7     8     9     10    A
+                    16    .     .     .     .     .     .     R     R     R     R†
                 """,
             ),
         )
@@ -24,7 +24,10 @@ class StrategyChartTest {
 
     @Test
     fun rejectsMalformedGrids() {
-        for (grid in listOf("", "hand 2 3\n9 D", "hand 2\n16 S\n16 H", "hand 2 2\n16 S H")) {
+        val header = "hand 2 3 4 5 6 7 8 9 10 A"
+        val row = "16" + " S".repeat(10)
+
+        for (grid in listOf("", "hand 2 A\n16 S S", "$header\n9 D", "$header\n$row\n$row")) {
             assertThrows(grid, IllegalArgumentException::class.java) { StrategyChart.parse(mapOf(ChartTable.HARD to grid)) }
         }
     }
