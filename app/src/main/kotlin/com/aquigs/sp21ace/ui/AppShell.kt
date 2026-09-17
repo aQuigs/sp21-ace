@@ -1,5 +1,6 @@
 package com.aquigs.sp21ace.ui
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -15,17 +16,21 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
@@ -49,6 +54,16 @@ fun AppShell(modifier: Modifier = Modifier) {
         scope.launch {
             if (drawerState.targetValue == DrawerValue.Open) drawerState.close() else drawerState.open()
         }
+    }
+
+    // MainActivity keeps the status bar icons light for the dark app bar, but an open light-theme drawer covers the bar
+    // up to the top of the screen, where light icons would vanish
+    val lightDrawer = MaterialTheme.colorScheme.surfaceContainerLow.luminance() > 0.5f
+    val view = LocalView.current
+    LaunchedEffect(drawerState.targetValue, lightDrawer) {
+        val window = (view.context as? Activity)?.window ?: return@LaunchedEffect
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
+            lightDrawer && drawerState.targetValue == DrawerValue.Open
     }
 
     ModalNavigationDrawer(
