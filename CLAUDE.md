@@ -47,7 +47,11 @@ Dependencies flow down only: `ui → domain`, and `MainActivity` is the only pla
 - The reference app lives on a separate emulator that is signed in to Google Play. Work that does not need the reference app uses this repo's own AVD from `scripts/emulator.sh`. Only one emulator runs at a time.
 - Correct basic strategy is the product. Every strategy decision comes from published, cited sources, cross-checked across independent sources for the selected rule set. Unit tests pin every chart cell. Never change a chart cell from intuition.
 - Every change after the initial scaffold ships as a PR against `main`, using the PR template. Code changes get an adversarial-review pass and `/simplify` on the branch before handover; docs-only PRs skip those.
-- User-visible changes carry before/after screenshots (or a recording) in the PR's "Screenshots / recording" section: capture the before shot on `main` and the after shot on the branch, publish both with `scripts/pr-media.sh` and paste its markdown. Media is uploaded as GitHub attachments, never committed.
+- User-visible changes carry screenshots (or a recording) in the PR's "Screenshots / recording" section:
+  - Shoot every state the change touches, not one before and one after. Light and dark theme, empty and filled, and before and after an answer are separate states.
+  - Take the before shots on `main` and the after shots on the branch.
+  - Publish with `scripts/pr-media.sh` and paste its tags into one `| Before | After |` table per state, under a one-line bold caption, at most about four states. A screen that is new in the PR gets an After column only.
+  - Media is uploaded as GitHub attachments, never committed. Shots must never show a signed-in Google account.
 - The emulator is the test target. Gradle auto-downloads the platform and build-tools for `compileSdk` on first build; system images come from the machine setup (toggles in `~/.zsh_toggles`); `scripts/emulator.sh` only creates an AVD from the installed Play Store image and names the toggle to set if it is missing. Never run `sdkmanager` installs from this repo.
 - Pure logic goes in `domain` with a unit test. UI behaviour gets a Compose test in `androidTest` that renders the composable with fake data. `MainActivityTest` is the one end-to-end smoke test against the real system.
 - A passing test is not a passing feature: for UI changes, install on the emulator, screenshot, and look at the PNG before calling it done. That after shot is the one that goes in the PR.
