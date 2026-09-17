@@ -31,11 +31,11 @@ fun TrainerState.answer(
     if (asked != hand) return this
 
     val grade = Grade(hand, chart.play(hand.player, hand.upcard), move, chart.firstMove(hand.player, hand.upcard))
-    return TrainerState(deal(), grade, if (grade.isCorrect) streak + 1 else 0)
+    return copy(hand = deal(), lastGrade = grade, streak = if (grade.isCorrect) streak + 1 else 0)
 }
 
 /** The streak meter's doubling scale. */
 val STREAK_RUNGS = listOf(0, 1, 2, 4, 8, 16, 32, 64, 128, 256)
 
-/** The highest rung [streak] has reached. Past the top rung the meter stays there while the streak keeps counting. */
-fun streakRung(streak: Int): Int = STREAK_RUNGS.last { it <= streak }
+/** The index in [STREAK_RUNGS] of the highest rung [streak] has reached, which stays the top rung past 256. */
+fun streakRung(streak: Int): Int = STREAK_RUNGS.indexOfLast { it <= streak }

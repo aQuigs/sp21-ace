@@ -80,7 +80,7 @@ class TrainerTest {
 
     @Test
     fun theMeterMarksTheHighestRungTheStreakHasReached() {
-        val rungs = listOf(0, 1, 3, 4, 255, 256, 300).associateWith(::streakRung)
+        val rungs = listOf(0, 1, 3, 4, 255, 256, 300).associateWith { STREAK_RUNGS[streakRung(it)] }
 
         assertEquals(mapOf(0 to 0, 1 to 1, 3 to 2, 4 to 4, 255 to 128, 256 to 256, 300 to 256), rungs)
     }

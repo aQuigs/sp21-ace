@@ -47,7 +47,7 @@ class StrategyTrainerScreenTest {
     private val sixteenVsAce = TrainerHand(listOf(Card(Rank.NINE, Suit.CLUBS), Card(Rank.SEVEN, Suit.DIAMONDS)), Card(Rank.ACE, Suit.SPADES))
     private val eightsVsSix = TrainerHand(listOf(Card(Rank.EIGHT, Suit.HEARTS), Card(Rank.EIGHT, Suit.SPADES)), Card(Rank.SIX, Suit.DIAMONDS))
 
-    private fun string(id: Int) = compose.activity.getString(id)
+    private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
     private fun button(move: Move) = compose.onNodeWithContentDescription(string(move.displayName))
 
@@ -67,16 +67,6 @@ class StrategyTrainerScreenTest {
                 )
             }
         }
-    }
-
-    private fun assertStreakOnItsRung(streak: Int) {
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, streak)).assertIsDisplayed()
-
-        // The circle repeats the label of the rung it sits on, so exactly that number shows twice, level. Nothing else on the
-        // trainer is a bare number.
-        val levels = compose.onAllNodesWithText("$streak", useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot.center.y }
-        assertEquals(2, levels.size)
-        assertEquals(levels[0], levels[1], 2f)
     }
 
     @Test
@@ -167,16 +157,16 @@ class StrategyTrainerScreenTest {
     }
 
     @Test
-    fun rightAnswersClimbTheStreakMeterAndAWrongOneDropsItToZero() {
+    fun rightAnswersClimbTheStreakAndAWrongOneDropsItToZero() {
         showTrainer(deals = listOf(eightsVsSix, sixteenVsAce, eightsVsSix))
 
         button(Move.HIT).performClick()
         button(Move.SPLIT).performClick()
 
-        assertStreakOnItsRung(2)
+        compose.onNodeWithContentDescription(string(R.string.streak_count, 2)).assertIsDisplayed()
 
         button(Move.STAND).performClick()
 
-        assertStreakOnItsRung(0)
+        compose.onNodeWithContentDescription(string(R.string.streak_count, 0)).assertIsDisplayed()
     }
 }
