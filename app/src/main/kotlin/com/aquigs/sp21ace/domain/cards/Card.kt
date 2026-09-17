@@ -1,5 +1,7 @@
 package com.aquigs.sp21ace.domain.cards
 
+import java.io.Serializable
+
 enum class Suit { SPADES, HEARTS, DIAMONDS, CLUBS }
 
 /** A Spanish deck has no 10-spots, so J, Q and K are its only ten-value cards. */
@@ -18,7 +20,7 @@ enum class Rank(val label: String, val value: Int) {
     KING("K", 10),
 }
 
-data class Card(val rank: Rank, val suit: Suit)
+data class Card(val rank: Rank, val suit: Suit) : Serializable
 
 /** [decks] Spanish decks of 48 cards each, unshuffled. */
 fun spanishShoe(decks: Int): List<Card> = List(decks) { Rank.entries.flatMap { rank -> Suit.entries.map { Card(rank, it) } } }.flatten()

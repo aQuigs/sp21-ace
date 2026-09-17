@@ -7,11 +7,6 @@
 
     <string name="dealer">Dealer</string>
     <string name="you">You</string>
-    <string name="hit">HIT</string>
-    <string name="stand">STAND</string>
-    <string name="double_down">DOUBLE</string>
-    <string name="split">SPLIT</string>
-    <string name="surrender_short">SURR.</string>
     <string name="right_answer">Right answer</string>
     <string name="wrong_answer">Wrong answer</string>
 
@@ -23,6 +18,7 @@
     <string name="move_double">Double</string>
     <string name="move_split">Split</string>
     <string name="move_surrender">Surrender</string>
+    <string name="surrender_short">SURR.</string>
 
     <string name="face_down_card">Face-down card</string>
     <string name="card_name">%1$s of %2$s</string>

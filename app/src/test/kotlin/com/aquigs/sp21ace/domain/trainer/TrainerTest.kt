@@ -13,11 +13,17 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 
 class TrainerTest {
     private val s17 = StrategyCharts.forRules(RuleSet.S17)
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val softSeventeenVsTen = TrainerHand(cards("As 6d"), card("Kh"))
+
+    // Hard 14 vs 4 is S4*, so a 6-8 hits while the 6-7-8 bonus is possible
+    private val sixEightVsFour = TrainerHand(cards("6c 8d"), card("4s"))
 
     @Test
     fun gradesTheHandOnTheTableThenDealsTheNext() {
@@ -29,9 +35,6 @@ class TrainerTest {
 
     @Test
     fun gradesAWrongAnswerWithTheMoveTheSquareCallsFor() {
-        // Hard 14 vs 4 is S4*, so a 6-8 hits while the 6-7-8 bonus is possible
-        val sixEightVsFour = TrainerHand(cards("6c 8d"), card("4s"))
-
         val grade = TrainerState(sixEightVsFour).answer(sixEightVsFour, Move.STAND, s17) { sixteenVsAce }.lastGrade!!
 
         val square = Play(Action.STAND, hitWithCards = 4, bonusException = BonusException.ANY_678)
@@ -54,11 +57,18 @@ class TrainerTest {
         val last = TrainerState(sixteenVsAce)
             .answer(sixteenVsAce, Move.HIT, s17) { eightsVsSix }
             .answer(eightsVsSix, Move.STAND, s17) { softSeventeenVsTen }
-            .lastGrade!!
+            .lastGrade
 
-        assertEquals(cards("8h 8s"), last.hand.player)
-        assertEquals(card("6d"), last.hand.upcard)
-        assertEquals(Move.STAND, last.answer)
-        assertEquals(Move.SPLIT, last.correctMove)
+        assertEquals(Grade(eightsVsSix, Play(Action.SPLIT), Move.STAND, Move.SPLIT), last)
+    }
+
+    @Test
+    fun comesBackEqualFromSerialization() {
+        // Android serializes the saved state once the app is in the background, which recreating the activity in a device test doesn't
+        val state = TrainerState(sixEightVsFour).answer(sixEightVsFour, Move.STAND, s17) { dealTrainerHand() }
+
+        val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(state) } }.toByteArray()
+
+        assertEquals(state, ObjectInputStream(bytes.inputStream()).use { it.readObject() })
     }
 }

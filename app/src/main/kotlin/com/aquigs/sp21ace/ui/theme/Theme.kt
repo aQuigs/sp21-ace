@@ -22,11 +22,11 @@ data class Sp21AceColors(
     val onAppBar: Color,
     val correct: Color,
     val wrong: Color,
-    val correctTint: Color,
-    val wrongTint: Color,
+    private val surface: Color,
+    private val tintFraction: Float,
 ) {
-    constructor(appBar: Color, onAppBar: Color, correct: Color, wrong: Color, surface: Color, tintFraction: Float) :
-        this(appBar, onAppBar, correct, wrong, lerp(surface, correct, tintFraction), lerp(surface, wrong, tintFraction))
+    val correctTint: Color = lerp(surface, correct, tintFraction)
+    val wrongTint: Color = lerp(surface, wrong, tintFraction)
 }
 
 // The brand saffron #D99A1E only reaches about 2.3:1 on the light surfaces, so text-bearing roles use a darker tone.

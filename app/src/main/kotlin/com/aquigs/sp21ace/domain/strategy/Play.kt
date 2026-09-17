@@ -1,5 +1,7 @@
 package com.aquigs.sp21ace.domain.strategy
 
+import java.io.Serializable
+
 enum class Action(val code: String) { HIT("H"), STAND("S"), DOUBLE("D"), SPLIT("P"), SURRENDER("R"), SURRENDER_OR_HIT("RH") }
 
 /** A play gives way to a hit while one of these bonus hands is still possible. */
@@ -23,7 +25,7 @@ data class Play(
     val hitWithCards: Int? = null,
     val bonusException: BonusException? = null,
     val debated: Boolean = false,
-) {
+) : Serializable {
     companion object {
         // The notation only puts card counts on doubles and stands, 6-7-8 marks on counted stands, and $ on a bare split
         private val CODE = Regex("""(RH|[HSDPR])((?<=[DS])[3-6])?((?<=S[3-6])[*'"]|(?<=P)\$)?(†)?""")

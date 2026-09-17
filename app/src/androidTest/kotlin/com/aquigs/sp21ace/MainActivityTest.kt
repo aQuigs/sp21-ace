@@ -31,7 +31,7 @@ class MainActivityTest {
 
     @Test
     fun keepsTheHandTheVerdictAndThePreviousHandWhenRecreated() {
-        compose.onNodeWithText(compose.activity.getString(R.string.hit)).performClick()
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.move_hit)).performClick()
         compose.onNodeWithText(compose.activity.getString(R.string.action)).assertIsDisplayed()
         val answered = everythingOnScreen()
 

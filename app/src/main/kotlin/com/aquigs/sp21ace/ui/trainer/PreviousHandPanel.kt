@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -50,8 +49,12 @@ fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
     Column(modifier = modifier.background(background)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+        // Blank before the first answer, as in Blackjack Ace, but still measured so the table above doesn't shift when the recap fills in
         Column(
-            modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .then(if (grade == null) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
@@ -61,16 +64,12 @@ fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.titleSmall,
             )
 
-            // Measured but unseen before the first answer, so the table above doesn't shift when the recap fills in
-            Row(
-                modifier = if (grade == null) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RecapColumn(stringResource(R.string.you), grade) { recap ->
-                    OverlappingCards(maxCardHeight = ThumbnailHeight) { recap.hand.player.forEach { PlayingCard(it) } }
+                    OverlappingCards { recap.hand.player.forEach { PlayingCard(it) } }
                 }
                 RecapColumn(stringResource(R.string.dealer), grade) { recap ->
-                    OverlappingCards(maxCardHeight = ThumbnailHeight) {
+                    OverlappingCards {
                         CardBack()
                         PlayingCard(recap.hand.upcard)
                     }
@@ -89,7 +88,14 @@ private fun RowScope.RecapColumn(label: String, grade: Grade?, content: @Composa
         modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(text = label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+        // At the largest font sizes "Strategy" would otherwise break mid-word in its quarter of a small phone
+        Text(
+            text = label,
+            fontWeight = FontWeight.Bold,
+            autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = MaterialTheme.typography.labelLarge.fontSize),
+            maxLines = 1,
+            style = MaterialTheme.typography.labelLarge,
+        )
         Box(modifier = Modifier.fillMaxWidth().height(ThumbnailHeight)) { grade?.let { content(it) } }
     }
 }
@@ -97,23 +103,14 @@ private fun RowScope.RecapColumn(label: String, grade: Grade?, content: @Composa
 @Composable
 private fun MoveTile(move: Move) {
     Box(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest, RoundedCornerShape(8.dp)),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.small),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(move.displayName),
             modifier = Modifier.padding(horizontal = 4.dp),
-            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 20.sp),
+            autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 20.sp),
             maxLines = 1,
         )
     }
 }
-
-private val Move.displayName: Int
-    get() = when (this) {
-        Move.HIT -> R.string.move_hit
-        Move.STAND -> R.string.move_stand
-        Move.DOUBLE -> R.string.move_double
-        Move.SPLIT -> R.string.move_split
-        Move.SURRENDER -> R.string.move_surrender
-    }

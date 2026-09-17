@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.TextAutoSize
@@ -166,20 +168,27 @@ private fun HandArea(label: String, modifier: Modifier = Modifier, cards: @Compo
 @Composable
 private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
-    val surrender = stringResource(R.string.move_surrender)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Move.entries.forEach { move ->
+            val name = stringResource(move.displayName)
+
             OutlinedButton(
                 onClick = { onAnswer(move) },
-                modifier = Modifier.size(64.dp).semantics { if (move == Move.SURRENDER) contentDescription = surrender },
+                // Shrink evenly on a screen too short for five, such as a small phone at a large font size, rather than squeezing out the last
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .sizeIn(maxWidth = 64.dp, maxHeight = 64.dp)
+                    .aspectRatio(1f)
+                    .semantics { contentDescription = name },
                 shape = CircleShape,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
                 border = BorderStroke(3.dp, color),
                 contentPadding = PaddingValues(0.dp),
             ) {
+                // The capitals and SURR. are for the eye; a screen reader says the move's name
                 Text(
-                    text = stringResource(move.label),
+                    text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
                     fontWeight = FontWeight.Bold,
                     autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.sp),
                     maxLines = 1,
@@ -188,12 +197,3 @@ private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifie
         }
     }
 }
-
-private val Move.label: Int
-    get() = when (this) {
-        Move.HIT -> R.string.hit
-        Move.STAND -> R.string.stand
-        Move.DOUBLE -> R.string.double_down
-        Move.SPLIT -> R.string.split
-        Move.SURRENDER -> R.string.surrender_short
-    }
