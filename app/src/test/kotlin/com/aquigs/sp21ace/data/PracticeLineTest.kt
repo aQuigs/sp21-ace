@@ -36,9 +36,17 @@ class PracticeLineTest {
             wrongStand,
             PracticeAnswer(Instant.ofEpochMilli(1_789_000_005_000), RuleSet.H17, TrainerHand(cards("Kc 6h"), card("As")), Move.SURRENDER, Move.SURRENDER, isCorrect = true),
             PracticeAnswer(Instant.ofEpochMilli(1_789_000_010_000), RuleSet.S17, TrainerHand(cards("As 6d"), card("Qh")), Move.DOUBLE, Move.HIT, isCorrect = false),
+            // Suited and more than two cards, as the trainer will deal for card-count and bonus exceptions
+            PracticeAnswer(Instant.ofEpochMilli(1_789_000_015_000), RuleSet.S17, TrainerHand(cards("2h 4h 7h"), card("4s")), Move.STAND, Move.HIT, isCorrect = false),
         )
 
         assertEquals(answers, answers.map { PracticeLine.parse(PracticeLine.print(it)) })
+    }
+
+    @Test
+    fun aFieldAddedLaterDoesntStopALineLoading() {
+        // Such as which decision was asked, once the trainer deals doubled hands
+        assertEquals(wrongStand, PracticeLine.parse(PracticeLine.print(wrongStand).replace(" answer=", " decision=afterDoubling answer=")))
     }
 
     @Test

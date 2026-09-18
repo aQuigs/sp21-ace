@@ -12,7 +12,9 @@ import java.time.Instant
 /**
  * One practice history line: named fields, such as
  * `at=1789000000000 rules=S17 player=9c,7d upcard=As answer=HIT correctMove=HIT correct=true`.
- * Named, so the trainer's later questions, such as doubled hands, can add fields without breaking the lines already saved.
+ * Every card keeps its rank and suit, however many the hand holds, for card-count and bonus exceptions. Fields are found by
+ * name, so a later one, such as which decision was asked once the trainer deals doubled hands, can join without breaking
+ * the lines already saved, which predate it and so were all first decisions.
  */
 internal object PracticeLine {
     private val SUIT_LETTERS = mapOf(Suit.SPADES to 's', Suit.HEARTS to 'h', Suit.DIAMONDS to 'd', Suit.CLUBS to 'c')
