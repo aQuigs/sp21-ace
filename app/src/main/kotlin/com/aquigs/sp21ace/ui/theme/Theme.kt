@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.lerp
  * Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy, answer
  * feedback turns it green or red, the recap of the previous hand takes a tint of the same green or red, each chart
  * action has a fill of its own, and the accuracy heatmap runs from that red through [heatmapMiddle] to that green.
+ * [unansweredCode] prints the codes of heatmap squares without answers, because no scheme grey reaches 4.5:1 on the
+ * page in both themes while still reading fainter than an answered square's code.
  */
 @Immutable
 data class Sp21AceColors(
@@ -24,6 +26,7 @@ data class Sp21AceColors(
     val correct: Color,
     val wrong: Color,
     val chart: ChartColors,
+    val unansweredCode: Color,
     private val surface: Color,
     private val tintFraction: Float,
     private val heatmapMiddle: Color,
@@ -125,6 +128,8 @@ internal val LightSp21AceColors = Sp21AceColors(
     ),
     surface = LightColors.surface,
     tintFraction = 0.15f,
+    // The scheme's outline, darkened just enough to reach 4.5:1 on the light page
+    unansweredCode = Color(0xFF786F60),
     // The heatmap's ends stop halfway from white to the feedback red and green, so the dark code reads on every step
     heatmapMiddle = Color.White,
     heatmapReach = 0.5f,
@@ -147,6 +152,7 @@ internal val DarkSp21AceColors = Sp21AceColors(
     ),
     surface = DarkColors.surface,
     tintFraction = 0.3f,
+    unansweredCode = DarkColors.outline,
     heatmapMiddle = Color(0xFF57534C),
     heatmapReach = 1f,
 )

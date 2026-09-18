@@ -74,7 +74,7 @@ private fun HeatSquare(square: ChartSquare, play: Play?, tally: Tally?, colors: 
         modifier = modifier
             .then(if (permille == null) Modifier else Modifier.heat(colors.at(permille / 1000f), MaterialTheme.colorScheme.outlineVariant))
             .semantics(mergeDescendants = true) { contentDescription = description },
-        color = if (permille == null) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
+        color = if (permille == null) Sp21AceTheme.colors.unansweredCode else Color.Unspecified,
     )
 }
 
