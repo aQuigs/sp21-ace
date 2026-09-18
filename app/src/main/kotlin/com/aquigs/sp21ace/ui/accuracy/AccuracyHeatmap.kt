@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.ui.accuracy
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -71,7 +72,7 @@ private fun HeatSquare(square: ChartSquare, play: Play?, tally: Tally?, colors: 
         code = play?.code.orEmpty(),
         style = codeStyle,
         modifier = modifier
-            .then(if (permille == null) Modifier else Modifier.background(colors.at(permille / 1000f)))
+            .then(if (permille == null) Modifier else Modifier.heat(colors.at(permille / 1000f), MaterialTheme.colorScheme.outlineVariant))
             .semantics(mergeDescendants = true) { contentDescription = description },
         color = if (permille == null) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
     )
@@ -79,13 +80,18 @@ private fun HeatSquare(square: ChartSquare, play: Play?, tally: Tally?, colors: 
 
 @Composable
 private fun Scale(colors: HeatmapColors, swatchSize: Dp, gap: Dp, codeStyle: TextStyle) {
+    val outline = MaterialTheme.colorScheme.outlineVariant
+
     // For the eye only, since every square already says in words how often it was right
     Row(
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
         horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
     ) {
         SCALE.forEachIndexed { step, label ->
-            CodeSquare(label, codeStyle, Modifier.size(swatchSize).background(colors.at(step / SCALE.lastIndex.toFloat())))
+            CodeSquare(label, codeStyle, Modifier.size(swatchSize).heat(colors.at(step / SCALE.lastIndex.toFloat()), outline))
         }
     }
 }
+
+// The light theme's middle step is all but the page's colour, so the outline tells a square about half right from one without answers
+private fun Modifier.heat(fill: Color, outline: Color): Modifier = background(fill).border(Dp.Hairline, outline)

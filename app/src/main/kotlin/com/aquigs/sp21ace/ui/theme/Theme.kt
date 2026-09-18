@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.lerp
 /**
  * Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy, answer
  * feedback turns it green or red, the recap of the previous hand takes a tint of the same green or red, each chart
- * action has a fill of its own, and the accuracy heatmap runs from red through white to green.
+ * action has a fill of its own, and the accuracy heatmap runs from that red through [heatmapMiddle] to that green.
  */
 @Immutable
 data class Sp21AceColors(
@@ -24,12 +24,14 @@ data class Sp21AceColors(
     val correct: Color,
     val wrong: Color,
     val chart: ChartColors,
-    val heatmap: HeatmapColors,
     private val surface: Color,
     private val tintFraction: Float,
+    private val heatmapMiddle: Color,
+    private val heatmapReach: Float,
 ) {
     val correctTint: Color = lerp(surface, correct, tintFraction)
     val wrongTint: Color = lerp(surface, wrong, tintFraction)
+    val heatmap: HeatmapColors = HeatmapColors(lerp(heatmapMiddle, wrong, heatmapReach), heatmapMiddle, lerp(heatmapMiddle, correct, heatmapReach))
 }
 
 @Immutable
@@ -109,7 +111,7 @@ private val DarkColors = darkColorScheme(
     surfaceContainerHighest = Color(0xFF373632),
 )
 
-private val LightSp21AceColors = Sp21AceColors(
+internal val LightSp21AceColors = Sp21AceColors(
     appBar = LightColors.primary,
     onAppBar = LightColors.onPrimary,
     correct = Color(0xFF2E7D32),
@@ -121,16 +123,17 @@ private val LightSp21AceColors = Sp21AceColors(
         split = Color(0xFFC3D7F0),
         surrender = Color(0xFFE6CCE3),
     ),
-    // Halfway from white to the feedback red and green, so the dark code reads on every step
-    heatmap = HeatmapColors(noneRight = Color(0xFFD9928E), halfRight = Color.White, allRight = Color(0xFF96BE98)),
     surface = LightColors.surface,
     tintFraction = 0.15f,
+    // The heatmap's ends stop halfway from white to the feedback red and green, so the dark code reads on every step
+    heatmapMiddle = Color.White,
+    heatmapReach = 0.5f,
 )
 
 // Deeper than the light theme's tones so a full-width bar doesn't glare against charcoal, and a stronger tint, because
 // charcoal swallows a faint one. The chart fills go deep rather than pastel, so the dark theme's light text reads on them,
-// and so do the heatmap's, with a warm grey where white would glare.
-private val DarkSp21AceColors = Sp21AceColors(
+// and the heatmap runs all the way to the deep feedback red and green, through a warm grey where white would glare.
+internal val DarkSp21AceColors = Sp21AceColors(
     appBar = Color(0xFF1B2C42),
     onAppBar = DarkColors.onSurface,
     correct = Color(0xFF2F6F3A),
@@ -142,9 +145,10 @@ private val DarkSp21AceColors = Sp21AceColors(
         split = Color(0xFF2F4C6E),
         surrender = Color(0xFF5E4260),
     ),
-    heatmap = HeatmapColors(noneRight = Color(0xFF9E2A24), halfRight = Color(0xFF57534C), allRight = Color(0xFF2F6F3A)),
     surface = DarkColors.surface,
     tintFraction = 0.3f,
+    heatmapMiddle = Color(0xFF57534C),
+    heatmapReach = 1f,
 )
 
 private val LocalSp21AceColors = staticCompositionLocalOf { LightSp21AceColors }

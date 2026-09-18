@@ -25,5 +25,5 @@ fun Context.accuracyCardTexts(title: Int, accuracy: String, correct: Int, incorr
 fun SemanticsNodeInteractionsProvider.square(description: String, code: String): SemanticsNodeInteraction =
     onNode(hasContentDescription(description) and hasText(code)).performScrollTo()
 
-/** The colour a square is filled with, read near a corner, clear of the code in the middle. */
+/** The colour a square is filled with, read near a corner, clear of the code in the middle and the outline at the edge. */
 fun SemanticsNodeInteraction.fill(): Color = captureToImage().toPixelMap().let { it[it.width / 8, it.height / 8] }
