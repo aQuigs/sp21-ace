@@ -40,7 +40,6 @@ import com.aquigs.sp21ace.ui.rules.Soft17Screen
 import com.aquigs.sp21ace.ui.rules.TableRulesScreen
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
-import java.time.Clock
 
 /** Root screens carry the menu. Every other destination opens over one as a sub-page with a back arrow. */
 enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
@@ -68,7 +67,6 @@ fun AppShell(
     trainer: TrainerState,
     rules: TableRules,
     history: List<PracticeAnswer>,
-    clock: Clock,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onRulesChange: (TableRules) -> Unit,
     modifier: Modifier = Modifier,
@@ -126,7 +124,7 @@ fun AppShell(
             Destination.StrategyChart -> StrategyChartScreen(rules.ruleSet, onBack = { back() })
             Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = { back() })
             Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = { back() })
-            Destination.Accuracy -> AccuracyScreen(history, clock, onBack = { back() })
+            Destination.Accuracy -> AccuracyScreen(history, onBack = { back() })
         }
     }
 }

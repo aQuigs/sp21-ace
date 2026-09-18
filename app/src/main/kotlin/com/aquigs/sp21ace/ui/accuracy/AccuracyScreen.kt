@@ -18,9 +18,11 @@ import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.history.Accuracy
 import com.aquigs.sp21ace.domain.history.HandFilter
@@ -36,19 +39,45 @@ import com.aquigs.sp21ace.domain.history.Period
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
+import com.aquigs.sp21ace.domain.history.nextMidnight
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.trainer.displayName
+import kotlinx.coroutines.delay
 import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
 
 // As wide as the strategy chart grows, so a tablet doesn't spread a card's figures apart
 private val MaxCardWidth = 480.dp
 
-/** How often the trainer's answers were right over a period, for one kind of hand or all, and by the move each hand called for. */
+/**
+ * How often the trainer's answers were right over a period, for one kind of hand or all, and by the move each hand called
+ * for. [now] is read again when the screen resumes and at local midnight, so Today moves on with the calendar and the time zone.
+ */
 @Composable
-fun AccuracyScreen(history: List<PracticeAnswer>, clock: Clock, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun AccuracyScreen(
+    history: List<PracticeAnswer>,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    now: () -> Clock = { Clock.fixed(Instant.now(), ZoneId.systemDefault()) },
+) {
     var hands by rememberSaveable { mutableStateOf(HandFilter.HARD) }
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
+    val currentNow by rememberUpdatedState(now)
+    var clock by remember { mutableStateOf(now()) }
     val accuracy = remember(history, clock, period, hands) { history.accuracy(period, hands, clock) }
+
+    // Nothing else changes with time, so without these a screen left open overnight, or reopened after a flight, keeps
+    // counting yesterday's answers, or midnight somewhere else, as today's
+    LifecycleResumeEffect(Unit) {
+        clock = currentNow()
+        onPauseOrDispose {}
+    }
+    LaunchedEffect(clock) {
+        delay(Duration.between(clock.instant(), nextMidnight(clock)).toMillis())
+        clock = currentNow()
+    }
 
     SubPage(title = stringResource(R.string.accuracy), onBack = onBack, modifier = modifier) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {

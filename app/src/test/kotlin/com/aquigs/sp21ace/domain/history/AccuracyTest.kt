@@ -37,9 +37,10 @@ class AccuracyTest {
     private fun streaks(rights: String) = rights.map { answer(right = it == 'R') }
 
     @Test
-    fun todayStartsAtMidnightInTheClocksTimeZone() {
+    fun todayStartsAtMidnightInTheClocksTimeZoneAndStartsOverAtTheNext() {
         assertEquals(Instant.parse("2026-09-17T04:00:00Z"), Period.TODAY.start(newYork))
         assertEquals(Instant.parse("2026-09-17T00:00:00Z"), Period.TODAY.start(Clock.fixed(now, ZoneOffset.UTC)))
+        assertEquals(Instant.parse("2026-09-18T04:00:00Z"), nextMidnight(newYork))
     }
 
     @Test

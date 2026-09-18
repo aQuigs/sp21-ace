@@ -23,7 +23,6 @@ import com.aquigs.sp21ace.domain.trainer.answer
 import com.aquigs.sp21ace.domain.trainer.dealTrainerHand
 import com.aquigs.sp21ace.ui.AppShell
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
-import java.time.Clock
 import java.time.Instant
 
 class MainActivity : ComponentActivity() {
@@ -51,7 +50,6 @@ internal fun Sp21AceApp(store: TableRulesStore, historyStore: PracticeHistorySto
         trainer = trainer,
         rules = rules,
         history = history.orEmpty(),
-        clock = Clock.systemDefaultZone(),
         onAnswer = { asked, move ->
             trainer.answer(asked, move, StrategyCharts.forRules(rules.ruleSet), deal)?.let { (next, grade) ->
                 trainer = next

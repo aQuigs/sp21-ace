@@ -25,6 +25,9 @@ fun Period.start(clock: Clock): Instant? {
     }?.toInstant()
 }
 
+/** When Today next starts over: the coming midnight in [clock]'s time zone. */
+fun nextMidnight(clock: Clock): Instant = ZonedDateTime.now(clock).toLocalDate().plusDays(1).atStartOfDay(clock.zone).toInstant()
+
 /** The hands a tab counts: one chart table's, or every hand. [moves] are the correct moves those hands call for under any rule set, in Blackjack Ace's order. */
 enum class HandFilter(val table: ChartTable?, val moves: List<Move>) {
     HARD(ChartTable.HARD, listOf(Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER)),

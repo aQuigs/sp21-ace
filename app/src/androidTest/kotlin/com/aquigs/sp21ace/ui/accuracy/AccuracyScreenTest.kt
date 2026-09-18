@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.cards.card
@@ -39,11 +40,11 @@ class AccuracyScreenTest {
 
     private fun string(id: Int) = compose.activity.getString(id)
 
-    private fun answer(right: Boolean, daysAgo: Long = 0, hand: TrainerHand = sixteenVsAce) =
-        PracticeAnswer(now.minus(Duration.ofDays(daysAgo)), RuleSet.S17, hand, if (right) Move.HIT else Move.STAND, Move.HIT)
+    private fun answer(right: Boolean, daysAgo: Long = 0, hand: TrainerHand = sixteenVsAce, at: Instant = now.minus(Duration.ofDays(daysAgo))) =
+        PracticeAnswer(at, RuleSet.S17, hand, if (right) Move.HIT else Move.STAND, Move.HIT)
 
-    private fun showAccuracy(history: List<PracticeAnswer>) {
-        compose.setContent { Sp21AceTheme { AccuracyScreen(history, Clock.fixed(now, ZoneOffset.UTC), onBack = {}) } }
+    private fun showAccuracy(history: List<PracticeAnswer>, clock: () -> Clock = { Clock.fixed(now, ZoneOffset.UTC) }) {
+        compose.setContent { Sp21AceTheme { AccuracyScreen(history, onBack = {}, now = clock) } }
     }
 
     private fun tap(title: Int) = compose.onNodeWithText(string(title)).performClick()
@@ -74,6 +75,21 @@ class AccuracyScreenTest {
 
         tap(R.string.all_time).assertIsSelected()
         assertEquals(figures(R.string.overall, "50.0%", correct = 2, incorrect = 2), accuracyCard(R.string.overall))
+    }
+
+    @Test
+    fun resumingPastMidnightStartsTodayOver() {
+        var clock = Clock.fixed(Instant.parse("2026-09-17T23:00:00Z"), ZoneOffset.UTC)
+        showAccuracy(listOf(answer(right = true, at = Instant.parse("2026-09-17T22:00:00Z"))), clock = { clock })
+
+        assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
+
+        // The phone locked overnight, then opened again
+        clock = Clock.fixed(Instant.parse("2026-09-18T08:00:00Z"), ZoneOffset.UTC)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.STARTED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+
+        assertEquals(figures(R.string.overall, "--", correct = 0, incorrect = 0), accuracyCard(R.string.overall))
     }
 
     @Test
