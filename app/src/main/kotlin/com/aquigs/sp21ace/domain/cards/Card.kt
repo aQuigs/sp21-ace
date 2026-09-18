@@ -40,10 +40,14 @@ fun cards(codes: String): List<Card> = codes.split(" ").map(::card)
 /** A soft total counts one ace as 11, which it does only while that doesn't bust the hand. */
 data class HandTotal(val value: Int, val soft: Boolean)
 
-fun List<Card>.total(): HandTotal {
-    val hard = sumOf { it.rank.value }
-    val soft = any { it.rank == Rank.ACE } && hard + 10 <= 21
-    return HandTotal(if (soft) hard + 10 else hard, soft)
+fun List<Card>.total(): HandTotal = fold(HandTotal(0, soft = false)) { total, card -> total.plusCard(card.rank.value) }
+
+/** The total once a card worth [points], an ace 1, joins the hand. */
+fun HandTotal.plusCard(points: Int): HandTotal {
+    // A hard 11 or less holds no ace, or it would count one as 11 and be soft, and a hard 12 or more can only count an ace as 1
+    val hard = (if (soft) value - 10 else value) + points
+    val nowSoft = (soft || points == 1) && hard + 10 <= 21
+    return HandTotal(if (nowSoft) hard + 10 else hard, nowSoft)
 }
 
 fun List<Card>.isBlackjack(): Boolean = size == 2 && total().value == 21

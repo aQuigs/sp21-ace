@@ -18,13 +18,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.dealing.DEALT_ROWS
+import com.aquigs.sp21ace.domain.dealing.dealtRows
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.ChartSquare
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Play
-import com.aquigs.sp21ace.domain.strategy.StrategyChart
+import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.ui.components.ChartGrid
@@ -36,18 +37,20 @@ import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 private val SCALE = listOf("0", "", "", "", "", "", "", "100")
 
 /**
- * [table] as [chart] prints it, in the rows the trainer deals, each square with answers filled by how often they were right,
- * over a scale from 0 to 100.
+ * [table] as [rules]' chart prints it, in the rows the trainer deals, each square with answers filled by how often they were
+ * right, over a scale from 0 to 100.
  */
 @Composable
-fun AccuracyHeatmap(chart: StrategyChart, table: ChartTable, bySquare: Map<ChartSquare, Tally>, modifier: Modifier = Modifier) {
+fun AccuracyHeatmap(rules: RuleSet, table: ChartTable, bySquare: Map<ChartSquare, Tally>, modifier: Modifier = Modifier) {
+    val chart = StrategyCharts.forRules(rules)
+    val rows = dealtRows(rules)
     val colors = Sp21AceTheme.colors.heatmap
 
-    // As in Blackjack Ace, a row no dealt hand is read from, such as hard 20, would only ever stay blank
+    // As in Blackjack Ace, a row no dealt hand is read from, such as hard 21, would only ever stay blank
     ChartGrid(
         chart = chart,
         table = table,
-        hands = chart.hands(table).filter { ChartRow(table, it) in DEALT_ROWS },
+        hands = chart.hands(table).filter { ChartRow(table, it) in rows },
         footerCodes = SCALE,
         modifier = modifier,
         square = { square, play, codeStyle, squareModifier -> HeatSquare(square, play, bySquare[square], colors, codeStyle, squareModifier) },

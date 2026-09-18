@@ -4,7 +4,12 @@ import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.TallyCounter
+import com.aquigs.sp21ace.domain.strategy.ChartRow
+import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.Upcard
+import com.aquigs.sp21ace.domain.strategy.correctMove
+import com.aquigs.sp21ace.domain.strategy.totalRow
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 
@@ -13,8 +18,21 @@ private const val ACCURACY_FLOOR = 0.05
 
 private const val NO_ANSWERS_ACCURACY = 0.5
 
-/** A hand as Prioritize worse hands tells hands apart: the player's two card values, lower first, against the upcard's. Suits, and J, Q and K, read alike. */
-internal data class HandValues(val low: Upcard, val high: Upcard, val upcard: Upcard)
+/** A hand as Prioritize worse hands tells hands apart, each weighed by how often it was answered right. */
+internal sealed interface HandKey {
+    val upcard: Upcard
+}
+
+/** Two cards: the player's two card values, lower first, against the upcard's. Suits, and J, Q and K, read alike. */
+internal data class HandValues(val low: Upcard, val high: Upcard, override val upcard: Upcard) : HandKey
+
+/**
+ * 3 or more cards: the row the total is read from against the upcard, and the move the chart calls for, so a card count that
+ * changes the move makes another hand.
+ */
+internal data class MultiCardHand(val row: ChartRow, override val upcard: Upcard, val move: Move) : HandKey {
+    val type: HandType get() = HandType(row.table, move)
+}
 
 internal fun handValues(player: List<Card>, upcard: Upcard): HandValues {
     require(player.size == 2) { "A dealt hand has two cards, not ${player.size}" }
@@ -24,10 +42,20 @@ internal fun handValues(player: List<Card>, upcard: Upcard): HandValues {
 
 internal val TrainerHand.values: HandValues get() = handValues(player, upcard.upcard)
 
-/** Every answer ever given to each two-card hand, however old and whatever rules graded it, as Blackjack Ace counts them. */
-internal fun List<PracticeAnswer>.tallyByHand(): Map<HandValues, Tally> {
-    val tallies = TallyCounter<HandValues>()
-    for (answer in this) if (answer.hand.player.size == 2) tallies.add(answer.hand.values, answer.isCorrect)
+/** The hand as Prioritize worse hands tells it apart under [chart], or null for a doubled hand, which it never deals. */
+internal fun TrainerHand.key(chart: StrategyChart): HandKey? = when {
+    doubled -> null
+    player.size == 2 -> values
+    else -> MultiCardHand(totalRow(player), upcard.upcard, chart.correctMove(player, upcard))
+}
+
+/**
+ * Every answer ever given to each hand, however old and whatever rules graded it, as Blackjack Ace counts them. A hand of 3 or
+ * more cards is told apart by the move [chart] calls for, so its answers count for the hand those rules deal.
+ */
+internal fun List<PracticeAnswer>.tallyByHand(chart: StrategyChart): Map<HandKey, Tally> {
+    val tallies = TallyCounter<HandKey>()
+    for (answer in this) answer.hand.key(chart)?.let { tallies.add(it, answer.isCorrect) }
     return tallies.toMap()
 }
 
@@ -38,6 +66,13 @@ fun List<PracticeAnswer>.tallyByHandType(): Map<HandType, Tally> {
 
     val counted = tallies.toMap()
     return HAND_TYPES.associateWith { counted[it] ?: Tally(correct = 0, incorrect = 0) }
+}
+
+/** Every answer ever given to a hand of 3 or more cards not yet doubled, for their Customize Hands switch. */
+fun List<PracticeAnswer>.multiCardTally(): Tally {
+    val answers = filter { it.hand.player.size > 2 && !it.hand.doubled }
+    val correct = answers.count { it.isCorrect }
+    return Tally(correct = correct, incorrect = answers.size - correct)
 }
 
 /** How heavily a hand weighs under Prioritize worse hands: the inverse of its accuracy, with no answers counting as 50%. */

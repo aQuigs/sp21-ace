@@ -34,6 +34,9 @@ class CardTest {
         assertEquals(HandTotal(17, soft = false), cards("As 6d Kc").total())
         assertEquals(HandTotal(12, soft = true), cards("As Ah").total())
         assertEquals(HandTotal(20, soft = false), cards("Kc Qd").total())
+        // An ace after a hard 12 can only count 1, and a soft 18 that draws a 5 goes hard rather than bust
+        assertEquals(HandTotal(13, soft = false), cards("Kc 2d As").total())
+        assertEquals(HandTotal(13, soft = false), cards("As 7d 5c").total())
     }
 
     @Test

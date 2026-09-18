@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.ui.trainer
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.TextAutoSize
@@ -43,6 +45,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -118,6 +121,7 @@ fun StrategyTrainerScreen(
             Controls(
                 showChartTile = settings.chartButton,
                 alignment = if (buttonsOnLeft) AbsoluteAlignment.Left else AbsoluteAlignment.Right,
+                moves = state.hand.moves,
                 onOpenChart = onOpenChart,
                 // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
                 onAnswer = { move -> onAnswer(state.hand, move) },
@@ -173,7 +177,7 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
 @Composable
 private fun FeedbackText(grade: Grade) {
     val verdict = stringResource(if (grade.isCorrect) R.string.right_answer else R.string.wrong_answer)
-    val words = grade.play.inPlainWords(grade.correctMove)
+    val words = grade.play.inPlainWords(grade.correctMove, cards = grade.hand.player.size)
 
     Text(
         text = buildAnnotatedString {
@@ -198,52 +202,68 @@ private fun FeedbackText(grade: Grade) {
 private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, cards: @Composable () -> Unit) {
     val color = MaterialTheme.colorScheme.primary
 
-    // As wide as the cards, unless the label and the total need more, so the total ends where the cards do
-    Column(modifier = modifier.width(IntrinsicSize.Max), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = label,
-                modifier = Modifier.weight(1f).alignByBaseline(),
-                color = color,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            total?.let {
-                // A total broken over two lines would read as two numbers
+    BoxWithConstraints(modifier) {
+        // A hand of 3 or more cards can fill the space, which sits centred, so its cards stop 8dp short either side and clear of the
+        // buttons. The label and the total keep the whole width, which a narrow phone at a large font size needs for one line.
+        val cardsMaxWidth = (maxWidth - 16.dp).coerceAtLeast(0.dp)
+
+        // As wide as the cards, unless the label and the total need more, so the total ends where the cards do
+        Column(modifier = Modifier.width(IntrinsicSize.Max), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = it,
-                    modifier = Modifier.alignByBaseline(),
+                    text = label,
+                    modifier = Modifier.weight(1f).alignByBaseline(),
                     color = color,
                     fontWeight = FontWeight.Bold,
-                    softWrap = false,
-                    maxLines = 1,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                 )
+                total?.let {
+                    // A total broken over two lines would read as two numbers
+                    Text(
+                        text = it,
+                        modifier = Modifier.alignByBaseline(),
+                        color = color,
+                        fontWeight = FontWeight.Bold,
+                        softWrap = false,
+                        maxLines = 1,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
             }
+            OverlappingCards(modifier = Modifier.weight(1f, fill = false).widthIn(max = cardsMaxWidth), content = cards)
         }
-        OverlappingCards(modifier = Modifier.weight(1f, fill = false), content = cards)
     }
 }
 
 /** The chart tile over the answer buttons. As wide as a button, the tile takes no room from the cards. */
 @Composable
-private fun Controls(showChartTile: Boolean, alignment: Alignment.Horizontal, onOpenChart: () -> Unit, onAnswer: (Move) -> Unit) {
+private fun Controls(
+    showChartTile: Boolean,
+    alignment: Alignment.Horizontal,
+    moves: Set<Move>,
+    onOpenChart: () -> Unit,
+    onAnswer: (Move) -> Unit,
+) {
     Column(modifier = Modifier.fillMaxHeight(), horizontalAlignment = alignment) {
         if (showChartTile) ChartTile(onClick = onOpenChart, modifier = Modifier.size(ButtonSize))
         // Holds the buttons at the bottom whether or not the tile shows
         Spacer(Modifier.weight(1f))
-        AnswerButtons(onAnswer = onAnswer, modifier = Modifier.padding(top = 8.dp))
+        AnswerButtons(moves = moves, onAnswer = onAnswer, modifier = Modifier.padding(top = 8.dp))
     }
 }
 
+/** A button for every move, the ones the hand doesn't allow greyed out in their places, so the rest never move under the thumb. */
 @Composable
-private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
+private fun AnswerButtons(moves: Set<Move>, onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
+    // Material's colour for a disabled label, which its outlined button doesn't give its border
+    val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
 
     ProvideDefaultFontScale {
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Move.entries.forEach { move ->
                 val name = stringResource(move.displayName)
+                val enabled = move in moves
 
                 OutlinedButton(
                     onClick = { onAnswer(move) },
@@ -253,9 +273,10 @@ private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifie
                         .sizeIn(maxWidth = ButtonSize, maxHeight = ButtonSize)
                         .aspectRatio(1f)
                         .semantics { contentDescription = name },
+                    enabled = enabled,
                     shape = CircleShape,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
-                    border = BorderStroke(3.dp, color),
+                    border = BorderStroke(3.dp, if (enabled) color else disabledColor),
                     // The ring is drawn inside the circle in the label's colour, so the label is fitted inside the ring rather than across it
                     contentPadding = PaddingValues(horizontal = 4.dp),
                 ) {

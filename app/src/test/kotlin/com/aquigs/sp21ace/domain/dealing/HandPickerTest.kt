@@ -1,18 +1,23 @@
 package com.aquigs.sp21ace.domain.dealing
 
+import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.spanishShoe
+import com.aquigs.sp21ace.domain.cards.total
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
+import com.aquigs.sp21ace.domain.strategy.correctMove
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import org.junit.Assert.assertEquals
@@ -23,6 +28,7 @@ import kotlin.random.Random
 
 class HandPickerTest {
     private val now = Instant.parse("2026-09-17T12:00:00Z")
+    private val s17 = StrategyCharts.forRules(RuleSet.S17)
 
     // Hard 16 and 17 against an ace are the only hard hands to surrender when the dealer hits soft 17
     private val tenSixVsAce = TrainerHand(cards("Kc 6d"), card("As"))
@@ -44,13 +50,26 @@ class HandPickerTest {
 
     private fun List<TrainerHand>.shares(of: (TrainerHand) -> Any): Map<Any, Double> = groupingBy(of).eachCount().mapValues { it.value.toDouble() / size }
 
+    // Every hand a round asks about, from the first two cards on for as long as the chart says hit
+    private fun decisions(shuffled: List<Card>, chart: StrategyChart): List<TrainerHand> {
+        val (first, upcard, second) = shuffled
+        val asked = mutableListOf<TrainerHand>()
+        var player = listOf(first, second)
+
+        while (player.total().value < 21) {
+            asked += TrainerHand(player, upcard)
+            if (chart.correctMove(player, upcard) != Move.HIT) break
+            player = player + shuffled[player.size + 1]
+        }
+
+        return asked
+    }
+
     @Test
-    fun randomDealsHandsAsOftenAsAShuffledShoe() {
+    fun randomDealsHandsAsOftenAsAShuffledShoeDealsThemToAPlayerFollowingTheChart() {
         val random = Random(7)
         val shoe = spanishShoe(decks = 6)
-        val shuffled = List(20_000) {
-            generateSequence { shoe.shuffled(random) }.map { (first, up, second) -> TrainerHand(listOf(first, second), up) }.first { !it.player.isBlackjack() }
-        }
+        val shuffled = generateSequence { shoe.shuffled(random) }.flatMap { decisions(it, s17) }.take(20_000).toList()
         val picked = HandPicker(RuleSet.S17, HandCustomization()).deal(20_000)
 
         val measures = listOf<(TrainerHand) -> Any>(
@@ -58,6 +77,8 @@ class HandPickerTest {
             { it.upcard.upcard },
             { it.upcard.rank },
             { hand -> hand.player.map { it.suit }.toSet().size },
+            { minOf(it.player.size, 5) },
+            { s17.correctMove(it.player, it.upcard) },
         )
         for (measure in measures) {
             val expected = shuffled.shares(measure)
@@ -66,6 +87,14 @@ class HandPickerTest {
             assertEquals(expected.keys, actual.keys)
             expected.forEach { (key, share) -> assertEquals("$key", share, actual.getValue(key), 0.015) }
         }
+    }
+
+    @Test
+    fun handsOf3OrMoreCardsNeverComeUpWithTheirSwitchOff() {
+        val picker = HandPicker(RuleSet.S17, HandCustomization(multiCardHands = false))
+
+        assertTrue(picker.deal(5_000).all { it.player.size == 2 })
+        assertTrue(picker.hands.all { it is HandValues })
     }
 
     @Test
@@ -83,13 +112,35 @@ class HandPickerTest {
 
     @Test
     fun prioritizingWorseHandsDealsEveryHandAlikeUntilThereAreAnswers() {
-        val hands = HandPicker(RuleSet.S17, HandCustomization(HandsDealt.PRIORITIZE_WORSE)).deal(20_000)
+        val picker = HandPicker(RuleSet.S17, HandCustomization(HandsDealt.PRIORITIZE_WORSE))
+        val dealt = picker.deal(20_000)
+        val all = picker.hands.size.toDouble()
+        val multiCard = picker.hands.count { it is MultiCardHand }
 
-        // 54 two-card hands, 10 of them pairs and 8 soft, against 10 upcard values
-        val kinds = hands.shares { chartRow(it.player).table }
-        assertEquals(10.0 / 54, kinds.getValue(ChartTable.PAIRS), 0.015)
-        assertEquals(8.0 / 54, kinds.getValue(ChartTable.SOFT), 0.015)
-        assertEquals(0.1, hands.shares { it.upcard.upcard }.getValue(Upcard.TEN), 0.015)
+        // 54 two-card hands, 10 of them pairs and 8 soft, against 10 upcard values, then every hand of 3 or more cards
+        assertEquals(540, picker.hands.size - multiCard)
+        val kinds = dealt.shares { if (it.player.size > 2) "3 or more cards" else chartRow(it.player).table }
+        assertEquals(100 / all, kinds.getValue(ChartTable.PAIRS), 0.015)
+        assertEquals(80 / all, kinds.getValue(ChartTable.SOFT), 0.015)
+        assertEquals(multiCard / all, kinds.getValue("3 or more cards"), 0.015)
+        assertEquals(picker.hands.count { it.upcard == Upcard.TEN } / all, dealt.shares { it.upcard.upcard }.getValue(Upcard.TEN), 0.015)
+    }
+
+    @Test
+    fun aHandOf3OrMoreCardsWeighsTheAnswersToItsTotalAndMoveWhateverTheCards() {
+        // Hard 14 vs 4 is S4* when the dealer stands on soft 17, so with 3 cards it stands
+        val fiveFourFiveVsFour = TrainerHand(cards("5c 4d 5h"), card("4s"))
+        val fourteenVsFour = MultiCardHand(ChartRow(ChartTable.HARD, "14"), Upcard.FOUR, Move.STAND)
+        val history = List(3) { PracticeAnswer(now, RuleSet.S17, fiveFourFiveVsFour, Move.HIT, Move.STAND) }
+        val picker = HandPicker(RuleSet.S17, onlyOn(HandType(ChartTable.HARD, Move.STAND), HandsDealt.PRIORITIZE_WORSE))
+
+        val dealt = picker.deal(20_000, history)
+
+        // Missed every time, it weighs 20 against 2 for each hand not yet answered, whichever cards make it
+        val share = 20 / (20 + 2.0 * (picker.hands.size - 1))
+        assertTrue(fourteenVsFour in picker.hands)
+        assertEquals(share, dealt.count { it.key(s17) == fourteenVsFour } / 20_000.0, share * 0.15)
+        assertTrue(dealt.filter { it.key(s17) == fourteenVsFour }.map { it.player }.toSet().size > 1)
     }
 
     @Test
@@ -100,8 +151,8 @@ class HandPickerTest {
         val picker = HandPicker(RuleSet.H17, HandCustomization(HandsDealt.PRIORITIZE_WORSE, switchedOff = setOf(HandType(ChartTable.HARD, Move.STAND))))
 
         val dealt = picker.deal(20_000, history)
-        val sixEights = dealt.filter { it.values == sixEightVsSix.values }
-        val nineEights = dealt.count { it.values == nineEightVsAce.values }
+        val sixEights = dealt.filter { it.player.size == 2 && it.values == sixEightVsSix.values }
+        val nineEights = dealt.count { it.player.size == 2 && it.values == nineEightVsAce.values }
 
         assertTrue(sixEights.isNotEmpty())
         assertTrue(sixEights.all { hand -> hand.player.all { it.suit == Suit.SPADES } })
@@ -128,7 +179,8 @@ class HandPickerTest {
             for ((type, hands) in calling) {
                 val picker = HandPicker(rules, onlyOn(type))
 
-                assertEquals("$rules $type", hands.mapTo(HashSet()) { it.values }, picker.hands.toSet())
+                assertEquals("$rules $type", hands.mapTo(HashSet()) { it.values }, picker.hands.filterIsInstance<HandValues>().toSet())
+                assertTrue("$rules $type", picker.hands.filterIsInstance<MultiCardHand>().all { it.type == type })
                 assertEquals("$rules $type", List(200) { type }, picker.deal(200).map { it.type(chart) })
             }
         }
@@ -142,7 +194,7 @@ class HandPickerTest {
 
         assertTrue(HandValues(Upcard.FIVE, Upcard.NINE, Upcard.FOUR) in picker.hands)
         assertTrue(sixEightVsFour !in picker.hands)
-        assertTrue(picker.deal(2_000).none { it.values == sixEightVsFour })
+        assertTrue(picker.deal(2_000).none { it.player.size == 2 && it.values == sixEightVsFour })
     }
 
     @Test

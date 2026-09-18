@@ -34,7 +34,6 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.Rank
 import com.aquigs.sp21ace.domain.cards.Suit
-import kotlin.math.roundToInt
 
 // A poker-size card is 2.5 by 3.5 inches
 private const val ASPECT_RATIO = 2.5f / 3.5f
@@ -101,9 +100,10 @@ fun OverlappingCards(modifier: Modifier = Modifier, maxCardHeight: Dp = 256.dp, 
     Layout(content, modifier) { measurables, constraints ->
         val steps = (measurables.size - 1).coerceAtLeast(0)
         val widthPerHeight = ASPECT_RATIO * (1 + OVERLAP_STEP * steps)
-        val cardHeight = minOf(maxCardHeight.toPx(), constraints.maxHeight.toFloat(), constraints.maxWidth / widthPerHeight).roundToInt()
-        val cardWidth = (cardHeight * ASPECT_RATIO).roundToInt()
-        val step = (cardWidth * OVERLAP_STEP).roundToInt()
+        // Rounded down, so a fan that fills its space never spills past it onto what sits beside it
+        val cardHeight = minOf(maxCardHeight.toPx(), constraints.maxHeight.toFloat(), constraints.maxWidth / widthPerHeight).toInt()
+        val cardWidth = (cardHeight * ASPECT_RATIO).toInt()
+        val step = (cardWidth * OVERLAP_STEP).toInt()
         val cards = measurables.map { it.measure(Constraints.fixed(cardWidth, cardHeight)) }
 
         layout(cardWidth + step * steps, cardHeight) {

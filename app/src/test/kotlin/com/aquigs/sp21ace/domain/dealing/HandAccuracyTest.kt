@@ -4,18 +4,22 @@ import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
+import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.Duration
 import java.time.Instant
 
 class HandAccuracyTest {
     private val now = Instant.parse("2026-09-17T12:00:00Z")
+    private val s17 = StrategyCharts.forRules(RuleSet.S17)
     private val tenSixVsAce = TrainerHand(cards("Kc 6d"), card("As"))
     private val nineSevenVsAce = TrainerHand(cards("9c 7d"), card("Ah"))
 
@@ -30,16 +34,47 @@ class HandAccuracyTest {
     }
 
     @Test
+    fun aHandOf3OrMoreCardsIsItsTotalAgainstTheUpcardAndTheMoveTheChartCallsFor() {
+        // Hard 14 vs 4 is S4* when the dealer stands on soft 17: 3 cards stand, and 4 or more hit
+        val fiveFourFiveVsFour = TrainerHand(cards("5c 4d 5h"), card("4s"))
+
+        assertEquals(MultiCardHand(ChartRow(ChartTable.HARD, "14"), Upcard.FOUR, Move.STAND), fiveFourFiveVsFour.key(s17))
+        assertEquals(fiveFourFiveVsFour.key(s17), TrainerHand(cards("Kh 2d 2s"), card("4d")).key(s17))
+        assertEquals(MultiCardHand(ChartRow(ChartTable.HARD, "14"), Upcard.FOUR, Move.HIT), TrainerHand(cards("2c 3d 4h 5s"), card("4s")).key(s17))
+        assertEquals(nineSevenVsAce.values, nineSevenVsAce.key(s17))
+        // Prioritize worse hands never deals a doubled hand
+        assertNull(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true).key(s17))
+    }
+
+    @Test
     fun everyAnswerEverGivenCountsForItsHandWhateverItsAgeAndTheRulesThatGradedIt() {
         val history = listOf(
             answer(nineSevenVsAce, right = true, at = Instant.EPOCH),
             answer(TrainerHand(cards("7h 9s"), card("Ad")), right = false, rules = RuleSet.S17),
             answer(tenSixVsAce, right = false),
-            // Three cards make no two-card hand
-            answer(TrainerHand(cards("9c 4d 3s"), card("Ad")), right = true),
+            // Hard 16 vs A hits when the dealer stands on soft 17, whatever the rules that graded it
+            answer(TrainerHand(cards("9c 4d 3s"), card("Ad")), right = true, Move.HIT),
+            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), right = true),
         )
 
-        assertEquals(mapOf(nineSevenVsAce.values to Tally(correct = 1, incorrect = 1), tenSixVsAce.values to Tally(correct = 0, incorrect = 1)), history.tallyByHand())
+        val expected = mapOf(
+            nineSevenVsAce.values to Tally(correct = 1, incorrect = 1),
+            tenSixVsAce.values to Tally(correct = 0, incorrect = 1),
+            MultiCardHand(ChartRow(ChartTable.HARD, "16"), Upcard.ACE, Move.HIT) to Tally(correct = 1, incorrect = 0),
+        )
+        assertEquals(expected, history.tallyByHand(s17))
+    }
+
+    @Test
+    fun theSwitchForHandsOf3OrMoreCardsCountsEveryAnswerToOneNotYetDoubled() {
+        val history = listOf(
+            answer(TrainerHand(cards("9c 4d 3s"), card("Ad")), right = true, Move.HIT),
+            answer(TrainerHand(cards("2c 3d 4h 5s"), card("4s")), right = false, Move.HIT),
+            answer(nineSevenVsAce, right = true),
+            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), right = true),
+        )
+
+        assertEquals(Tally(correct = 1, incorrect = 1), history.multiCardTally())
     }
 
     @Test

@@ -14,18 +14,24 @@ fun handClass(hand: List<Card>): String = when (chartRow(hand).table) {
 }
 
 /**
- * The square in words. When its bonus exception makes [correctMove] a hit, the hit leads, so the words never open with
- * a move the grade just called wrong; with no grade, the square's own play leads. [afterDoubling] words the play for a
- * hand already doubled.
+ * The square in words. When its card count or its bonus exception makes [correctMove] a hit for a hand of [cards] cards, that
+ * hit leads, so the words never open with a move the grade just called wrong; with no grade, the square's own play leads.
+ * [afterDoubling] words the play for a hand already doubled.
  */
-fun Play.inPlainWords(correctMove: Move? = null, afterDoubling: Boolean = false): String {
-    val play = action.inPlainWords(afterDoubling)
+fun Play.inPlainWords(correctMove: Move? = null, cards: Int = 2, afterDoubling: Boolean = false): String {
+    val square = forCards(cards)
+    val play = square.action.inPlainWords(afterDoubling)
+    val count = square.hitWithCards?.let { "with $it or more cards" }
     val bonus = bonusException?.inPlainWords
-    val bonusHits = bonus != null && correctMove == Move.HIT
-    val exceptions = listOfNotNull(hitWithCards?.let { "with $it or more cards" }, bonus.takeUnless { bonusHits })
+    val lead = when {
+        correctMove != Move.HIT -> null
+        square.hitWithCards?.let { cards >= it } == true -> count
+        else -> bonus
+    }
+    val exceptions = listOfNotNull(count, bonus).filter { it != lead }
 
     return buildString {
-        if (bonusHits) append("Hit $bonus. Otherwise ${play.lowercase()}") else append(play)
+        if (lead != null) append("Hit $lead. Otherwise ${play.lowercase()}") else append(play)
         if (exceptions.isNotEmpty()) append(", but hit ").append(exceptions.joinToString(" or "))
         if (debated) append(" $DEBATED_MARK (debated)")
     }
