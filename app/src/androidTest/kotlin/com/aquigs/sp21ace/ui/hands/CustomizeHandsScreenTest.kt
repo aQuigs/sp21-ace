@@ -4,8 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
@@ -31,6 +29,7 @@ import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.components.displayName
+import com.aquigs.sp21ace.ui.texts
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -69,9 +68,6 @@ class CustomizeHandsScreenTest {
     private fun switchFor(type: HandType) = compose.handTypeSwitch(compose.activity, type)
 
     private fun switches(move: Int) = compose.onAllNodes(hasText(string(move)) and isToggleable())
-
-    // A row is one item for a screen reader, so its texts come in order: the title, then the accuracy
-    private fun texts(node: SemanticsNodeInteraction) = node.fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
 
     @Test
     fun everyGroupStartsOpenAndItsHeaderClosesAndReopensIt() {
@@ -157,9 +153,9 @@ class CustomizeHandsScreenTest {
             ),
         )
 
-        assertEquals(listOf(string(R.string.table_hard), summary(percentage(50.0))), texts(group(R.string.table_hard)))
-        assertEquals(listOf(string(R.string.table_soft), summary(string(R.string.no_data))), texts(group(R.string.table_soft)))
-        assertEquals(listOf(string(R.string.table_pairs), summary(percentage(100.0))), texts(group(R.string.table_pairs)))
+        assertEquals(listOf(string(R.string.table_hard), summary(percentage(50.0))), group(R.string.table_hard).texts())
+        assertEquals(listOf(string(R.string.table_soft), summary(string(R.string.no_data))), group(R.string.table_soft).texts())
+        assertEquals(listOf(string(R.string.table_pairs), summary(percentage(100.0))), group(R.string.table_pairs).texts())
 
         // Two right of three rounds down, as on Accuracy
         val figures = mapOf(
@@ -168,7 +164,7 @@ class CustomizeHandsScreenTest {
             pairsSplit to percentage(100.0),
         )
         for (type in HAND_TYPES) {
-            assertEquals("$type", listOf(string(type.move.displayName), summary(figures[type] ?: string(R.string.no_data))), texts(switchFor(type)))
+            assertEquals("$type", listOf(string(type.move.displayName), summary(figures[type] ?: string(R.string.no_data))), switchFor(type).texts())
         }
     }
 }

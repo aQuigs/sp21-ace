@@ -67,7 +67,8 @@
     <string name="hands_dealt">Hands dealt</string>
     <string name="random">Random</string>
     <string name="prioritize_worse_hands">Prioritize worse hands</string>
-    <string name="hands_dealt_intro">Choose how the strategy trainer deals its hands.\n\n%1$s deals hands as a shuffled shoe would.\n\n%2$s deals a hand, your two cards against the dealer\'s upcard, more often the worse you do with it: get it right half as often and it comes up twice as often. A hand you haven\'t answered yet counts as 50%% right.</string>
+    <!-- HTML, so the choices it explains are in bold, as in Blackjack Ace -->
+    <string name="hands_dealt_intro"><![CDATA[Choose how the strategy trainer deals its hands.<br><br><b>%1$s</b> deals hands as a shuffled shoe would.<br><br><b>%2$s</b> deals a hand, your two cards against the dealer\'s upcard, more often the worse you do with it: get it right half as often and it comes up twice as often. A hand you haven\'t answered yet counts as 50%% right.]]></string>
     <string name="hand_types_intro">Choose which types of hand the strategy trainer deals, by their correct move under the current table rules. If none of the types switched on can come up under these rules, the trainer deals every type.</string>
     <string name="accuracy_summary">Accuracy: %1$s</string>
     <string name="expand">Expand</string>

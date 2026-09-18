@@ -1,5 +1,6 @@
 package com.aquigs.sp21ace.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,10 +22,19 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 
@@ -42,15 +52,12 @@ fun SettingsPage(title: String, onBack: () -> Unit, modifier: Modifier = Modifie
     }
 }
 
-/** A page's intro, with an info icon beside its first line, as in Blackjack Ace, where a list item would centre it on the paragraph. */
+/**
+ * A page's intro, with an info icon beside its first line, as in Blackjack Ace, where a list item would centre it on the
+ * paragraph. [text] is read as HTML, so an intro can put words in bold.
+ */
 @Composable
 fun SettingsIntro(text: String, modifier: Modifier = Modifier) {
-    SettingsIntro(AnnotatedString(text), modifier)
-}
-
-/** An intro with styled words, such as the choices it explains in bold. */
-@Composable
-fun SettingsIntro(text: AnnotatedString, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.padding(horizontal = ListItemInset, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(ListItemInset),
@@ -61,7 +68,11 @@ fun SettingsIntro(text: AnnotatedString, modifier: Modifier = Modifier) {
             modifier = Modifier.size(IconSpace),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(text = text, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = remember(text) { AnnotatedString.fromHtml(text) },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 
@@ -80,6 +91,24 @@ fun SwitchRow(title: String, summary: String, checked: Boolean, onCheckedChange:
         supporting = summary,
         trailing = { Switch(checked = checked, onCheckedChange = null) },
     )
+}
+
+/** Settings under a header that hides or shows them. Every group starts open, as Blackjack Ace's do. */
+@Composable
+fun SettingsGroup(title: String, summary: String, @DrawableRes icon: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(true) }
+
+    SettingItem(
+        title,
+        modifier.clickable(onClickLabel = stringResource(if (expanded) R.string.collapse else R.string.expand)) { expanded = !expanded },
+        supporting = summary,
+        icon = icon,
+        emphasized = true,
+        trailing = {
+            Icon(painterResource(R.drawable.ic_expand_less), contentDescription = null, modifier = Modifier.rotate(if (expanded) 0f else 180f))
+        },
+    )
+    if (expanded) content()
 }
 
 /** A setting's values on a page of their own, named after the setting. As in Blackjack Ace, choosing a value goes back. */
@@ -115,12 +144,21 @@ fun <T> ChoicePage(
 }
 
 @Composable
-private fun SettingItem(title: String, modifier: Modifier, supporting: String? = null, trailing: (@Composable () -> Unit)? = null) {
+private fun SettingItem(
+    title: String,
+    modifier: Modifier,
+    supporting: String? = null,
+    @DrawableRes icon: Int? = null,
+    emphasized: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
+) {
     ListItem(
-        headlineContent = { Text(title) },
+        headlineContent = { Text(title, fontWeight = if (emphasized) FontWeight.Bold else null) },
         modifier = modifier,
         supportingContent = supporting?.let { text -> { Text(text) } },
-        leadingContent = { Spacer(Modifier.size(IconSpace)) },
+        leadingContent = {
+            if (icon == null) Spacer(Modifier.size(IconSpace)) else Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(IconSpace))
+        },
         trailingContent = trailing,
     )
 }

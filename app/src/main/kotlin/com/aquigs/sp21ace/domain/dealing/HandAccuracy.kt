@@ -31,6 +31,15 @@ internal fun List<PracticeAnswer>.tallyByHand(): Map<HandValues, Tally> {
     return tallies.toMap()
 }
 
+/** Every answer ever given, by the type its grade filed the hand under, for Customize Hands' subtitles. A type no answer called for reads as none answered. */
+fun List<PracticeAnswer>.tallyByHandType(): Map<HandType, Tally> {
+    val tallies = TallyCounter<HandType>()
+    for (answer in this) tallies.add(HandType(answer.square.row.table, answer.correctMove), answer.isCorrect)
+
+    val counted = tallies.toMap()
+    return HAND_TYPES.associateWith { counted[it] ?: Tally(correct = 0, incorrect = 0) }
+}
+
 /** How heavily a hand weighs under Prioritize worse hands: the inverse of its accuracy, with no answers counting as 50%. */
 internal fun weight(tally: Tally?): Double {
     val accuracy = tally?.takeIf { it.total > 0 }?.let { it.correct.toDouble() / it.total } ?: NO_ANSWERS_ACCURACY
