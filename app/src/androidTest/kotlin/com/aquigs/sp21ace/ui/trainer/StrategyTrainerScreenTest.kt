@@ -47,21 +47,21 @@ class StrategyTrainerScreenTest {
     private val sixteenVsAce = TrainerHand(listOf(Card(Rank.NINE, Suit.CLUBS), Card(Rank.SEVEN, Suit.DIAMONDS)), Card(Rank.ACE, Suit.SPADES))
     private val eightsVsSix = TrainerHand(listOf(Card(Rank.EIGHT, Suit.HEARTS), Card(Rank.EIGHT, Suit.SPADES)), Card(Rank.SIX, Suit.DIAMONDS))
 
-    private fun string(id: Int) = compose.activity.getString(id)
+    private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
     private fun button(move: Move) = compose.onNodeWithContentDescription(string(move.displayName))
 
-    private fun showTrainer(modifier: Modifier = Modifier) {
+    private fun showTrainer(modifier: Modifier = Modifier, deals: List<TrainerHand> = listOf(eightsVsSix)) {
         val chart = StrategyCharts.forRules(RuleSet.S17)
-        // Only one hand left to deal, so grading a second hand would throw
-        val deals = listOf(eightsVsSix).iterator()
+        // Only these hands are left to deal, so grading one answer more would throw
+        val next = deals.iterator()
         var trainer by mutableStateOf(TrainerState(sixteenVsAce))
 
         compose.setContent {
             Sp21AceTheme {
                 StrategyTrainerScreen(
                     state = trainer,
-                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart, deals::next) },
+                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart, next::next) },
                     onOpenDrawer = {},
                     modifier = modifier,
                 )
@@ -154,5 +154,19 @@ class StrategyTrainerScreenTest {
         val heights = Move.entries.map { button(it).getBoundsInRoot().height.value }
 
         heights.forEach { assertEquals(heights.first(), it, 1f) }
+    }
+
+    @Test
+    fun rightAnswersClimbTheStreakAndAWrongOneDropsItToZero() {
+        showTrainer(deals = listOf(eightsVsSix, sixteenVsAce, eightsVsSix))
+
+        button(Move.HIT).performClick()
+        button(Move.SPLIT).performClick()
+
+        compose.onNodeWithContentDescription(string(R.string.streak_count, 2)).assertIsDisplayed()
+
+        button(Move.STAND).performClick()
+
+        compose.onNodeWithContentDescription(string(R.string.streak_count, 0)).assertIsDisplayed()
     }
 }

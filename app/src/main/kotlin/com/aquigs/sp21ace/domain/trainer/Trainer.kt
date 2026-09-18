@@ -16,7 +16,7 @@ data class Grade(val hand: TrainerHand, val play: Play, val answer: Move, val co
  * Serializable so the activity saves it as it is through recreation and process death: a restored verdict is the one
  * given, never a regrade against rules that may have changed since.
  */
-data class TrainerState(val hand: TrainerHand, val lastGrade: Grade? = null) : Serializable
+data class TrainerState(val hand: TrainerHand, val lastGrade: Grade? = null, val streak: Int = 0) : Serializable
 
 /**
  * Grades the answer to [asked] and deals the next hand at once, because the trainer never waits for a continue tap. An
@@ -31,5 +31,11 @@ fun TrainerState.answer(
     if (asked != hand) return this
 
     val grade = Grade(hand, chart.play(hand.player, hand.upcard), move, chart.firstMove(hand.player, hand.upcard))
-    return TrainerState(deal(), grade)
+    return copy(hand = deal(), lastGrade = grade, streak = if (grade.isCorrect) streak + 1 else 0)
 }
+
+/** The streak meter's doubling scale. */
+val STREAK_RUNGS = listOf(0, 1, 2, 4, 8, 16, 32, 64, 128, 256)
+
+/** The index in [STREAK_RUNGS] of the highest rung [streak] has reached, which stays the top rung past 256. */
+fun streakRung(streak: Int): Int = STREAK_RUNGS.indexOfLast { it <= streak }
