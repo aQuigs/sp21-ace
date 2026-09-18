@@ -60,6 +60,8 @@
     <string name="longest_streak">Longest Streak</string>
     <string name="percentage">%1$.1f%%</string>
     <string name="no_data">--</string>
+    <string name="square_accuracy">%1$s vs %2$s: %3$s, %4$d%% right</string>
+    <string name="square_no_answers">%1$s vs %2$s: %3$s, no answers</string>
 
     <string name="face_down_card">Face-down card</string>
     <string name="card_name">%1$s of %2$s</string>

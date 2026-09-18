@@ -41,7 +41,7 @@ class AccuracyScreenTest {
         PracticeAnswer(now.minus(Duration.ofDays(daysAgo)), RuleSet.S17, hand, if (right) Move.HIT else Move.STAND, Move.HIT)
 
     private fun showAccuracy(history: List<PracticeAnswer>, clock: () -> Instant = { now }) {
-        compose.setContent { Sp21AceTheme { AccuracyScreen(history, onBack = {}, now = clock) } }
+        compose.setContent { Sp21AceTheme { AccuracyScreen(history, RuleSet.S17, onBack = {}, now = clock) } }
     }
 
     private fun tap(title: Int) = compose.onNodeWithText(string(title)).performClick()

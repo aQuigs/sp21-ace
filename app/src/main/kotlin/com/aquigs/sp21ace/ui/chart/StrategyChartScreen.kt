@@ -25,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
@@ -68,6 +69,8 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
     var chosen by rememberSaveable { mutableStateOf(ChartTable.HARD) }
     // A tab the rules have since dropped, such as Double Down Rescue once redoubling is allowed, falls back to the first
     val selected = chosen.takeIf { it in chart.tables } ?: chart.tables.first()
+    val legend = remember(chart, selected) { chart.legend(selected) }
+    val legendSymbols = remember(chart) { chart.tables.flatMap { table -> chart.legend(table).map { it.symbol } } }
 
     SubPage(title = stringResource(R.string.strategy_chart), onBack = onBack, modifier = modifier) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -88,7 +91,14 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                ChartGrid(chart, selected, Modifier.widthIn(max = MaxContentWidth))
+                ChartGrid(
+                    chart = chart,
+                    table = selected,
+                    footerCodes = legendSymbols,
+                    modifier = Modifier.widthIn(max = MaxContentWidth),
+                    square = { hand, upcard, codeStyle, squareModifier -> Square(chart, selected, hand, upcard, codeStyle, squareModifier) },
+                    footer = { swatchSize, codeStyle -> Legend(legend, swatchSize, codeStyle) },
+                )
             }
         }
     }
@@ -104,15 +114,25 @@ private fun rulesCaption(rules: RuleSet): String = listOfNotNull(
 
 private enum class GridPart { Caption, Grid }
 
-/** "Your hand" reads up beside the rows from the first one down, "Dealer's upcard" heads the columns, and the legend follows the squares. */
+/**
+ * [table]'s squares, each drawn by [square] into the modifier that sizes it. "Your hand" reads up beside the rows from the
+ * first one down, "Dealer's upcard" heads the columns, and [footer] follows the squares. Every code, and each of the
+ * [footerCodes] the footer prints, gets the one size that fits a square.
+ */
 @Composable
-private fun ChartGrid(chart: StrategyChart, table: ChartTable, modifier: Modifier = Modifier) {
+internal fun ChartGrid(
+    chart: StrategyChart,
+    table: ChartTable,
+    footerCodes: List<String>,
+    modifier: Modifier = Modifier,
+    square: @Composable (hand: String, upcard: Upcard, codeStyle: TextStyle, modifier: Modifier) -> Unit,
+    footer: @Composable (squareSize: Dp, codeStyle: TextStyle) -> Unit,
+) {
     val hands = chart.hands(table)
-    val legend = remember(chart, table) { chart.legend(table) }
     val codeStyle = MaterialTheme.typography.labelLarge.copy(fontSize = MaxCodeSize)
     val labelStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
     val measurer = rememberTextMeasurer()
-    val widest = rememberWidestText(chart, measurer, codeStyle, labelStyle)
+    val widest = rememberWidestText(chart, footerCodes, measurer, codeStyle, labelStyle)
 
     SubcomposeLayout(modifier) { constraints ->
         val caption = subcompose(GridPart.Caption) {
@@ -140,10 +160,10 @@ private fun ChartGrid(chart: StrategyChart, table: ChartTable, modifier: Modifie
             Column(verticalArrangement = Arrangement.spacedBy(Gap)) {
                 hands.forEach { hand ->
                     GridRow(label = hand, labelStyle = handLabels) {
-                        Upcard.entries.forEach { upcard -> Square(chart, table, hand, upcard, codes) }
+                        Upcard.entries.forEach { upcard -> square(hand, upcard, codes, Modifier.weight(1f).aspectRatio(1f)) }
                     }
                 }
-                Legend(legend, swatchSize = squareWidth.toDp(), codes, Modifier.padding(start = RowLabelWidth + Gap, top = 16.dp))
+                Box(modifier = Modifier.padding(start = RowLabelWidth + Gap, top = 16.dp)) { footer(squareWidth.toDp(), codes) }
             }
         }.map { it.measure(beside) }
 
@@ -155,25 +175,30 @@ private fun ChartGrid(chart: StrategyChart, table: ChartTable, modifier: Modifie
     }
 }
 
-/** The widest code, upcard and hand of every table, so text keeps one size from tab to tab. */
+/** The widest code, upcard and hand of every table, footer codes included, so text keeps one size from tab to tab. */
 private class WidestText(val code: String, val upcard: String, val hand: String)
 
 @Composable
-private fun rememberWidestText(chart: StrategyChart, measurer: TextMeasurer, codeStyle: TextStyle, labelStyle: TextStyle): WidestText =
-    remember(chart, measurer, codeStyle, labelStyle) {
-        fun widest(texts: List<String>, style: TextStyle) =
-            texts.distinct().maxBy { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width }
+private fun rememberWidestText(
+    chart: StrategyChart,
+    footerCodes: List<String>,
+    measurer: TextMeasurer,
+    codeStyle: TextStyle,
+    labelStyle: TextStyle,
+): WidestText = remember(chart, footerCodes, measurer, codeStyle, labelStyle) {
+    fun widest(texts: List<String>, style: TextStyle) =
+        texts.distinct().maxBy { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width }
 
-        val codes = chart.tables.flatMap { table ->
-            chart.legend(table).map { it.symbol } + chart.hands(table).flatMap { hand -> Upcard.entries.mapNotNull { chart.play(table, hand, it)?.code } }
-        }
-
-        WidestText(
-            code = widest(codes, codeStyle),
-            upcard = widest(Upcard.entries.map { it.label }, labelStyle),
-            hand = widest(chart.tables.flatMap { chart.hands(it) }, labelStyle),
-        )
+    val codes = footerCodes + chart.tables.flatMap { table ->
+        chart.hands(table).flatMap { hand -> Upcard.entries.mapNotNull { chart.play(table, hand, it)?.code } }
     }
+
+    WidestText(
+        code = widest(codes, codeStyle),
+        upcard = widest(Upcard.entries.map { it.label }, labelStyle),
+        hand = widest(chart.tables.flatMap { chart.hands(it) }, labelStyle),
+    )
+}
 
 // Scaled in pixels, because Android enlarges big font sizes less than small ones, and measured again, because glyphs
 // don't narrow in exact proportion to the size
@@ -220,30 +245,36 @@ private fun GridRow(label: String?, labelStyle: TextStyle, squares: @Composable 
 }
 
 @Composable
-private fun RowScope.Square(chart: StrategyChart, table: ChartTable, hand: String, upcard: Upcard, codeStyle: TextStyle) {
+private fun Square(chart: StrategyChart, table: ChartTable, hand: String, upcard: Upcard, codeStyle: TextStyle, modifier: Modifier) {
     val play = chart.play(table, hand, upcard)
     val description = stringResource(R.string.square_description, hand, upcard.label, chart.inPlainWords(table, hand, upcard))
 
     // In words, because a screen reader can't see the row and column a code sits in, or the legend that explains it
-    CodeSquare(
+    ActionSquare(
         code = play?.code.orEmpty(),
         fill = play?.action,
         style = codeStyle,
-        modifier = Modifier.weight(1f).aspectRatio(1f).semantics(mergeDescendants = true) { contentDescription = description },
+        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = description },
     )
 }
 
 /** A code on its action's colour, a mark on its own, or an outlined empty square where a table prints nothing. */
 @Composable
-private fun CodeSquare(code: String, fill: Action?, style: TextStyle, modifier: Modifier = Modifier) {
+private fun ActionSquare(code: String, fill: Action?, style: TextStyle, modifier: Modifier = Modifier) {
     val background = when {
         fill != null -> Modifier.actionFill(fill, Sp21AceTheme.colors.chart)
         code.isEmpty() -> Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant)
         else -> Modifier
     }
 
-    Box(modifier = modifier.then(background), contentAlignment = Alignment.Center) {
-        Text(text = code, modifier = Modifier.padding(horizontal = CodePadding), softWrap = false, maxLines = 1, style = style)
+    CodeSquare(code, style, modifier.then(background))
+}
+
+/** A code centred over whatever [modifier] draws, padded as the grid's one code size allows for. */
+@Composable
+internal fun CodeSquare(code: String, style: TextStyle, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Text(text = code, modifier = Modifier.padding(horizontal = CodePadding), color = color, softWrap = false, maxLines = 1, style = style)
     }
 }
 
@@ -257,7 +288,7 @@ private fun Legend(entries: List<LegendEntry>, swatchSize: Dp, codeStyle: TextSt
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CodeSquare(entry.symbol, entry.fill, codeStyle, Modifier.size(swatchSize))
+                ActionSquare(entry.symbol, entry.fill, codeStyle, Modifier.size(swatchSize))
                 Text(text = entry.meaning, style = MaterialTheme.typography.bodyMedium)
             }
         }

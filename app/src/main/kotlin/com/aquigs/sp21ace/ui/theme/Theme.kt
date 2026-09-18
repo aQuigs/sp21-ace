@@ -14,8 +14,8 @@ import androidx.compose.ui.graphics.lerp
 
 /**
  * Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy, answer
- * feedback turns it green or red, the recap of the previous hand takes a tint of the same green or red, and each chart
- * action has a fill of its own.
+ * feedback turns it green or red, the recap of the previous hand takes a tint of the same green or red, each chart
+ * action has a fill of its own, and the accuracy heatmap runs from red through white to green.
  */
 @Immutable
 data class Sp21AceColors(
@@ -24,6 +24,7 @@ data class Sp21AceColors(
     val correct: Color,
     val wrong: Color,
     val chart: ChartColors,
+    val heatmap: HeatmapColors,
     private val surface: Color,
     private val tintFraction: Float,
 ) {
@@ -33,6 +34,13 @@ data class Sp21AceColors(
 
 @Immutable
 data class ChartColors(val hit: Color, val stand: Color, val double: Color, val split: Color, val surrender: Color)
+
+@Immutable
+data class HeatmapColors(val noneRight: Color, val halfRight: Color, val allRight: Color) {
+    /** The fill for a [fraction] of answers right, from 0 to 1. */
+    fun at(fraction: Float): Color =
+        if (fraction <= 0.5f) lerp(noneRight, halfRight, fraction * 2) else lerp(halfRight, allRight, fraction * 2 - 1)
+}
 
 // The brand saffron #D99A1E only reaches about 2.3:1 on the light surfaces, so text-bearing roles use a darker tone.
 private val LightColors = lightColorScheme(
@@ -113,12 +121,15 @@ private val LightSp21AceColors = Sp21AceColors(
         split = Color(0xFFC3D7F0),
         surrender = Color(0xFFE6CCE3),
     ),
+    // Halfway from white to the feedback red and green, so the dark code reads on every step
+    heatmap = HeatmapColors(noneRight = Color(0xFFD9928E), halfRight = Color.White, allRight = Color(0xFF96BE98)),
     surface = LightColors.surface,
     tintFraction = 0.15f,
 )
 
 // Deeper than the light theme's tones so a full-width bar doesn't glare against charcoal, and a stronger tint, because
-// charcoal swallows a faint one. The chart fills go deep rather than pastel, so the dark theme's light text reads on them.
+// charcoal swallows a faint one. The chart fills go deep rather than pastel, so the dark theme's light text reads on them,
+// and so do the heatmap's, with a warm grey where white would glare.
 private val DarkSp21AceColors = Sp21AceColors(
     appBar = Color(0xFF1B2C42),
     onAppBar = DarkColors.onSurface,
@@ -131,6 +142,7 @@ private val DarkSp21AceColors = Sp21AceColors(
         split = Color(0xFF2F4C6E),
         surrender = Color(0xFF5E4260),
     ),
+    heatmap = HeatmapColors(noneRight = Color(0xFF9E2A24), halfRight = Color(0xFF57534C), allRight = Color(0xFF2F6F3A)),
     surface = DarkColors.surface,
     tintFraction = 0.3f,
 )

@@ -1,9 +1,10 @@
 package com.aquigs.sp21ace.domain.history
 
-import com.aquigs.sp21ace.domain.strategy.ChartRow
+import com.aquigs.sp21ace.domain.strategy.ChartSquare
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.chartRow
+import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.Grade
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import java.time.Instant
@@ -22,6 +23,6 @@ data class PracticeAnswer(val answeredAt: Instant, val ruleSet: RuleSet, val han
 
     val isCorrect: Boolean get() = answer == correctMove
 
-    /** The row of the chart square the hand is read from, beside [hand]'s upcard. Its table is the kind of hand: hard, soft or a pair. */
-    val row: ChartRow get() = chartRow(hand.player)
+    /** The chart square the hand is read from. Its row's table is the kind of hand: hard, soft or a pair. */
+    val square: ChartSquare get() = ChartSquare(chartRow(hand.player), hand.upcard.upcard)
 }

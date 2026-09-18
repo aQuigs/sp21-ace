@@ -10,6 +10,8 @@ enum class Move { HIT, STAND, DOUBLE, SPLIT, SURRENDER }
 
 data class ChartRow(val table: ChartTable, val hand: String)
 
+data class ChartSquare(val row: ChartRow, val upcard: Upcard)
+
 val Card.upcard: Upcard get() = if (rank.value == 10) Upcard.TEN else Upcard.fromLabel(rank.label)
 
 /** The row a hand is read from: a two-card pair from the pairs table, any other hand by its soft or hard total. */
@@ -30,9 +32,8 @@ fun StrategyChart.play(hand: List<Card>, upcard: Card): Play {
 }
 
 /**
- * The chart's answer to a two-card starting hand. Late surrender is always allowed on the first decision, so RH means
- * surrender. Card-count exceptions start at 3 cards and never apply here, but a bonus exception turns the play into a
- * hit while its bonus hand can still be made.
+ * The chart's answer to a two-card starting hand. Card-count exceptions start at 3 cards and never apply here, but a
+ * bonus exception turns the play into a hit while its bonus hand can still be made.
  */
 fun StrategyChart.firstMove(hand: List<Card>, upcard: Card): Move {
     require(hand.size == 2) { "A first decision has two cards, not ${hand.size}" }
@@ -40,14 +41,18 @@ fun StrategyChart.firstMove(hand: List<Card>, upcard: Card): Move {
 
     if (play.bonusException?.canStillMake(hand, upcard) == true) return Move.HIT
 
-    return when (play.action) {
+    return play.firstMove
+}
+
+/** The square's move on a first decision, bonus exceptions aside. Late surrender is always allowed there, so RH means surrender. */
+val Play.firstMove: Move
+    get() = when (action) {
         Action.HIT -> Move.HIT
         Action.STAND -> Move.STAND
         Action.DOUBLE -> Move.DOUBLE
         Action.SPLIT -> Move.SPLIT
         Action.SURRENDER, Action.SURRENDER_OR_HIT -> Move.SURRENDER
     }
-}
 
 private val SIX_SEVEN_EIGHT = setOf(Rank.SIX, Rank.SEVEN, Rank.EIGHT)
 

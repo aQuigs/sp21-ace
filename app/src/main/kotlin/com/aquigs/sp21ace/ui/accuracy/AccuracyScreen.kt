@@ -37,6 +37,8 @@ import com.aquigs.sp21ace.domain.history.Period
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
+import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.ui.chart.title
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.PageTabRow
@@ -47,12 +49,14 @@ import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * How often the trainer's answers were right over a period, for one kind of hand or all, and by the move each hand called
- * for. [now] is read again when the screen resumes and every minute, so answers age out of a period while it's open.
+ * How often the trainer's answers were right over a period, for one kind of hand or all, by the move each hand called for,
+ * and for one kind of hand square by square over [rules]' chart. [now] is read again when the screen resumes and every
+ * minute, so answers age out of a period while it's open.
  */
 @Composable
 fun AccuracyScreen(
     history: List<PracticeAnswer>,
+    rules: RuleSet,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     now: () -> Instant = Instant::now,
@@ -78,24 +82,37 @@ fun AccuracyScreen(
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             PageTabRow(tabs = HandFilter.entries, selected = hands, onSelect = { hands = it }, title = { it.table?.title ?: R.string.all_hands })
 
+            // The grid spreads wider than the chips and cards, as in Blackjack Ace, so its squares stay as large as the chart's
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 32.dp, vertical = 16.dp),
+                    .padding(vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                PeriodChips(selected = period, onSelect = { period = it })
-                Cards(accuracy, hands, Modifier.widthIn(max = MaxContentWidth).fillMaxWidth().padding(top = 32.dp, bottom = 16.dp))
+                PeriodChips(selected = period, onSelect = { period = it }, modifier = Modifier.padding(horizontal = 32.dp))
+                hands.table?.let { table ->
+                    AccuracyHeatmap(
+                        chart = StrategyCharts.forRules(rules),
+                        table = table,
+                        bySquare = accuracy.bySquare,
+                        modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp).widthIn(max = MaxContentWidth),
+                    )
+                }
+                Cards(
+                    accuracy,
+                    hands,
+                    Modifier.padding(horizontal = 32.dp).widthIn(max = MaxContentWidth).fillMaxWidth().padding(top = 32.dp, bottom = 16.dp),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit) {
+private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit, modifier: Modifier = Modifier) {
     // Wraps rather than running off a narrow screen at a large font size
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
         Period.entries.forEach { period ->
             FilterChip(selected = period == selected, onClick = { onSelect(period) }, label = { Text(stringResource(period.title)) })
         }
