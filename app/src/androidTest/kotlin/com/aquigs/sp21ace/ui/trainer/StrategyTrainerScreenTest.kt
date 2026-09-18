@@ -311,9 +311,12 @@ class StrategyTrainerScreenTest {
         for (control in controls) {
             for (other in others) assertFalse("$control overlaps $other", control.overlaps(other))
         }
+        // By the text's own single-line width, since a text given more room than it needs is laid out at the full width and
+        // reads as overflowing its node
         for (text in texts) {
             val layout = text.textLayout()
-            assertTrue("${layout.layoutInput.text} wraps or clips", layout.lineCount == 1 && !layout.hasVisualOverflow)
+            val needs = layout.multiParagraph.intrinsics.maxIntrinsicWidth
+            assertTrue("${layout.layoutInput.text} needs ${needs}px, is ${layout.size.width}px on ${layout.lineCount} lines", layout.lineCount == 1 && needs <= layout.size.width)
         }
     }
 }
