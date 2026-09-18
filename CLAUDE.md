@@ -32,6 +32,7 @@ Files headed `# Shared script:` or `# Shared workflow:` are copies of files in a
 ```text
 app/src/main/kotlin/com/aquigs/sp21ace/
 ├── MainActivity.kt      # composition root: wires domain state into the UI
+├── data/                # storage adapters (SharedPreferences)
 ├── domain/              # pure Kotlin: cards, rules, strategy; no Android imports
 └── ui/                  # Compose: screens, components, theme
 app/src/test/            # JVM unit tests (domain)
@@ -39,7 +40,7 @@ app/src/androidTest/     # Compose UI tests and the activity smoke test (emulato
 scripts/                 # emulator, run, screenshot helpers (zsh)
 ```
 
-Dependencies flow down only: `ui → domain`, and `MainActivity` is the only place that wires them together. `domain` never imports `android.*`, so every rule and strategy decision is testable on the JVM.
+Dependencies flow down only: `ui → domain` and `data → domain`, and `MainActivity` is the only place that wires them together, so screens never read storage. `domain` never imports `android.*`, so every rule and strategy decision is testable on the JVM.
 
 ## How we work
 

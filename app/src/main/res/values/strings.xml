@@ -4,8 +4,16 @@
     <string name="basic_strategy">Basic Strategy</string>
     <string name="strategy_trainer">Strategy Trainer</string>
     <string name="strategy_chart">Strategy Chart</string>
+    <string name="table_rules">Table Rules</string>
     <string name="open_menu">Open navigation menu</string>
     <string name="back">Back</string>
+
+    <string name="table_rules_intro">These are the table rules for the strategy trainer. They decide which moves are correct, and the strategy chart follows them.</string>
+    <string name="soft_17">Soft 17</string>
+    <string name="dealer_hits">Dealer hits</string>
+    <string name="dealer_stands">Dealer stands</string>
+    <string name="redoubling">Redoubling (Double-Double Down)</string>
+    <string name="redoubling_summary">Up to three doubles on one hand</string>
 
     <string name="dealer">Dealer</string>
     <string name="you">You</string>

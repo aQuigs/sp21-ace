@@ -30,10 +30,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Move
-import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
+import com.aquigs.sp21ace.ui.rules.Soft17Screen
+import com.aquigs.sp21ace.ui.rules.TableRulesScreen
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
 
@@ -41,10 +43,17 @@ import kotlinx.coroutines.launch
 enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     StrategyTrainer(R.string.strategy_trainer, isRoot = true),
     StrategyChart(R.string.strategy_chart, isRoot = false),
+    TableRules(R.string.table_rules, isRoot = false),
+    Soft17(R.string.soft_17, isRoot = false),
 }
 
-// The drawer keeps its own list, because not every destination belongs in it, such as a picker opened from another page
-private val BASIC_STRATEGY_ITEMS = listOf(Destination.StrategyTrainer to R.drawable.ic_home, Destination.StrategyChart to R.drawable.ic_chart)
+// In Blackjack Ace's order. The drawer keeps its own list, because not every destination belongs in it, such as a picker
+// opened from another page.
+private val BASIC_STRATEGY_ITEMS = listOf(
+    Destination.StrategyTrainer to R.drawable.ic_home,
+    Destination.TableRules to R.drawable.ic_table_rules,
+    Destination.StrategyChart to R.drawable.ic_chart,
+)
 
 // Blackjack Ace's drawer leaves about a third of the screen uncovered; Material's 360dp default covers almost all of it.
 private val DrawerWidth = 280.dp
@@ -52,8 +61,9 @@ private val DrawerWidth = 280.dp
 @Composable
 fun AppShell(
     trainer: TrainerState,
-    rules: RuleSet,
+    rules: TableRules,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
+    onRulesChange: (TableRules) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A root screen, then the sub-pages opened over it, so Back retraces the way in
@@ -64,7 +74,7 @@ fun AppShell(
 
     // A page already open is returned to rather than stacked again, as a double tap would
     fun open(page: Destination) {
-        backStack = if (page.isRoot) listOf(page) else backStack.takeWhile { it != page } + page
+        backStack = backStack.takeWhile { it != page } + page
     }
 
     // Two backs before a redraw, such as a double tap on the arrow, would otherwise pop the root screen too
@@ -87,7 +97,9 @@ fun AppShell(
             Drawer(
                 selected = destination,
                 onSelect = {
-                    open(it)
+                    // Straight over the root, so a second pick before the drawer has closed replaces the first instead of
+                    // stacking on it
+                    backStack = if (it.isRoot) listOf(it) else listOf(backStack.first(), it)
                     scope.launch { drawerState.close() }
                 },
             )
@@ -104,7 +116,9 @@ fun AppShell(
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenChart = { open(Destination.StrategyChart) },
             )
-            Destination.StrategyChart -> StrategyChartScreen(rules, onBack = { back() })
+            Destination.StrategyChart -> StrategyChartScreen(rules.ruleSet, onBack = { back() })
+            Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = { back() })
+            Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = { back() })
         }
     }
 }
