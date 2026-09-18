@@ -7,6 +7,7 @@
 - **Plays:** H hit, S stand, D double, P split, R surrender, RH surrender if allowed, otherwise hit.
 - **Card counts:** a digit means hit instead once the hand has that many cards or more. D3 doubles a two-card hand but hits with 3 or more cards.
 - **Bonus marks:** `*` means hit if any 6-7-8 bonus is possible, `'` if a suited 6-7-8 is possible (spades included), and `"` if a spaded 6-7-8 is possible. `$` means hit suited 7-7 against a dealer 7, for the Super Bonus.
+- **Super Bonus:** `$` exists for the Super Bonus, a fixed $1,000 or $5,000 for a suited 7-7-7 against a dealer 7, so it assumes the table pays one on the bet. Nevada's rules of play have no Super Bonus, the New Jersey, Pennsylvania and Maryland tiers start at a $5 bet, and Wizard of Odds says the benefit shrinks as the bet grows past $5 or $25.
 - **Debated squares:** `†` marks a square the sources still debate. They're listed below.
 - **Rescue tables:** `.` means no rescue: stand on the doubled hand. When redoubling is allowed, the rescues are the R squares of the after-doubling tables.
 
