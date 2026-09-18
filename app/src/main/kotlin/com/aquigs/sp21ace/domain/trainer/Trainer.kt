@@ -5,13 +5,18 @@ import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.firstMove
 import com.aquigs.sp21ace.domain.strategy.play
+import java.io.Serializable
 
 /** [correctMove] can differ from the square's [play], because a bonus exception turns the play into a hit. */
-data class Grade(val hand: TrainerHand, val play: Play, val answer: Move, val correctMove: Move) {
+data class Grade(val hand: TrainerHand, val play: Play, val answer: Move, val correctMove: Move) : Serializable {
     val isCorrect: Boolean get() = answer == correctMove
 }
 
-data class TrainerState(val hand: TrainerHand, val lastGrade: Grade? = null)
+/**
+ * Serializable so the activity saves it as it is through recreation and process death: a restored verdict is the one
+ * given, never a regrade against rules that may have changed since.
+ */
+data class TrainerState(val hand: TrainerHand, val lastGrade: Grade? = null) : Serializable
 
 /**
  * Grades the answer to [asked] and deals the next hand at once, because the trainer never waits for a continue tap. An
