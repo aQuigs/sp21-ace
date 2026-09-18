@@ -1,7 +1,6 @@
 package com.aquigs.sp21ace.data
 
 import android.content.Context
-import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.aquigs.sp21ace.domain.settings.Settings
 
@@ -34,9 +33,5 @@ class SettingsStore(context: Context, name: String = "settings") {
         const val HAND_TOTALS = "hand_totals"
         const val CHART_BUTTON = "chart_button"
         const val STREAK_METER = "streak_meter"
-
-        // A name no value has, such as one a later version dropped, reads as the default rather than failing the load
-        inline fun <reified T : Enum<T>> SharedPreferences.getEnum(key: String, default: T): T =
-            enumValues<T>().firstOrNull { it.name == getString(key, null) } ?: default
     }
 }

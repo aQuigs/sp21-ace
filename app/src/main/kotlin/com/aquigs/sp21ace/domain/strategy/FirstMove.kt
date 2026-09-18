@@ -14,16 +14,16 @@ data class ChartSquare(val row: ChartRow, val upcard: Upcard)
 
 val Card.upcard: Upcard get() = if (rank.value == 10) Upcard.TEN else Upcard.fromLabel(rank.label)
 
-/** The row a hand is read from: a two-card pair from the pairs table, any other hand by its soft or hard total. */
-fun chartRow(hand: List<Card>): ChartRow {
+/** The row a hand is read from: a two-card pair from the pairs table, any other hand by its [totalRow]. */
+fun chartRow(hand: List<Card>): ChartRow =
+    if (hand.size == 2 && hand[0].upcard == hand[1].upcard) hand[0].upcard.label.let { ChartRow(ChartTable.PAIRS, "$it-$it") } else totalRow(hand)
+
+/** The row a hand is read from by its total alone: soft 18 from the soft table as "A-7", and hard 16 from the hard table as "16". */
+fun totalRow(hand: List<Card>): ChartRow {
     val total = hand.total()
     require(total.value <= 21) { "A busted hand has no chart row" }
 
-    return when {
-        hand.size == 2 && hand[0].upcard == hand[1].upcard -> hand[0].upcard.label.let { ChartRow(ChartTable.PAIRS, "$it-$it") }
-        total.soft -> ChartRow(ChartTable.SOFT, "A-${total.value - 11}")
-        else -> ChartRow(ChartTable.HARD, "${total.value}")
-    }
+    return if (total.soft) ChartRow(ChartTable.SOFT, "A-${total.value - 11}") else ChartRow(ChartTable.HARD, "${total.value}")
 }
 
 fun StrategyChart.play(hand: List<Card>, upcard: Card): Play {
