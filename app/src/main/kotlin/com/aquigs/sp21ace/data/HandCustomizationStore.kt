@@ -13,7 +13,7 @@ class HandCustomizationStore(context: Context, name: String = "customize_hands")
     private val defaults = HandCustomization()
 
     fun load() = HandCustomization(
-        handsDealt = HandsDealt.entries.firstOrNull { it.name == prefs.getString(HANDS_DEALT, null) } ?: defaults.handsDealt,
+        handsDealt = prefs.getEnum(HANDS_DEALT, defaults.handsDealt),
         switchedOff = HAND_TYPES.filter { !prefs.getBoolean(it.key, true) }.toSet(),
     )
 

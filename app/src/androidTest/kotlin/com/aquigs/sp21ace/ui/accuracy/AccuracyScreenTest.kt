@@ -17,6 +17,7 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
@@ -60,7 +61,7 @@ class AccuracyScreenTest {
 
     private fun showAccuracy(history: List<PracticeAnswer>, clock: () -> Instant = { now }) {
         compose.setContent {
-            Sp21AceTheme(darkTheme = false) {
+            Sp21AceTheme(ColorTheme.LIGHT) {
                 heatmap = Sp21AceTheme.colors.heatmap
                 page = MaterialTheme.colorScheme.background
                 AccuracyScreen(history, rules, onBack = {}, now = clock)

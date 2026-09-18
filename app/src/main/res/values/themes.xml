@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The window draws before Compose does, so it follows the system theme to avoid a white flash in dark mode. -->
+    <!-- The window draws before Compose does, so it follows the app's night mode, which MainActivity sets from the color theme, to avoid a flash of the other theme. -->
     <style name="Theme.Sp21Ace" parent="@android:style/Theme.DeviceDefault.DayNight">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
+
+    <!-- For a chosen Light or Dark on Android 11, which keeps no night mode per app for the DayNight theme to follow -->
+    <style name="Theme.Sp21Ace.Light" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+    <style name="Theme.Sp21Ace.Dark" parent="@android:style/Theme.DeviceDefault.NoActionBar" />
 </resources>

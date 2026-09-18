@@ -1,7 +1,6 @@
 package com.aquigs.sp21ace.ui
 
 import androidx.activity.ComponentActivity
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
@@ -26,6 +25,7 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.Sp21AceApp
 import com.aquigs.sp21ace.data.HandCustomizationStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
+import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
@@ -35,6 +35,8 @@ import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.HandType
 import com.aquigs.sp21ace.domain.dealing.type
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.settings.ColorTheme
+import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -43,8 +45,8 @@ import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
 import com.aquigs.sp21ace.ui.accuracy.cardTexts
+import com.aquigs.sp21ace.ui.accuracy.square
 import com.aquigs.sp21ace.ui.hands.handTypeSwitch
-import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -64,9 +66,10 @@ class AppShellTest {
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
-    // Their own files, so the tests never overwrite the rules, the customization or the history the app itself saved
+    // Their own files, so the tests never overwrite the rules, the customization, the settings or the history the app itself saved
     private val store by lazy { TableRulesStore(compose.activity, "table_rules_app_shell_test") }
     private val handsStore by lazy { HandCustomizationStore(compose.activity, "customize_hands_app_shell_test") }
+    private val settingsStore by lazy { SettingsStore(compose.activity, "settings_app_shell_test") }
     private val historyStore by lazy { PracticeHistoryStore(File(compose.activity.filesDir, "practice_history_app_shell_test.txt")) }
 
     private var handsDealt = 0
@@ -84,21 +87,20 @@ class AppShellTest {
 
     @Before
     fun setUp() {
-        // Edge to edge like MainActivity, or the status bar inset never reaches the composables
-        compose.runOnUiThread { compose.activity.enableEdgeToEdge() }
         store.save(TableRules())
         handsStore.save(HandCustomization())
+        // Light whatever the emulator's own theme, as the drawer's status bar check expects
+        settingsStore.save(Settings(colorTheme = ColorTheme.LIGHT))
         historyStore.clear()
 
-        compose.setContent {
-            Sp21AceTheme(darkTheme = false) { Sp21AceApp(store, historyStore, handsStore, deal = { picker, history -> dealHand(picker, history) }) }
-        }
+        compose.setContent { Sp21AceApp(store, historyStore, handsStore, settingsStore, deal = { picker, history -> dealHand(picker, history) }) }
     }
 
     @After
     fun tearDown() {
         store.save(TableRules())
         handsStore.save(HandCustomization())
+        settingsStore.save(Settings())
         historyStore.clear()
     }
 
@@ -125,7 +127,7 @@ class AppShellTest {
 
         compose.onNodeWithText(string(R.string.basic_strategy)).assertIsDisplayed()
         drawerItem(R.string.strategy_trainer).assertIsSelected()
-        val items = listOf(R.string.strategy_trainer, R.string.table_rules, R.string.strategy_chart, R.string.customize_hands, R.string.accuracy)
+        val items = listOf(R.string.strategy_trainer, R.string.table_rules, R.string.strategy_chart, R.string.customize_hands, R.string.accuracy, R.string.settings)
             .map { drawerItem(it).assertIsDisplayed().getBoundsInRoot() }
         items.zipWithNext().forEach { (above, below) -> assertTrue(below.top >= above.bottom) }
     }
@@ -144,6 +146,25 @@ class AppShellTest {
         compose.onNodeWithText(string(R.string.table_pairs)).performClick()
 
         assertEquals(overallFigures(percentage = 0.0, correct = 0, incorrect = 1), overallCard())
+    }
+
+    @Test
+    fun clearingThePracticeHistoryResetsTheStreakMeterAccuracyAndItsHeatmap() {
+        // Right on hard 16 vs A
+        compose.onNodeWithContentDescription(string(R.string.move_hit)).performClick()
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, 1)).assertIsDisplayed()
+
+        openFromDrawer(R.string.settings)
+        compose.onNodeWithText(string(R.string.clear_practice_history)).performClick()
+        compose.onNodeWithText(string(R.string.clear)).performClick()
+        compose.onNodeWithContentDescription(string(R.string.back)).performClick()
+
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, 0)).assertIsDisplayed()
+
+        openFromDrawer(R.string.accuracy)
+
+        assertEquals(compose.activity.accuracyCardTexts(R.string.overall, string(R.string.no_data), correct = 0, incorrect = 0), overallCard())
+        compose.square("16 vs A: Hit, no answers", "H")
     }
 
     @Test

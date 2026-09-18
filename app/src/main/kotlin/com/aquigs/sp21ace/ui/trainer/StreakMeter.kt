@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -35,10 +36,11 @@ private val Gap = 4.dp
 
 /**
  * A ladder of doubling rungs with the streak circled on the highest rung it has reached. It takes the height its modifier
- * gives it, and without one just enough to fit every rung label.
+ * gives it, and without one just enough to fit every rung label. The rung labels sit left of the ladder, or right of it with
+ * [numbersOnRight], whatever the language.
  */
 @Composable
-fun StreakMeter(streak: Int, modifier: Modifier = Modifier) {
+fun StreakMeter(streak: Int, modifier: Modifier = Modifier, numbersOnRight: Boolean = false) {
     val scheme = MaterialTheme.colorScheme
     val reached = streakRung(streak)
     // Grey until the first right answer, as in Blackjack Ace
@@ -88,23 +90,27 @@ fun StreakMeter(streak: Int, modifier: Modifier = Modifier) {
         val circle = circleMeasurables.single().measure(Constraints.fixed(circleSize, circleSize))
 
         val labelWidth = labels.maxOf { it.width }
-        // The caption centres under the rail, so a caption wider than the labels and circle pushes the rail right
+        // The caption centres under the rail, so a caption wider than the labels and circle pushes the rail away from the labels
         val railX = maxOf(labelWidth + gap + circleSize / 2, caption.width / 2)
+        val meterWidth = railX + maxOf(circleSize, caption.width) / 2
         fun centre(index: Int) = rungCentre(index, ladderHeight.toFloat(), circleSize.toFloat()).roundToInt()
 
-        layout(railX + maxOf(circleSize, caption.width) / 2, height) {
+        layout(meterWidth, height) {
+            // Laid out with the labels on the left, then turned around for the right, rather than mirrored by the language
+            fun Placeable.placeOnSide(x: Int, y: Int) = place(if (numbersOnRight) meterWidth - x - width else x, y)
+
             // On a squeezed ladder every rung keeps its dot, but a label that would overlap the one below it is left out
             var lastLabelTop = Int.MAX_VALUE
             labels.forEachIndexed { index, label ->
                 val top = centre(index) - label.height / 2
                 if (top + label.height <= lastLabelTop) {
-                    label.placeRelative((labelWidth - label.width) / 2, top)
+                    label.placeOnSide((labelWidth - label.width) / 2, top)
                     lastLabelTop = top
                 }
             }
-            rail.placeRelative(railX - circleSize / 2, 0)
-            circle.placeRelative(railX - circleSize / 2, centre(reached) - circleSize / 2)
-            caption.placeRelative(railX - caption.width / 2, ladderHeight + gap)
+            rail.placeOnSide(railX - circleSize / 2, 0)
+            circle.placeOnSide(railX - circleSize / 2, centre(reached) - circleSize / 2)
+            caption.placeOnSide(railX - caption.width / 2, ladderHeight + gap)
         }
     }
 }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -76,6 +77,12 @@ fun SettingsIntro(text: String, modifier: Modifier = Modifier) {
     }
 }
 
+/** A heading over a group of settings, lined up with the rows' titles. */
+@Composable
+fun SettingsHeader(text: String, modifier: Modifier = Modifier) {
+    SectionHeading(text, modifier.padding(start = ListItemInset + IconSpace + ListItemInset, top = 16.dp, end = ListItemInset, bottom = 4.dp))
+}
+
 /** A setting with several values: its title over the value chosen, opening a [ChoicePage] of the values. */
 @Composable
 fun ChoiceRow(title: String, value: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -109,6 +116,12 @@ fun SettingsGroup(title: String, summary: String, @DrawableRes icon: Int, modifi
         },
     )
     if (expanded) content()
+}
+
+/** A setting that does something rather than holding a value, such as clearing a history. As in Blackjack Ace, its title takes the accent colour. */
+@Composable
+fun ActionRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    SettingItem(title, modifier.clickable(role = Role.Button, onClick = onClick), color = MaterialTheme.colorScheme.secondary)
 }
 
 /** A setting's values on a page of their own, named after the setting. As in Blackjack Ace, choosing a value goes back. */
@@ -151,9 +164,10 @@ private fun SettingItem(
     @DrawableRes icon: Int? = null,
     emphasized: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
+    color: Color = Color.Unspecified,
 ) {
     ListItem(
-        headlineContent = { Text(title, fontWeight = if (emphasized) FontWeight.Bold else null) },
+        headlineContent = { Text(title, color = color, fontWeight = if (emphasized) FontWeight.Bold else null) },
         modifier = modifier,
         supportingContent = supporting?.let { text -> { Text(text) } },
         leadingContent = {
