@@ -30,6 +30,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
 
@@ -41,7 +44,7 @@ enum class Destination(@StringRes val title: Int, @DrawableRes val icon: Int) {
 private val DrawerWidth = 280.dp
 
 @Composable
-fun AppShell(modifier: Modifier = Modifier) {
+fun AppShell(trainer: TrainerState, onAnswer: (asked: TrainerHand, move: Move) -> Unit, modifier: Modifier = Modifier) {
     var destination by rememberSaveable { mutableStateOf(Destination.StrategyTrainer) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -68,7 +71,8 @@ fun AppShell(modifier: Modifier = Modifier) {
         drawerState = drawerState,
     ) {
         when (destination) {
-            Destination.StrategyTrainer -> StrategyTrainerScreen(onOpenDrawer = { scope.launch { drawerState.open() } })
+            Destination.StrategyTrainer ->
+                StrategyTrainerScreen(trainer, onAnswer, onOpenDrawer = { scope.launch { drawerState.open() } })
         }
     }
 }
