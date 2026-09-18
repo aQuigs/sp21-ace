@@ -30,7 +30,7 @@ class MainActivityTest {
     @After
     fun tearDown() {
         TableRulesStore(compose.activity).save(TableRules())
-        PracticeHistoryStore(compose.activity).clear()
+        PracticeHistoryStore.forApp(compose.activity).clear()
     }
 
     @Test

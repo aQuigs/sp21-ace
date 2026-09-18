@@ -7,6 +7,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import com.aquigs.sp21ace.domain.trainer.dealTrainerHand
 import com.aquigs.sp21ace.ui.AppShell
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import java.time.Clock
+import java.time.Instant
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,39 +33,29 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
 
         val store = TableRulesStore(this)
-        val historyStore = PracticeHistoryStore(this)
+        val historyStore = PracticeHistoryStore.forApp(this)
 
         setContent { Sp21AceTheme { Sp21AceApp(store, historyStore) } }
     }
 }
 
-/**
- * Holds the trainer, the table rules and the practice history, saves the rules and each answer as they change, and grades
- * by the rules. Tests pass their own stores, [deal] and [clock].
- */
+/** Holds the trainer and the table rules, saves the rules as they change, grades by them and records each grade. Tests pass their own stores and [deal]. */
 @Composable
-internal fun Sp21AceApp(
-    store: TableRulesStore,
-    historyStore: PracticeHistoryStore,
-    deal: () -> TrainerHand = ::dealTrainerHand,
-    clock: Clock = Clock.systemDefaultZone(),
-) {
+internal fun Sp21AceApp(store: TableRulesStore, historyStore: PracticeHistoryStore, deal: () -> TrainerHand = ::dealTrainerHand) {
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal())) }
     // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
     var rules by remember { mutableStateOf(store.load()) }
-    var history by remember { mutableStateOf(historyStore.load()) }
+    val history by historyStore.history.collectAsState()
 
     AppShell(
         trainer = trainer,
         rules = rules,
-        history = history,
-        clock = clock,
+        history = history.orEmpty(),
+        clock = Clock.systemDefaultZone(),
         onAnswer = { asked, move ->
             trainer.answer(asked, move, StrategyCharts.forRules(rules.ruleSet), deal)?.let { (next, grade) ->
                 trainer = next
-                val answer = PracticeAnswer(clock.instant(), rules.ruleSet, grade)
-                history = history + answer
-                historyStore.append(answer)
+                historyStore.append(PracticeAnswer(Instant.now(), rules.ruleSet, grade))
             }
         },
         onRulesChange = {
