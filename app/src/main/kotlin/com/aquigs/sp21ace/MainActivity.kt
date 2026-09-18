@@ -1,12 +1,17 @@
 package com.aquigs.sp21ace
 
+import android.app.Activity
+import android.app.UiModeManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,22 +25,23 @@ import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.record
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.AppShell
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
+import com.aquigs.sp21ace.ui.theme.isDark
 import java.time.Instant
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val settingsStore = SettingsStore(this)
+        showInWindow(settingsStore.load().colorTheme)
         super.onCreate(savedInstanceState)
-        // The app bar is dark in both themes and the drawer stops below the status bar, so the status bar icons stay light
-        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
 
         val store = TableRulesStore(this)
         val historyStore = PracticeHistoryStore.forApp(this)
         val handsStore = HandCustomizationStore(this)
-        val settingsStore = SettingsStore(this)
 
         setContent { Sp21AceApp(store, historyStore, handsStore, settingsStore) }
     }
@@ -54,6 +60,7 @@ internal fun Sp21AceApp(
     settingsStore: SettingsStore,
     deal: (picker: HandPicker, history: List<PracticeAnswer>) -> TrainerHand = { picker, history -> picker.pick(history) },
 ) {
+    val activity = LocalActivity.current
     // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
     var rules by remember { mutableStateOf(store.load()) }
     var customization by remember { mutableStateOf(handsStore.load()) }
@@ -62,6 +69,17 @@ internal fun Sp21AceApp(
     // A change of settings applies from the next hand, while the one on the table stays
     val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
+    val dark = settings.colorTheme.isDark()
+
+    DisposableEffect(activity, dark) {
+        // The app bar is dark in both themes and the drawer stops below the status bar, so the status bar icons stay light.
+        // Behind 3-button navigation the system draws its own scrim, so neither scrim given here is ever used.
+        (activity as? ComponentActivity)?.enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
+        )
+        onDispose {}
+    }
 
     Sp21AceTheme(settings.colorTheme) {
         AppShell(
@@ -86,10 +104,34 @@ internal fun Sp21AceApp(
                 handsStore.save(it)
             },
             onSettingsChange = {
+                if (it.colorTheme != settings.colorTheme) activity?.showInWindow(it.colorTheme)
                 settings = it
                 settingsStore.save(it)
             },
             onClearHistory = historyStore::clear,
+        )
+    }
+}
+
+// The window draws before Compose does, on a cold start and on every recreation, so the system has to hear of the choice too.
+// From Android 12 it keeps a night mode for the app, which styles the launch window as well and recreates the activity when it
+// changes. Android 11 keeps none, so there only the window of an activity created from here on can follow.
+private fun Activity.showInWindow(colorTheme: ColorTheme) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        getSystemService(UiModeManager::class.java).setApplicationNightMode(
+            when (colorTheme) {
+                ColorTheme.SYSTEM -> UiModeManager.MODE_NIGHT_AUTO
+                ColorTheme.LIGHT -> UiModeManager.MODE_NIGHT_NO
+                ColorTheme.DARK -> UiModeManager.MODE_NIGHT_YES
+            },
+        )
+    } else {
+        setTheme(
+            when (colorTheme) {
+                ColorTheme.SYSTEM -> R.style.Theme_Sp21Ace
+                ColorTheme.LIGHT -> R.style.Theme_Sp21Ace_Light
+                ColorTheme.DARK -> R.style.Theme_Sp21Ace_Dark
+            },
         )
     }
 }

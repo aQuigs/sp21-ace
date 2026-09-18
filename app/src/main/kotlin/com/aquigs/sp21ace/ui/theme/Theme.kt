@@ -160,23 +160,21 @@ internal val DarkSp21AceColors = Sp21AceColors(
 
 private val LocalSp21AceColors = staticCompositionLocalOf { LightSp21AceColors }
 
+/** Whether this theme draws the app dark, where [ColorTheme.SYSTEM] follows the system's. */
 @Composable
-fun Sp21AceTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalSp21AceColors provides if (darkTheme) DarkSp21AceColors else LightSp21AceColors) {
-        MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
-    }
+fun ColorTheme.isDark(): Boolean = when (this) {
+    ColorTheme.SYSTEM -> isSystemInDarkTheme()
+    ColorTheme.LIGHT -> false
+    ColorTheme.DARK -> true
 }
 
-/** The theme [colorTheme] picks, where [ColorTheme.SYSTEM] follows the system's. */
 @Composable
-fun Sp21AceTheme(colorTheme: ColorTheme, content: @Composable () -> Unit) {
-    val darkTheme = when (colorTheme) {
-        ColorTheme.SYSTEM -> isSystemInDarkTheme()
-        ColorTheme.LIGHT -> false
-        ColorTheme.DARK -> true
-    }
+fun Sp21AceTheme(colorTheme: ColorTheme = ColorTheme.SYSTEM, content: @Composable () -> Unit) {
+    val dark = colorTheme.isDark()
 
-    Sp21AceTheme(darkTheme = darkTheme, content = content)
+    CompositionLocalProvider(LocalSp21AceColors provides if (dark) DarkSp21AceColors else LightSp21AceColors) {
+        MaterialTheme(colorScheme = if (dark) DarkColors else LightColors, content = content)
+    }
 }
 
 object Sp21AceTheme {

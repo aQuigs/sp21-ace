@@ -1,5 +1,7 @@
 package com.aquigs.sp21ace
 
+import android.app.UiModeManager
+import android.os.Build
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -39,6 +41,10 @@ class MainActivityTest {
         TableRulesStore(compose.activity).save(TableRules())
         SettingsStore(compose.activity).save(Settings())
         PracticeHistoryStore.forApp(compose.activity).clear()
+        // The system keeps a chosen theme for the app, apart from the settings file
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            compose.activity.getSystemService(UiModeManager::class.java).setApplicationNightMode(UiModeManager.MODE_NIGHT_AUTO)
+        }
     }
 
     @Test

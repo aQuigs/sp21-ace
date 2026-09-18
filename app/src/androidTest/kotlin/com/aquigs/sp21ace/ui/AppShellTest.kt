@@ -1,7 +1,6 @@
 package com.aquigs.sp21ace.ui
 
 import androidx.activity.ComponentActivity
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
@@ -87,8 +86,6 @@ class AppShellTest {
 
     @Before
     fun setUp() {
-        // Edge to edge like MainActivity, or the status bar inset never reaches the composables
-        compose.runOnUiThread { compose.activity.enableEdgeToEdge() }
         store.save(TableRules())
         handsStore.save(HandCustomization())
         // Light whatever the emulator's own theme, as the drawer's status bar check expects
