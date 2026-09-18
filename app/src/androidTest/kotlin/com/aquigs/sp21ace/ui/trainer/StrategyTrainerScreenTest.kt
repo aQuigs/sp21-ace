@@ -48,6 +48,7 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.answer
+import com.aquigs.sp21ace.ui.assertFits
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.textLayout
@@ -68,6 +69,10 @@ class StrategyTrainerScreenTest {
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
     private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
+
+    // Hard 15 vs 6 is debated, stands but hits with 6 cards, and gives way to a hit while a spaded 6-7-8 is possible: the
+    // longest feedback there is
+    private val spadedFifteenVsSix = TrainerHand(cards("7s 8s"), card("6d"))
 
     private var settings by mutableStateOf(Settings())
 
@@ -379,5 +384,15 @@ class StrategyTrainerScreenTest {
         fontScale = 2f
 
         assertEquals(sizes(atDefault), sizes(drawn()))
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeTheLongestFeedbackAndTheRecapOfASurrenderFitTheirBoxes() {
+        showTrainer(Modifier.size(360.dp, 640.dp), first = spadedFifteenVsSix, configuration = DeviceConfigurationOverride.FontScale(2f))
+
+        button(Move.SURRENDER).performClick()
+
+        compose.onNodeWithText("Hard 15 vs 6", substring = true).fetchSemanticsNode().textLayout().assertFits()
+        compose.onNodeWithText(string(R.string.move_surrender), useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFitsOnOneLine()
     }
 }

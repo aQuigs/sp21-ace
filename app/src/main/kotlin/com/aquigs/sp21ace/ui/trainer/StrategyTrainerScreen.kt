@@ -62,6 +62,7 @@ import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
 import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
 import com.aquigs.sp21ace.ui.components.appBarColors
+import com.aquigs.sp21ace.ui.components.autoSizeDownTo
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
@@ -186,7 +187,7 @@ private fun FeedbackText(grade: Grade) {
             contentDescription = "$verdict. ${grade.hand.matchup}. $words"
         },
         // The longest squares need three lines, and an em line height keeps them inside the bar as autoSize shrinks the text
-        autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 16.sp),
+        autoSize = autoSizeDownTo(minSize = 10.dp, maxFontSize = 16.sp),
         maxLines = 3,
         style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 1.2.em),
     )

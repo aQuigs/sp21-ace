@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.trainer.STREAK_RUNGS
@@ -59,8 +60,10 @@ fun StreakMeter(streak: Int, modifier: Modifier = Modifier, numbersOnRight: Bool
                         modifier = Modifier.padding(horizontal = 4.dp),
                         color = if (lit) scheme.onSecondary else scheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
-                        // Low enough that a four-digit streak still fits the circle at the largest font sizes
+                        // Low enough that a four-digit streak still fits the circle at the largest font sizes, on a line as tall as
+                        // the number, because the body style's 24 sp line outgrows the circle there and sets the number low
                         autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = 14.sp),
+                        lineHeight = 1.em,
                         maxLines = 1,
                     )
                 }

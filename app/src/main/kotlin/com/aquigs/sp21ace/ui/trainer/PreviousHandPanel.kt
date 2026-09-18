@@ -32,6 +32,7 @@ import com.aquigs.sp21ace.domain.trainer.Grade
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
+import com.aquigs.sp21ace.ui.components.autoSizeDownTo
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
@@ -110,7 +111,7 @@ private fun MoveTile(move: Move) {
         Text(
             text = stringResource(move.displayName),
             modifier = Modifier.padding(horizontal = 4.dp),
-            autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 20.sp),
+            autoSize = autoSizeDownTo(minSize = 8.dp, maxFontSize = 20.sp),
             maxLines = 1,
         )
     }
