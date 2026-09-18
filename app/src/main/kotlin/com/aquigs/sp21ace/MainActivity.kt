@@ -59,14 +59,12 @@ internal fun Sp21AceApp(
         history = history,
         clock = clock,
         onAnswer = { asked, move ->
-            val next = trainer.answer(asked, move, StrategyCharts.forRules(rules.ruleSet), deal)
-            // An answer to a hand no longer on the table leaves the trainer as it was, and isn't one to record
-            if (next !== trainer) {
-                val answer = PracticeAnswer(clock.instant(), rules.ruleSet, requireNotNull(next.lastGrade))
+            trainer.answer(asked, move, StrategyCharts.forRules(rules.ruleSet), deal)?.let { (next, grade) ->
+                trainer = next
+                val answer = PracticeAnswer(clock.instant(), rules.ruleSet, grade)
                 history = history + answer
                 historyStore.append(answer)
             }
-            trainer = next
         },
         onRulesChange = {
             rules = it

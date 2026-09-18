@@ -10,7 +10,7 @@ import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertSame
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayOutputStream
@@ -28,17 +28,23 @@ class TrainerTest {
     // 8-8 vs 6 is P
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
+    // The trainer after a graded answer, for tests about what it leaves rather than the grade
+    private fun TrainerState.after(asked: TrainerHand, move: Move, deal: () -> TrainerHand) = requireNotNull(answer(asked, move, s17, deal)).state
+
     @Test
     fun gradesTheHandOnTheTableThenDealsTheNext() {
-        val next = TrainerState(sixteenVsAce).answer(sixteenVsAce, Move.HIT, s17) { softSeventeenVsTen }
+        val grade = Grade(sixteenVsAce, Play(Action.HIT), Move.HIT, Move.HIT)
 
-        assertEquals(TrainerState(softSeventeenVsTen, Grade(sixteenVsAce, Play(Action.HIT), Move.HIT, Move.HIT), streak = 1), next)
-        assertTrue(next.lastGrade!!.isCorrect)
+        assertEquals(
+            Answered(TrainerState(softSeventeenVsTen, grade, streak = 1), grade),
+            TrainerState(sixteenVsAce).answer(sixteenVsAce, Move.HIT, s17) { softSeventeenVsTen },
+        )
+        assertTrue(grade.isCorrect)
     }
 
     @Test
     fun gradesAWrongAnswerWithTheMoveTheSquareCallsFor() {
-        val grade = TrainerState(sixEightVsFour).answer(sixEightVsFour, Move.STAND, s17) { sixteenVsAce }.lastGrade!!
+        val grade = requireNotNull(TrainerState(sixEightVsFour).answer(sixEightVsFour, Move.STAND, s17) { sixteenVsAce }).grade
 
         val square = Play(Action.STAND, hitWithCards = 4, bonusException = BonusException.ANY_678)
         assertEquals(Grade(sixEightVsFour, square, Move.STAND, Move.HIT), grade)
@@ -46,17 +52,18 @@ class TrainerTest {
     }
 
     @Test
-    fun ignoresAnAnswerToAHandNoLongerOnTheTable() {
+    fun anAnswerToAHandNoLongerOnTheTableGradesNothing() {
         val state = TrainerState(softSeventeenVsTen, Grade(sixteenVsAce, Play(Action.HIT), Move.HIT, Move.HIT))
 
-        assertSame(state, state.answer(sixteenVsAce, Move.HIT, s17) { error("A stale answer must not deal") })
+        // Nothing to record, and nothing dealt
+        assertNull(state.answer(sixteenVsAce, Move.HIT, s17) { error("A stale answer must not deal") })
     }
 
     @Test
     fun keepsOnlyTheLatestAnswerWithItsHandAndBothMoves() {
         val last = TrainerState(sixteenVsAce)
-            .answer(sixteenVsAce, Move.HIT, s17) { eightsVsSix }
-            .answer(eightsVsSix, Move.STAND, s17) { softSeventeenVsTen }
+            .after(sixteenVsAce, Move.HIT) { eightsVsSix }
+            .after(eightsVsSix, Move.STAND) { softSeventeenVsTen }
             .lastGrade
 
         assertEquals(Grade(eightsVsSix, Play(Action.SPLIT), Move.STAND, Move.SPLIT), last)
@@ -64,16 +71,16 @@ class TrainerTest {
 
     @Test
     fun eachRightAnswerAddsOneToTheStreakWithNoCapAtTheTopRung() {
-        val once = TrainerState(sixteenVsAce).answer(sixteenVsAce, Move.HIT, s17) { eightsVsSix }
-        val twice = once.answer(eightsVsSix, Move.SPLIT, s17) { softSeventeenVsTen }
+        val once = TrainerState(sixteenVsAce).after(sixteenVsAce, Move.HIT) { eightsVsSix }
+        val twice = once.after(eightsVsSix, Move.SPLIT) { softSeventeenVsTen }
 
         assertEquals(listOf(1, 2), listOf(once.streak, twice.streak))
-        assertEquals(257, TrainerState(sixteenVsAce, streak = 256).answer(sixteenVsAce, Move.HIT, s17) { eightsVsSix }.streak)
+        assertEquals(257, TrainerState(sixteenVsAce, streak = 256).after(sixteenVsAce, Move.HIT) { eightsVsSix }.streak)
     }
 
     @Test
     fun aWrongAnswerDropsTheStreakToZero() {
-        val next = TrainerState(eightsVsSix, streak = 5).answer(eightsVsSix, Move.STAND, s17) { sixteenVsAce }
+        val next = TrainerState(eightsVsSix, streak = 5).after(eightsVsSix, Move.STAND) { sixteenVsAce }
 
         assertEquals(0, next.streak)
     }
@@ -89,7 +96,7 @@ class TrainerTest {
     fun comesBackEqualFromSerialization() {
         // Android serializes the saved state once the app is in the background, which recreating the activity in a device test doesn't.
         // A right answer from a streak, so a streak field lost in transit can't hide behind its default of 0.
-        val state = TrainerState(sixEightVsFour, streak = 2).answer(sixEightVsFour, Move.HIT, s17) { dealTrainerHand() }
+        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { dealTrainerHand() }
 
         val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(state) } }.toByteArray()
 

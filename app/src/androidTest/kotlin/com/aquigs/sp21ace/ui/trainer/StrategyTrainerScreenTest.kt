@@ -61,7 +61,7 @@ class StrategyTrainerScreenTest {
             Sp21AceTheme {
                 StrategyTrainerScreen(
                     state = trainer,
-                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart, next::next) },
+                    onAnswer = { asked, move -> trainer.answer(asked, move, chart, next::next)?.let { trainer = it.state } },
                     onOpenDrawer = {},
                     onOpenChart = {},
                     modifier = modifier,
