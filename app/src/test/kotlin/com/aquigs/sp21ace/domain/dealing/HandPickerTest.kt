@@ -11,6 +11,7 @@ import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.upcard
@@ -142,6 +143,17 @@ class HandPickerTest {
 
         // The only pair to surrender is 8-8 against an ace, which splits when the dealer stands on soft 17, so that's the one type a rule set rules out
         assertEquals(listOf(RuleSet.S17 to HandType(ChartTable.PAIRS, Move.SURRENDER)), impossible)
+    }
+
+    @Test
+    fun aSwitchReadsTheMoveEachHandIsGradedWithBonusExceptionsIncluded() {
+        // Under the default rules hard 14 vs 4 is S4*, so any 6-8 hits while a 5-9 stands
+        val picker = HandPicker(TableRules().ruleSet, onlyOn(HandType(ChartTable.HARD, Move.STAND)), emptyList())
+        val sixEightVsFour = HandValues(Upcard.SIX, Upcard.EIGHT, Upcard.FOUR)
+
+        assertTrue(HandValues(Upcard.FIVE, Upcard.NINE, Upcard.FOUR) in picker.hands)
+        assertTrue(sixEightVsFour !in picker.hands)
+        assertTrue(picker.deal(2_000).none { it.values == sixEightVsFour })
     }
 
     @Test
