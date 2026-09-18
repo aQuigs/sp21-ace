@@ -3,7 +3,6 @@ package com.aquigs.sp21ace.domain.history
 import com.aquigs.sp21ace.domain.strategy.ChartSquare
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
-import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.Grade
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
@@ -19,8 +18,8 @@ data class PracticeAnswer(val answeredAt: Instant, val ruleSet: RuleSet, val han
     val isCorrect: Boolean get() = answer == correctMove
 
     /**
-     * The chart square the hand is read from, its row's table the kind of hand: hard, soft or a pair. Only a hand with a chart
-     * row was ever asked, so a record of any other, such as a hand past 21, is refused.
+     * The chart square the hand is read from, its row's table the kind of hand. No row reads a hand past 21, which was never
+     * asked, so a record of one is refused.
      */
-    val square: ChartSquare = ChartSquare(chartRow(hand.player), hand.upcard.upcard)
+    val square: ChartSquare = ChartSquare(hand.row, hand.upcard.upcard)
 }

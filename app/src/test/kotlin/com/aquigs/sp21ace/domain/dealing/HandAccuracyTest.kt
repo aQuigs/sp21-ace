@@ -66,6 +66,14 @@ class HandAccuracyTest {
     }
 
     @Test
+    fun aDoubledHandCountsForNoSwitchSinceItsReadFromTheAfterDoublingTables() {
+        // Hard 14 vs 9 once doubled is a rescue, which no switch deals
+        val history = listOf(answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), right = true))
+
+        assertEquals(HAND_TYPES.associateWith { Tally(correct = 0, incorrect = 0) }, history.tallyByHandType())
+    }
+
+    @Test
     fun aHandWeighsTheInverseOfItsAccuracyWithNoAnswersAt50PercentAndAFloorAt5Percent() {
         val weights = mapOf(
             null to 2.0,
