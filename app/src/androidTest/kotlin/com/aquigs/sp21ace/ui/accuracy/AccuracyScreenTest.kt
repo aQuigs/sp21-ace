@@ -1,10 +1,7 @@
 package com.aquigs.sp21ace.ui.accuracy
 
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -49,16 +46,11 @@ class AccuracyScreenTest {
 
     private fun tap(title: Int) = compose.onNodeWithText(string(title)).performClick()
 
-    // A card is one item for a screen reader, so its texts come together: the title, then each figure before its label
-    private fun cardTexts(vararg texts: String): List<String> =
-        compose.onNode(texts.map(::hasText).reduce(SemanticsMatcher::and)).fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
+    private fun accuracyCard(title: Int) = compose.cardTexts(string(title), string(R.string.correct))
 
-    private fun accuracyCard(title: Int) = cardTexts(string(title), string(R.string.correct))
+    private fun figures(title: Int, accuracy: String, correct: Int, incorrect: Int) = compose.activity.accuracyCardTexts(title, accuracy, correct, incorrect)
 
-    private fun figures(title: Int, accuracy: String, correct: Int, incorrect: Int) =
-        listOf(string(title), accuracy, string(R.string.accuracy), "$correct", string(R.string.correct), "$incorrect", string(R.string.incorrect))
-
-    private fun streakCard() = cardTexts(string(R.string.longest_streak))
+    private fun streakCard() = compose.cardTexts(string(R.string.longest_streak))
 
     @Test
     fun todayIsTheDefaultAndTheChipsSwitchThePeriod() {

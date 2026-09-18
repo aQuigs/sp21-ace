@@ -5,7 +5,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -30,6 +29,8 @@ import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
+import com.aquigs.sp21ace.ui.accuracy.cardTexts
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -91,9 +92,10 @@ class AppShellTest {
         compose.onNodeWithText(string(R.string.dealer_hits)).performClick()
     }
 
-    // The Overall card is one item for a screen reader, so its texts come together: the title, then each figure before its label
-    private fun overallCard(): List<String> = compose.onNode(hasText(string(R.string.overall)) and hasText(string(R.string.correct)))
-        .fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
+    private fun overallCard() = compose.cardTexts(string(R.string.overall), string(R.string.correct))
+
+    private fun overallFigures(percentage: Double, correct: Int, incorrect: Int) =
+        compose.activity.accuracyCardTexts(R.string.overall, compose.activity.getString(R.string.percentage, percentage), correct, incorrect)
 
     @Test
     fun menuButtonOpensTheDrawerOnTheStrategyTrainerWithItsItemsInBlackjackAcesOrder() {
@@ -117,11 +119,11 @@ class AppShellTest {
         openFromDrawer(R.string.accuracy)
 
         appBarTitle(R.string.accuracy).assertIsDisplayed()
-        assertEquals(listOf("Overall", "100.0%", "Accuracy", "1", "Correct", "0", "Incorrect"), overallCard())
+        assertEquals(overallFigures(percentage = 100.0, correct = 1, incorrect = 0), overallCard())
 
         compose.onNodeWithText(string(R.string.table_pairs)).performClick()
 
-        assertEquals(listOf("Overall", "0.0%", "Accuracy", "0", "Correct", "1", "Incorrect"), overallCard())
+        assertEquals(overallFigures(percentage = 0.0, correct = 0, incorrect = 1), overallCard())
     }
 
     @Test

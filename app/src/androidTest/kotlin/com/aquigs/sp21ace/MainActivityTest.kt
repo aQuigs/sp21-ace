@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.strategy.TableRules
+import com.aquigs.sp21ace.ui.accuracy.cardTexts
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -96,8 +97,7 @@ class MainActivityTest {
 
         val correct = compose.activity.getString(R.string.correct)
         val incorrect = compose.activity.getString(R.string.incorrect)
-        val overall = compose.onNode(hasText(compose.activity.getString(R.string.overall)) and hasText(correct))
-            .fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
+        val overall = compose.cardTexts(compose.activity.getString(R.string.overall), correct)
         compose.onNodeWithContentDescription(compose.activity.getString(R.string.back)).performClick()
 
         // Each count sits before its label
