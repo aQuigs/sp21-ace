@@ -1,7 +1,13 @@
 package com.aquigs.sp21ace.ui.accuracy
 
 import androidx.activity.ComponentActivity
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -14,13 +20,16 @@ import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.ui.theme.HeatmapColors
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Duration
 import java.time.Instant
+import kotlin.math.abs
 
 @RunWith(AndroidJUnit4::class)
 class AccuracyScreenTest {
@@ -29,19 +38,34 @@ class AccuracyScreenTest {
 
     private val now = Instant.parse("2026-09-17T12:00:00Z")
 
-    // Hard 16 vs A and soft 17 vs K are both hits when the dealer stands on soft 17
+    // Hard 16 vs A and soft 17 vs K are both hits when the dealer stands on soft 17, and hard 16 vs A a surrender when the dealer hits
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
 
     private val allMoves = listOf(R.string.move_split, R.string.move_hit, R.string.move_double, R.string.move_stand, R.string.move_surrender)
 
+    private var rules by mutableStateOf(RuleSet.S17)
+    private lateinit var heatmap: HeatmapColors
+    private var page = Color.Unspecified
+
     private fun string(id: Int) = compose.activity.getString(id)
 
-    private fun answer(right: Boolean, daysAgo: Long = 0, hand: TrainerHand = sixteenVsAce) =
-        PracticeAnswer(now.minus(Duration.ofDays(daysAgo)), RuleSet.S17, hand, if (right) Move.HIT else Move.STAND, Move.HIT)
+    private fun answer(right: Boolean, daysAgo: Long = 0, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT) = PracticeAnswer(
+        now.minus(Duration.ofDays(daysAgo)),
+        RuleSet.S17,
+        hand,
+        if (right) correctMove else Move.entries.first { it != correctMove },
+        correctMove,
+    )
 
     private fun showAccuracy(history: List<PracticeAnswer>, clock: () -> Instant = { now }) {
-        compose.setContent { Sp21AceTheme { AccuracyScreen(history, onBack = {}, now = clock) } }
+        compose.setContent {
+            Sp21AceTheme(darkTheme = false) {
+                heatmap = Sp21AceTheme.colors.heatmap
+                page = MaterialTheme.colorScheme.background
+                AccuracyScreen(history, rules, onBack = {}, now = clock)
+            }
+        }
     }
 
     private fun tap(title: Int) = compose.onNodeWithText(string(title)).performClick()
@@ -55,6 +79,12 @@ class AccuracyScreenTest {
     private fun streakCard() = compose.cardTexts(string(R.string.longest_streak))
 
     private fun streak(longest: Int) = listOf(string(R.string.streak), "$longest", string(R.string.longest_streak))
+
+    // Within a shade, since the capture rounds each channel to 8 bits
+    private fun assertColour(expected: Color, actual: Color) {
+        val difference = listOf(expected.red - actual.red, expected.green - actual.green, expected.blue - actual.blue).maxOf(::abs)
+        assertTrue("expected $expected, was $actual", difference < 2 / 255f)
+    }
 
     @Test
     fun todayIsTheDefaultAndTheChipsSwitchThePeriod() {
@@ -155,5 +185,87 @@ class AccuracyScreenTest {
         tap(R.string.all_hands)
 
         assertEquals(streak(longest = 3), streakCard())
+    }
+
+    @Test
+    fun aSquareWithAnswersIsFilledOnTheScaleAndReadsItsAccuracy() {
+        showAccuracy(
+            listOf(
+                answer(right = true),
+                answer(right = true, hand = TrainerHand(cards("Kd 6h"), card("Ac"))),
+                answer(right = true, hand = TrainerHand(cards("Qs 6c"), card("Ah"))),
+                answer(right = false, hand = TrainerHand(cards("Jh 6s"), card("Ad"))),
+            ),
+        )
+
+        assertColour(heatmap.at(0.75f), compose.square("16 vs A: Hit, 75% right", "H").fill())
+    }
+
+    @Test
+    fun aSquareWithoutAnswersReadsNoAnswersAndStaysPlain() {
+        showAccuracy(listOf(answer(right = false)))
+
+        assertColour(page, compose.square("16 vs 10: Hit, no answers", "H").fill())
+        assertColour(heatmap.at(0f), compose.square("16 vs A: Hit, 0% right", "H").fill())
+    }
+
+    @Test
+    fun aBonusSquareReadsTheChartsWords() {
+        // The 8-6 can still make 6-7-8, so it's graded a hit where the other 14s stand, and no one move words the square
+        showAccuracy(
+            listOf(
+                answer(right = true, hand = TrainerHand(cards("Qh 4d"), card("4c")), correctMove = Move.STAND),
+                answer(right = true, hand = TrainerHand(cards("Jc 4s"), card("4d")), correctMove = Move.STAND),
+                answer(right = true, hand = TrainerHand(cards("9h 5c"), card("4s")), correctMove = Move.STAND),
+                answer(right = false, hand = TrainerHand(cards("8h 6d"), card("4h")), correctMove = Move.HIT),
+            ),
+        )
+
+        compose.square("14 vs 4: Stand, but hit with 4 or more cards or while any 6-7-8 is possible, 75% right", "S4*")
+    }
+
+    @Test
+    fun theGridShowsOnlyTheRowsTheTrainerDeals() {
+        showAccuracy(emptyList())
+
+        compose.square("19 vs 2: Stand, no answers", "S")
+        // Two ten-value cards are a pair, so no dealt hand is hard 20
+        compose.onNode(hasContentDescription("20 vs ", substring = true)).assertDoesNotExist()
+    }
+
+    @Test
+    fun eachKindOfHandHasItsOwnGridAndTheAllTabHasNone() {
+        showAccuracy(
+            listOf(
+                answer(right = true),
+                answer(right = true, hand = softSeventeenVsKing),
+                answer(right = true, hand = TrainerHand(cards("8h 8s"), card("6d")), correctMove = Move.SPLIT),
+            ),
+        )
+
+        compose.square("16 vs A: Hit, 100% right", "H")
+
+        tap(R.string.table_soft)
+
+        compose.square("A-6 vs 10: Hit, 100% right", "H")
+
+        tap(R.string.table_pairs)
+
+        compose.square("8-8 vs 6: Split, 100% right", "P")
+
+        tap(R.string.all_hands)
+
+        compose.onNode(hasContentDescription(" vs ", substring = true)).assertDoesNotExist()
+    }
+
+    @Test
+    fun theGridFollowsTheRulesAndKeepsEachAnswerAsItWasGraded() {
+        showAccuracy(listOf(answer(right = true)))
+
+        compose.square("16 vs A: Hit, 100% right", "H")
+
+        rules = RuleSet.H17
+
+        compose.square("16 vs A: Surrender, otherwise hit, 100% right", "RH")
     }
 }

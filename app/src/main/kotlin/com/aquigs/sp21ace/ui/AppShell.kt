@@ -124,7 +124,7 @@ fun AppShell(
             Destination.StrategyChart -> StrategyChartScreen(rules.ruleSet, onBack = { back() })
             Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = { back() })
             Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = { back() })
-            Destination.Accuracy -> AccuracyScreen(history, onBack = { back() })
+            Destination.Accuracy -> AccuracyScreen(history, rules.ruleSet, onBack = { back() })
         }
     }
 }

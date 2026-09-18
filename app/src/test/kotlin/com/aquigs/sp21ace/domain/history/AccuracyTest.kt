@@ -5,9 +5,13 @@ import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.spanishShoe
+import com.aquigs.sp21ace.domain.strategy.ChartRow
+import com.aquigs.sp21ace.domain.strategy.ChartSquare
+import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
+import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.firstMove
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
@@ -24,13 +28,17 @@ class AccuracyTest {
     private val softSeventeenVsTen = TrainerHand(cards("As 6d"), card("Kh"))
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
-    private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT) =
-        PracticeAnswer(at, RuleSet.S17, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
+    private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT, rules: RuleSet = RuleSet.S17) =
+        PracticeAnswer(at, rules, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
 
     private fun List<PracticeAnswer>.figures(period: Period = Period.ALL_TIME, hands: HandFilter = HandFilter.ALL, at: Instant = now) =
         accuracy(period, hands, at)
 
     private fun streaks(rights: String) = rights.map { answer(right = it == 'R') }
+
+    private fun square(table: ChartTable, hand: String, upcard: Upcard) = ChartSquare(ChartRow(table, hand), upcard)
+
+    private val sixteenVsAceSquare = square(ChartTable.HARD, "16", Upcard.ACE)
 
     @Test
     fun todayWeekAndMonthReachBack24HoursSevenDaysAnd28DaysAndAllTimeHasNoStart() {
@@ -112,6 +120,80 @@ class AccuracyTest {
             figures.byMove,
         )
         assertEquals(Tally(correct = 2, incorrect = 2), figures.overall)
+    }
+
+    @Test
+    fun eachSquareTalliesTheAnswersToEveryHandReadFromItAgainstItsUpcard() {
+        val figures = listOf(
+            answer(hand = sixteenVsAce),
+            answer(right = false, hand = TrainerHand(cards("Kd 6h"), card("Ac"))),
+            answer(hand = TrainerHand(cards("9c 4d 3s"), card("Ad"))),
+            answer(hand = TrainerHand(cards("9c 7d"), card("Qs"))),
+            answer(right = false, hand = softSeventeenVsTen),
+        ).figures()
+
+        assertEquals(
+            mapOf(
+                sixteenVsAceSquare to Tally(correct = 2, incorrect = 1),
+                square(ChartTable.HARD, "16", Upcard.TEN) to Tally(correct = 1, incorrect = 0),
+                square(ChartTable.SOFT, "A-6", Upcard.TEN) to Tally(correct = 0, incorrect = 1),
+            ),
+            figures.bySquare,
+        )
+    }
+
+    @Test
+    fun theSquaresCountOnlyThePeriodsAnswersToTheTabsKindOfHand() {
+        val history = listOf(
+            answer(at = now.minus(Duration.ofDays(3))),
+            answer(right = false),
+            answer(hand = softSeventeenVsTen),
+            answer(hand = eightsVsSix, correctMove = Move.SPLIT),
+        )
+
+        assertEquals(mapOf(sixteenVsAceSquare to Tally(correct = 0, incorrect = 1)), history.figures(Period.TODAY, HandFilter.HARD).bySquare)
+        assertEquals(mapOf(sixteenVsAceSquare to Tally(correct = 1, incorrect = 1)), history.figures(Period.WEEK, HandFilter.HARD).bySquare)
+        assertEquals(mapOf(square(ChartTable.SOFT, "A-6", Upcard.TEN) to Tally(correct = 1, incorrect = 0)), history.figures(Period.WEEK, HandFilter.SOFT).bySquare)
+    }
+
+    @Test
+    fun pairsLandInThePairsGridRatherThanUnderTheirTotal() {
+        val history = listOf(
+            answer(hand = eightsVsSix, correctMove = Move.SPLIT),
+            answer(right = false, hand = TrainerHand(cards("Kc Qd"), card("6h")), correctMove = Move.STAND),
+            answer(hand = TrainerHand(cards("Ah Ac"), card("6s")), correctMove = Move.SPLIT),
+        )
+
+        assertEquals(
+            mapOf(
+                square(ChartTable.PAIRS, "8-8", Upcard.SIX) to Tally(correct = 1, incorrect = 0),
+                square(ChartTable.PAIRS, "10-10", Upcard.SIX) to Tally(correct = 0, incorrect = 1),
+                square(ChartTable.PAIRS, "A-A", Upcard.SIX) to Tally(correct = 1, incorrect = 0),
+            ),
+            history.figures(hands = HandFilter.PAIRS).bySquare,
+        )
+        assertEquals(emptyMap<ChartSquare, Tally>(), history.figures(hands = HandFilter.HARD).bySquare)
+        assertEquals(emptyMap<ChartSquare, Tally>(), history.figures(hands = HandFilter.SOFT).bySquare)
+    }
+
+    @Test
+    fun anAnswerCountsInItsSquareWhateverRulesGradedIt() {
+        // Hard 16 vs A is a hit when the dealer stands on soft 17, and a surrender when the dealer hits
+        val history = listOf(answer(), answer(rules = RuleSet.H17, correctMove = Move.SURRENDER))
+
+        assertEquals(mapOf(sixteenVsAceSquare to Tally(correct = 2, incorrect = 0)), history.figures().bySquare)
+    }
+
+    @Test
+    fun aCounterTalliesEachKeysRightAndWrongAnswersAndHoldsOnlyTheKeysAdded() {
+        val counter = TallyCounter<String>()
+        counter.add("a", isCorrect = true)
+        counter.add("b", isCorrect = false)
+        counter.add("a", isCorrect = false)
+        counter.add("a", isCorrect = true)
+
+        assertEquals(mapOf("a" to Tally(correct = 2, incorrect = 1), "b" to Tally(correct = 0, incorrect = 1)), counter.toMap())
+        assertEquals(emptyMap<String, Tally>(), TallyCounter<String>().toMap())
     }
 
     @Test

@@ -75,6 +75,14 @@ class StrategyChartScreenTest {
     }
 
     @Test
+    fun theChartKeepsTheRowsTheTrainerNeverDeals() {
+        showChart()
+
+        // Two ten-value cards are a pair, so the accuracy heatmap has no hard 20 row, but the chart still prints it
+        square("20", "2", "S").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun aSquareReadsOutAsWords() {
         showChart()
 

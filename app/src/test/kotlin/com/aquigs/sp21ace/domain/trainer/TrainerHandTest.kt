@@ -3,7 +3,9 @@ package com.aquigs.sp21ace.domain.trainer
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.isBlackjack
+import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.ChartTable
+import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -18,6 +20,18 @@ class TrainerHandTest {
 
         assertTrue(hands.none { it.player.isBlackjack() })
         assertEquals(setOf(ChartTable.HARD, ChartTable.SOFT, ChartTable.PAIRS), hands.map { chartRow(it.player).table }.toSet())
+    }
+
+    @Test
+    fun theDealtRowsAreHard5To19SoftA2ToA9AndEveryPairJustAsTheDealReachesThem() {
+        val random = Random(21)
+        val reached = List(5_000) { chartRow(dealTrainerHand(random).player) }.toSet()
+        val expected = (5..19).map { ChartRow(ChartTable.HARD, "$it") } +
+            (2..9).map { ChartRow(ChartTable.SOFT, "A-$it") } +
+            Upcard.entries.map { ChartRow(ChartTable.PAIRS, "${it.label}-${it.label}") }
+
+        assertEquals(expected.toSet(), DEALT_ROWS)
+        assertEquals(DEALT_ROWS, reached)
     }
 
     @Test

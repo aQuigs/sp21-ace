@@ -14,8 +14,10 @@ import androidx.compose.ui.graphics.lerp
 
 /**
  * Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy, answer
- * feedback turns it green or red, the recap of the previous hand takes a tint of the same green or red, and each chart
- * action has a fill of its own.
+ * feedback turns it green or red, the recap of the previous hand takes a tint of the same green or red, each chart
+ * action has a fill of its own, and the accuracy heatmap runs from that red through [heatmapMiddle] to that green.
+ * [unansweredCode] prints the codes of heatmap squares without answers, because no scheme grey reaches 4.5:1 on the
+ * page in both themes while still reading fainter than an answered square's code.
  */
 @Immutable
 data class Sp21AceColors(
@@ -24,15 +26,26 @@ data class Sp21AceColors(
     val correct: Color,
     val wrong: Color,
     val chart: ChartColors,
+    val unansweredCode: Color,
     private val surface: Color,
     private val tintFraction: Float,
+    private val heatmapMiddle: Color,
+    private val heatmapReach: Float,
 ) {
     val correctTint: Color = lerp(surface, correct, tintFraction)
     val wrongTint: Color = lerp(surface, wrong, tintFraction)
+    val heatmap: HeatmapColors = HeatmapColors(lerp(heatmapMiddle, wrong, heatmapReach), heatmapMiddle, lerp(heatmapMiddle, correct, heatmapReach))
 }
 
 @Immutable
 data class ChartColors(val hit: Color, val stand: Color, val double: Color, val split: Color, val surrender: Color)
+
+@Immutable
+data class HeatmapColors(val noneRight: Color, val halfRight: Color, val allRight: Color) {
+    /** The fill for a [fraction] of answers right, from 0 to 1. */
+    fun at(fraction: Float): Color =
+        if (fraction <= 0.5f) lerp(noneRight, halfRight, fraction * 2) else lerp(halfRight, allRight, fraction * 2 - 1)
+}
 
 // The brand saffron #D99A1E only reaches about 2.3:1 on the light surfaces, so text-bearing roles use a darker tone.
 private val LightColors = lightColorScheme(
@@ -101,7 +114,7 @@ private val DarkColors = darkColorScheme(
     surfaceContainerHighest = Color(0xFF373632),
 )
 
-private val LightSp21AceColors = Sp21AceColors(
+internal val LightSp21AceColors = Sp21AceColors(
     appBar = LightColors.primary,
     onAppBar = LightColors.onPrimary,
     correct = Color(0xFF2E7D32),
@@ -115,11 +128,17 @@ private val LightSp21AceColors = Sp21AceColors(
     ),
     surface = LightColors.surface,
     tintFraction = 0.15f,
+    // The scheme's outline, darkened just enough to reach 4.5:1 on the light page
+    unansweredCode = Color(0xFF786F60),
+    // The heatmap's ends stop halfway from white to the feedback red and green, so the dark code reads on every step
+    heatmapMiddle = Color.White,
+    heatmapReach = 0.5f,
 )
 
 // Deeper than the light theme's tones so a full-width bar doesn't glare against charcoal, and a stronger tint, because
-// charcoal swallows a faint one. The chart fills go deep rather than pastel, so the dark theme's light text reads on them.
-private val DarkSp21AceColors = Sp21AceColors(
+// charcoal swallows a faint one. The chart fills go deep rather than pastel, so the dark theme's light text reads on them,
+// and the heatmap runs all the way to the deep feedback red and green, through a warm grey where white would glare.
+internal val DarkSp21AceColors = Sp21AceColors(
     appBar = Color(0xFF1B2C42),
     onAppBar = DarkColors.onSurface,
     correct = Color(0xFF2F6F3A),
@@ -133,6 +152,9 @@ private val DarkSp21AceColors = Sp21AceColors(
     ),
     surface = DarkColors.surface,
     tintFraction = 0.3f,
+    unansweredCode = DarkColors.outline,
+    heatmapMiddle = Color(0xFF57534C),
+    heatmapReach = 1f,
 )
 
 private val LocalSp21AceColors = staticCompositionLocalOf { LightSp21AceColors }

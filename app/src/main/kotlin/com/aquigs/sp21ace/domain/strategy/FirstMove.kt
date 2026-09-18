@@ -10,6 +10,8 @@ enum class Move { HIT, STAND, DOUBLE, SPLIT, SURRENDER }
 
 data class ChartRow(val table: ChartTable, val hand: String)
 
+data class ChartSquare(val row: ChartRow, val upcard: Upcard)
+
 val Card.upcard: Upcard get() = if (rank.value == 10) Upcard.TEN else Upcard.fromLabel(rank.label)
 
 /** The row a hand is read from: a two-card pair from the pairs table, any other hand by its soft or hard total. */
