@@ -13,7 +13,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
+
+/** A phone's width, past which a sub-page's content stops growing, since a tablet or a landscape phone would spread it past what reads well. */
+val MaxContentWidth = 480.dp
 
 /** A full-screen page opened over a root screen, with a back arrow and its title in the app bar. */
 @OptIn(ExperimentalMaterial3Api::class)

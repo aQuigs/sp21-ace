@@ -1,4 +1,4 @@
-package com.aquigs.sp21ace.ui.trainer
+package com.aquigs.sp21ace.ui.components
 
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Move

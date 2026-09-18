@@ -14,8 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,16 +38,16 @@ import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
 import com.aquigs.sp21ace.domain.history.nextMidnight
+import com.aquigs.sp21ace.ui.chart.title
+import com.aquigs.sp21ace.ui.components.MaxContentWidth
+import com.aquigs.sp21ace.ui.components.PageTabRow
 import com.aquigs.sp21ace.ui.components.SubPage
-import com.aquigs.sp21ace.ui.trainer.displayName
+import com.aquigs.sp21ace.ui.components.displayName
 import kotlinx.coroutines.delay
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
-
-// As wide as the strategy chart grows, so a tablet doesn't spread a card's figures apart
-private val MaxCardWidth = 480.dp
 
 /**
  * How often the trainer's answers were right over a period, for one kind of hand or all, and by the move each hand called
@@ -81,17 +79,7 @@ fun AccuracyScreen(
 
     SubPage(title = stringResource(R.string.accuracy), onBack = onBack, modifier = modifier) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            SecondaryTabRow(selectedTabIndex = hands.ordinal) {
-                HandFilter.entries.forEach { tab ->
-                    Tab(
-                        selected = tab == hands,
-                        onClick = { hands = tab },
-                        text = { Text(stringResource(tab.title)) },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            PageTabRow(tabs = HandFilter.entries, selected = hands, onSelect = { hands = it }, title = { it.table?.title ?: R.string.all_hands })
 
             Column(
                 modifier = Modifier
@@ -101,7 +89,7 @@ fun AccuracyScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 PeriodChips(selected = period, onSelect = { period = it })
-                Cards(accuracy, hands, Modifier.widthIn(max = MaxCardWidth).fillMaxWidth().padding(top = 32.dp, bottom = 16.dp))
+                Cards(accuracy, hands, Modifier.widthIn(max = MaxContentWidth).fillMaxWidth().padding(top = 32.dp, bottom = 16.dp))
             }
         }
     }
@@ -180,14 +168,6 @@ private fun Count(count: Int, label: String, modifier: Modifier = Modifier) {
         Text(text = label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }
 }
-
-private val HandFilter.title: Int
-    get() = when (this) {
-        HandFilter.HARD -> R.string.table_hard
-        HandFilter.SOFT -> R.string.table_soft
-        HandFilter.PAIRS -> R.string.table_pairs
-        HandFilter.ALL -> R.string.all_hands
-    }
 
 private val Period.title: Int
     get() = when (this) {

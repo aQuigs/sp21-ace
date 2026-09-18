@@ -32,6 +32,7 @@ import com.aquigs.sp21ace.domain.trainer.Grade
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
+import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
 private val ThumbnailHeight = 64.dp

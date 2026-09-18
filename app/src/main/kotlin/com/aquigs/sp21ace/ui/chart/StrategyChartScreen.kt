@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SecondaryScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -53,6 +51,8 @@ import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.domain.strategy.legend
+import com.aquigs.sp21ace.ui.components.MaxContentWidth
+import com.aquigs.sp21ace.ui.components.PageTabRow
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
@@ -61,9 +61,6 @@ private val RowLabelPadding = 4.dp
 private val Gap = 2.dp
 private val CodePadding = 1.dp
 private val MaxCodeSize = 13.sp
-
-// A phone's width makes legible squares; any wider and a tablet or a landscape phone blows them up past a screenful
-private val MaxGridWidth = 480.dp
 
 @Composable
 fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier = Modifier) {
@@ -75,17 +72,7 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
     SubPage(title = stringResource(R.string.strategy_chart), onBack = onBack, modifier = modifier) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             // Scrollable, because the tables after Hard, Soft and Pairs have long names
-            SecondaryScrollableTabRow(selectedTabIndex = chart.tables.indexOf(selected), edgePadding = 0.dp, minTabWidth = 72.dp) {
-                chart.tables.forEach { table ->
-                    Tab(
-                        selected = table == selected,
-                        onClick = { chosen = table },
-                        text = { Text(stringResource(table.title)) },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            PageTabRow(tabs = chart.tables, selected = selected, onSelect = { chosen = it }, title = { it.title }, scrollable = true)
 
             Column(
                 modifier = Modifier
@@ -97,11 +84,11 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
             ) {
                 Text(
                     text = rulesCaption(rules),
-                    modifier = Modifier.widthIn(max = MaxGridWidth).fillMaxWidth(),
+                    modifier = Modifier.widthIn(max = MaxContentWidth).fillMaxWidth(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                ChartGrid(chart, selected, Modifier.widthIn(max = MaxGridWidth))
+                ChartGrid(chart, selected, Modifier.widthIn(max = MaxContentWidth))
             }
         }
     }
@@ -277,7 +264,7 @@ private fun Legend(entries: List<LegendEntry>, swatchSize: Dp, codeStyle: TextSt
     }
 }
 
-private val ChartTable.title: Int
+internal val ChartTable.title: Int
     get() = when (this) {
         ChartTable.HARD -> R.string.table_hard
         ChartTable.SOFT -> R.string.table_soft
