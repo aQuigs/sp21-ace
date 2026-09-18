@@ -3,15 +3,19 @@ package com.aquigs.sp21ace.ui.trainer
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.TextAutoSize
@@ -25,10 +29,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.FirstBaseline
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -40,7 +43,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -63,7 +65,6 @@ import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
 private val ButtonSize = 64.dp
-private val LabelGap = 8.dp
 
 /** The cards, with the answer buttons down one edge and, as [settings] choose, the hand totals, the chart tile and the streak meter. */
 @Composable
@@ -82,28 +83,13 @@ fun StrategyTrainerScreen(
         topBar = { FeedbackBar(state.lastGrade, onOpenDrawer) },
         bottomBar = { PreviousHandPanel(state.lastGrade) },
     ) { padding ->
-        // The meter trades edges with the buttons, so the buttons stay at the screen's edge under the thumb
-        val meter = @Composable {
-            if (settings.streakMeter) {
-                StreakMeter(
-                    state.streak,
-                    modifier = Modifier.fillMaxHeight().padding(start = if (buttonsOnLeft) 8.dp else 0.dp, end = if (buttonsOnLeft) 0.dp else 8.dp),
-                )
-            }
+        val meter: @Composable RowScope.() -> Unit = {
+            if (settings.streakMeter) StreakMeter(state.streak, modifier = Modifier.fillMaxHeight())
         }
-        val controls = @Composable {
-            Controls(
-                showChartTile = settings.chartButton,
-                alignment = if (buttonsOnLeft) Alignment.Start else Alignment.End,
-                onOpenChart = onOpenChart,
-                // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
-                onAnswer = { move -> onAnswer(state.hand, move) },
-            )
+        val meterGap: @Composable RowScope.() -> Unit = {
+            if (settings.streakMeter) Spacer(Modifier.width(8.dp))
         }
-
-        Row(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            if (buttonsOnLeft) controls() else meter()
-
+        val cards: @Composable RowScope.() -> Unit = {
             Column(
                 modifier = Modifier.weight(1f).fillMaxHeight().wrapContentWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -124,8 +110,22 @@ fun StrategyTrainerScreen(
                     state.hand.player.forEach { PlayingCard(it) }
                 }
             }
+        }
+        val controls: @Composable RowScope.() -> Unit = {
+            Controls(
+                showChartTile = settings.chartButton,
+                alignment = if (buttonsOnLeft) AbsoluteAlignment.Left else AbsoluteAlignment.Right,
+                onOpenChart = onOpenChart,
+                // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
+                onAnswer = { move -> onAnswer(state.hand, move) },
+            )
+        }
+        // Left to right. The meter trades edges with the buttons, so the buttons stay at the screen's edge under the thumb.
+        val parts = listOf(meter, meterGap, cards, controls).let { if (buttonsOnLeft) it.reversed() else it }
 
-            if (buttonsOnLeft) meter() else controls()
+        // Left and Right name sides of the screen, so a right-to-left language mustn't reverse the row
+        Row(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp), horizontalArrangement = Arrangement.Absolute.Left) {
+            parts.forEach { part -> part() }
         }
     }
 }
@@ -190,37 +190,35 @@ private fun FeedbackText(grade: Grade) {
     )
 }
 
-/** A hand's label over its cards, with its [total], when given, on the label's baseline at the cards' right edge, as in Blackjack Ace. */
+/** A hand's label over its cards, with its [total], when given, on the label's line at the cards' right edge, as in Blackjack Ace. */
 @Composable
 private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, cards: @Composable () -> Unit) {
     val color = MaterialTheme.colorScheme.primary
 
-    Layout(
-        contents = listOf<@Composable () -> Unit>(
-            { Text(text = label, color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall) },
-            { total?.let { Text(text = it, color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge) } },
-            { OverlappingCards(content = cards) },
-        ),
-        modifier = modifier,
-    ) { (labelMeasurables, totalMeasurables, cardMeasurables), constraints ->
-        val gap = LabelGap.roundToPx()
-        val label = labelMeasurables.single().measure(Constraints(maxWidth = constraints.maxWidth))
-        val total = totalMeasurables.singleOrNull()?.measure(Constraints(maxWidth = (constraints.maxWidth - label.width - gap).coerceAtLeast(0)))
-
-        // The two texts differ in size, so whichever sits lower on the shared baseline is pushed down
-        val labelTop = total?.let { maxOf(0, it[FirstBaseline] - label[FirstBaseline]) } ?: 0
-        val totalTop = total?.let { maxOf(0, label[FirstBaseline] - it[FirstBaseline]) } ?: 0
-        val headerHeight = maxOf(labelTop + label.height, totalTop + (total?.height ?: 0))
-        val cards = cardMeasurables.single().measure(
-            Constraints(maxWidth = constraints.maxWidth, maxHeight = (constraints.maxHeight - headerHeight - gap).coerceAtLeast(0)),
-        )
-        val width = maxOf(cards.width, label.width + (total?.let { gap + it.width } ?: 0))
-
-        layout(width, (headerHeight + gap + cards.height).coerceIn(constraints.minHeight, constraints.maxHeight)) {
-            label.placeRelative(0, labelTop)
-            total?.placeRelative(width - total.width, totalTop)
-            cards.placeRelative(0, headerHeight + gap)
+    // As wide as the cards, unless the label and the total need more, so the total ends where the cards do
+    Column(modifier = modifier.width(IntrinsicSize.Max), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f).alignByBaseline(),
+                color = color,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            total?.let {
+                // A total broken over two lines would read as two numbers
+                Text(
+                    text = it,
+                    modifier = Modifier.alignByBaseline(),
+                    color = color,
+                    fontWeight = FontWeight.Bold,
+                    softWrap = false,
+                    maxLines = 1,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
         }
+        OverlappingCards(modifier = Modifier.weight(1f, fill = false), content = cards)
     }
 }
 

@@ -108,7 +108,11 @@ internal fun Sp21AceApp(
                 settings = it
                 settingsStore.save(it)
             },
-            onClearHistory = historyStore::clear,
+            onClearHistory = {
+                historyStore.clear()
+                // The meter's streak lives in the trainer, not in the history, so the clear has to reach it too
+                trainer = trainer.copy(streak = 0)
+            },
         )
     }
 }

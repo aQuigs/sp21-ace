@@ -45,6 +45,7 @@ import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
 import com.aquigs.sp21ace.ui.accuracy.cardTexts
+import com.aquigs.sp21ace.ui.accuracy.square
 import com.aquigs.sp21ace.ui.hands.handTypeSwitch
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -148,18 +149,22 @@ class AppShellTest {
     }
 
     @Test
-    fun clearingThePracticeHistoryLeavesAccuracyAndItsHeatmapWithNoAnswers() {
+    fun clearingThePracticeHistoryResetsTheStreakMeterAccuracyAndItsHeatmap() {
         // Right on hard 16 vs A
         compose.onNodeWithContentDescription(string(R.string.move_hit)).performClick()
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, 1)).assertIsDisplayed()
 
         openFromDrawer(R.string.settings)
         compose.onNodeWithText(string(R.string.clear_practice_history)).performClick()
         compose.onNodeWithText(string(R.string.clear)).performClick()
         compose.onNodeWithContentDescription(string(R.string.back)).performClick()
+
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, 0)).assertIsDisplayed()
+
         openFromDrawer(R.string.accuracy)
 
         assertEquals(compose.activity.accuracyCardTexts(R.string.overall, string(R.string.no_data), correct = 0, incorrect = 0), overallCard())
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.square_no_answers, "16", "A", string(R.string.move_hit))).assertExists()
+        compose.square("16 vs A: Hit, no answers", "H")
     }
 
     @Test

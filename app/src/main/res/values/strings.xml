@@ -33,7 +33,7 @@
     <string name="streak_meter">Streak meter</string>
     <string name="clear_practice_history">Clear practice history</string>
     <string name="clear_history_title">Clear history</string>
-    <string name="clear_history_message">Are you sure you want to clear your practice history? This resets everything built on it: the Accuracy screen and its heatmap, the accuracy on Customize Hands, and which hands Prioritize worse hands deals more often.</string>
+    <string name="clear_history_message">Are you sure you want to clear your practice history? This resets everything built on it: Accuracy and its heatmap, the accuracy shown in Customize Hands, which hands Prioritize worse hands favors, and the streak meter.</string>
     <string name="cancel">Cancel</string>
     <string name="clear">Clear</string>
 

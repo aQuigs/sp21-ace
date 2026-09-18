@@ -3,13 +3,15 @@ package com.aquigs.sp21ace.ui.trainer
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.DeviceConfigurationOverride
+import androidx.compose.ui.test.FontScale
+import androidx.compose.ui.test.LayoutDirection
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
@@ -22,8 +24,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.unit.Density
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -67,11 +70,14 @@ class StrategyTrainerScreenTest {
 
     private fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
 
+    private fun SemanticsNodeInteraction.textLayout(): TextLayoutResult =
+        mutableListOf<TextLayoutResult>().also { fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }.single()
+
     private fun showTrainer(
         modifier: Modifier = Modifier,
         first: TrainerHand = sixteenVsAce,
         deals: List<TrainerHand> = listOf(eightsVsSix),
-        fontScale: Float? = null,
+        configuration: DeviceConfigurationOverride = DeviceConfigurationOverride { content -> content() },
     ) {
         val chart = StrategyCharts.forRules(RuleSet.S17)
         // Only these hands are left to deal, so grading one answer more would throw
@@ -79,9 +85,7 @@ class StrategyTrainerScreenTest {
         var trainer by mutableStateOf(TrainerState(first))
 
         compose.setContent {
-            val density = LocalDensity.current
-
-            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale ?: density.fontScale)) {
+            DeviceConfigurationOverride(configuration) {
                 Sp21AceTheme {
                     StrategyTrainerScreen(
                         state = trainer,
@@ -221,6 +225,18 @@ class StrategyTrainerScreenTest {
     }
 
     @Test
+    fun inARightToLeftLanguageTheButtonsKeepToTheSideOfTheScreenTheSettingNames() {
+        settings = Settings(buttonLocation = ButtonLocation.LEFT)
+        showTrainer(configuration = DeviceConfigurationOverride.LayoutDirection(LayoutDirection.Rtl))
+
+        assertTrue(button(Move.HIT).getBoundsInRoot().right <= bounds(string(R.string.face_down_card)).left)
+
+        settings = Settings(buttonLocation = ButtonLocation.RIGHT)
+
+        assertTrue(button(Move.HIT).getBoundsInRoot().left >= bounds("Ace of spades").right)
+    }
+
+    @Test
     fun handTotalsShowOnTheLabelsLinesAtTheCardsRightEdgeAndHideAgain() {
         // A soft 17 reads as the chart's soft row, and a king as its ten column
         showTrainer(first = softSeventeenVsKing)
@@ -261,16 +277,22 @@ class StrategyTrainerScreenTest {
     }
 
     @Test
-    fun onANarrowPhoneAtTheLargestFontSizeTheButtonsOnTheLeftCoverNeitherTheCardsNorTheStreakMeter() {
-        settings = Settings(buttonLocation = ButtonLocation.LEFT)
-        // Android eases its largest font size down, so doubling every size is the harder case
-        showTrainer(Modifier.size(360.dp, 640.dp), fontScale = 2f)
+    fun onANarrowPhoneAtTheLargestFontSizeTheButtonsOnTheLeftCoverNothingAndTheTotalsKeepToOneLine() {
+        // The dealer's two-digit total and the player's soft one are the widest totals there are
+        settings = Settings(buttonLocation = ButtonLocation.LEFT, handTotals = true)
+        showTrainer(Modifier.size(360.dp, 640.dp), first = softSeventeenVsKing, configuration = DeviceConfigurationOverride.FontScale(2f))
 
-        val controls = Move.entries.map { bounds(string(it.displayName)) } + bounds(string(R.string.open_strategy_chart))
-        val others = listOf(string(R.string.face_down_card), "Ace of spades", "9 of clubs", "7 of diamonds", string(R.string.streak_count, 0)).map(::bounds)
+        val controls = Move.entries.map { button(it).getBoundsInRoot() } + bounds(string(R.string.open_strategy_chart))
+        val texts = listOf(string(R.string.dealer), "10", string(R.string.you), "A-6").map { compose.onNodeWithText(it) }
+        val others = listOf(string(R.string.face_down_card), "King of hearts", "Ace of hearts", "6 of diamonds", string(R.string.streak_count, 0))
+            .map(::bounds) + texts.map { it.getBoundsInRoot() }
 
         for (control in controls) {
             for (other in others) assertFalse("$control overlaps $other", control.overlaps(other))
+        }
+        for (text in texts) {
+            val layout = text.textLayout()
+            assertTrue("${layout.layoutInput.text} wraps or clips", layout.lineCount == 1 && !layout.hasVisualOverflow)
         }
     }
 }
