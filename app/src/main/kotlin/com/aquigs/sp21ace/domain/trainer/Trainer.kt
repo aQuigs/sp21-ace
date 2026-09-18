@@ -22,19 +22,15 @@ data class TrainerState(val hand: TrainerHand, val lastGrade: Grade? = null, val
 data class Answered(val state: TrainerState, val grade: Grade)
 
 /**
- * Grades the answer to [asked] and deals the next hand at once, because the trainer never waits for a continue tap. An
- * answer to a hand no longer on the table, such as a second tap before the screen redraws, grades nothing: null.
+ * Grades the answer to [asked] and deals the next hand at once, because the trainer never waits for a continue tap. [deal] is
+ * handed the grade, so a deal that weighs answers can count this one. An answer to a hand no longer on the table, such as a
+ * second tap before the screen redraws, grades nothing: null.
  */
-fun TrainerState.answer(
-    asked: TrainerHand,
-    move: Move,
-    chart: StrategyChart,
-    deal: () -> TrainerHand = ::dealTrainerHand,
-): Answered? {
+fun TrainerState.answer(asked: TrainerHand, move: Move, chart: StrategyChart, deal: (Grade) -> TrainerHand): Answered? {
     if (asked != hand) return null
 
     val grade = Grade(hand, chart.play(hand.player, hand.upcard), move, chart.firstMove(hand.player, hand.upcard))
-    return Answered(copy(hand = deal(), lastGrade = grade, streak = nextStreak(streak, grade.isCorrect)), grade)
+    return Answered(copy(hand = deal(grade), lastGrade = grade, streak = nextStreak(streak, grade.isCorrect)), grade)
 }
 
 /** A right answer adds one to a streak, and a wrong one drops it to zero. */

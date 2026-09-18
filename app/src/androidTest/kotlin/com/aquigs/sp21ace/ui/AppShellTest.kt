@@ -19,18 +19,31 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.Sp21AceApp
+import com.aquigs.sp21ace.data.HandCustomizationStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
+import com.aquigs.sp21ace.domain.dealing.HandCustomization
+import com.aquigs.sp21ace.domain.dealing.HandPicker
+import com.aquigs.sp21ace.domain.dealing.HandType
+import com.aquigs.sp21ace.domain.dealing.type
+import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.strategy.ChartTable
+import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
 import com.aquigs.sp21ace.ui.accuracy.cardTexts
+import com.aquigs.sp21ace.ui.hands.handTypeSwitch
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -40,6 +53,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import kotlin.random.Random
 
 @RunWith(AndroidJUnit4::class)
 class AppShellTest {
@@ -50,9 +64,15 @@ class AppShellTest {
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
-    // Their own files, so the tests never overwrite the rules or the history the app itself saved
+    // Their own files, so the tests never overwrite the rules, the customization or the history the app itself saved
     private val store by lazy { TableRulesStore(compose.activity, "table_rules_app_shell_test") }
+    private val handsStore by lazy { HandCustomizationStore(compose.activity, "customize_hands_app_shell_test") }
     private val historyStore by lazy { PracticeHistoryStore(File(compose.activity.filesDir, "practice_history_app_shell_test.txt")) }
+
+    private var handsDealt = 0
+
+    // Deals 16 vs A first and a pair of 8s after every answer, unless a test deals through the picker instead
+    private var dealHand: (HandPicker, List<PracticeAnswer>) -> TrainerHand = { _, _ -> if (handsDealt++ == 0) sixteenVsAce else eightsVsSix }
 
     private fun string(id: Int) = compose.activity.getString(id)
 
@@ -67,18 +87,18 @@ class AppShellTest {
         // Edge to edge like MainActivity, or the status bar inset never reaches the composables
         compose.runOnUiThread { compose.activity.enableEdgeToEdge() }
         store.save(TableRules())
+        handsStore.save(HandCustomization())
         historyStore.clear()
 
-        // The app's own wiring, dealing 16 vs A first and a pair of 8s after every answer
-        var dealt = 0
         compose.setContent {
-            Sp21AceTheme(darkTheme = false) { Sp21AceApp(store, historyStore, deal = { if (dealt++ == 0) sixteenVsAce else eightsVsSix }) }
+            Sp21AceTheme(darkTheme = false) { Sp21AceApp(store, historyStore, handsStore, deal = { picker, history -> dealHand(picker, history) }) }
         }
     }
 
     @After
     fun tearDown() {
         store.save(TableRules())
+        handsStore.save(HandCustomization())
         historyStore.clear()
     }
 
@@ -105,7 +125,7 @@ class AppShellTest {
 
         compose.onNodeWithText(string(R.string.basic_strategy)).assertIsDisplayed()
         drawerItem(R.string.strategy_trainer).assertIsSelected()
-        val items = listOf(R.string.strategy_trainer, R.string.table_rules, R.string.strategy_chart, R.string.accuracy)
+        val items = listOf(R.string.strategy_trainer, R.string.table_rules, R.string.strategy_chart, R.string.customize_hands, R.string.accuracy)
             .map { drawerItem(it).assertIsDisplayed().getBoundsInRoot() }
         items.zipWithNext().forEach { (above, below) -> assertTrue(below.top >= above.bottom) }
     }
@@ -247,5 +267,38 @@ class AppShellTest {
         compose.onNodeWithContentDescription(string(R.string.move_surrender)).performClick()
 
         compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs A. Surrender, otherwise hit").assertIsDisplayed()
+    }
+
+    @Test
+    fun theDrawerOpensCustomizeHandsAndBackFromTheHandsDealtPageReturnsToIt() {
+        openFromDrawer(R.string.customize_hands)
+
+        appBarTitle(R.string.customize_hands).assertIsDisplayed()
+
+        compose.onNode(hasText(string(R.string.hands_dealt)) and hasText(string(R.string.random))).performClick()
+
+        appBarTitle(R.string.hands_dealt).assertIsDisplayed()
+
+        Espresso.pressBack()
+
+        appBarTitle(R.string.customize_hands).assertIsDisplayed()
+    }
+
+    @Test
+    fun withOnlyPairsToSplitSwitchedOnEveryHandDealtIsAPairToSplit() {
+        val pairsSplit = HandType(ChartTable.PAIRS, Move.SPLIT)
+        val random = Random(21)
+        val dealt = mutableListOf<TrainerHand>()
+        dealHand = { picker, history -> picker.pick(history, random).also { dealt += it } }
+
+        openFromDrawer(R.string.customize_hands)
+        HAND_TYPES.filter { it != pairsSplit }.forEach { compose.handTypeSwitch(compose.activity, it).performScrollTo().performClick() }
+        compose.onNodeWithContentDescription(string(R.string.back)).performClick()
+
+        // The hand on the table stays, and each answer deals the next through the switches
+        compose.onNodeWithContentDescription("9 of clubs").assertIsDisplayed()
+        repeat(20) { compose.onNodeWithContentDescription(string(R.string.move_split)).performClick() }
+
+        assertEquals(List(20) { pairsSplit }, dealt.map { it.type(StrategyCharts.forRules(RuleSet.S17)) })
     }
 }

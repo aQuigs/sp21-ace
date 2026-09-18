@@ -44,6 +44,7 @@ import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.PageTabRow
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.components.displayName
+import com.aquigs.sp21ace.ui.components.percentText
 import kotlinx.coroutines.delay
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
@@ -152,7 +153,7 @@ private fun StreakCard(longest: Int) {
 private fun AccuracyCard(title: String, tally: Tally) {
     StatCard(title = title) {
         Figure(
-            value = tally.accuracyPermille?.let { stringResource(R.string.percentage, it / 10.0) },
+            value = tally.percentText(),
             label = stringResource(R.string.accuracy),
             color = MaterialTheme.colorScheme.primary,
         )

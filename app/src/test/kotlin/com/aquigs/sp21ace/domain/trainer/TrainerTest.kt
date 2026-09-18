@@ -29,7 +29,7 @@ class TrainerTest {
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
     // The trainer after a graded answer, for tests about what it leaves rather than the grade
-    private fun TrainerState.after(asked: TrainerHand, move: Move, deal: () -> TrainerHand) = requireNotNull(answer(asked, move, s17, deal)).state
+    private fun TrainerState.after(asked: TrainerHand, move: Move, deal: (Grade) -> TrainerHand) = requireNotNull(answer(asked, move, s17, deal)).state
 
     @Test
     fun gradesTheHandOnTheTableThenDealsTheNext() {
@@ -96,7 +96,7 @@ class TrainerTest {
     fun comesBackEqualFromSerialization() {
         // Android serializes the saved state once the app is in the background, which recreating the activity in a device test doesn't.
         // A right answer from a streak, so a streak field lost in transit can't hide behind its default of 0.
-        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { dealTrainerHand() }
+        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { sixteenVsAce }
 
         val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(state) } }.toByteArray()
 

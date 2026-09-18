@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.dealing.HandCustomization
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.TableRules
@@ -36,6 +37,8 @@ import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.accuracy.AccuracyScreen
 import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
+import com.aquigs.sp21ace.ui.hands.CustomizeHandsScreen
+import com.aquigs.sp21ace.ui.hands.HandsDealtScreen
 import com.aquigs.sp21ace.ui.rules.Soft17Screen
 import com.aquigs.sp21ace.ui.rules.TableRulesScreen
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
@@ -47,6 +50,8 @@ enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     StrategyChart(R.string.strategy_chart, isRoot = false),
     TableRules(R.string.table_rules, isRoot = false),
     Soft17(R.string.soft_17, isRoot = false),
+    CustomizeHands(R.string.customize_hands, isRoot = false),
+    HandsDealt(R.string.hands_dealt, isRoot = false),
     Accuracy(R.string.accuracy, isRoot = false),
 }
 
@@ -56,6 +61,7 @@ private val BASIC_STRATEGY_ITEMS = listOf(
     Destination.StrategyTrainer to R.drawable.ic_home,
     Destination.TableRules to R.drawable.ic_table_rules,
     Destination.StrategyChart to R.drawable.ic_chart,
+    Destination.CustomizeHands to R.drawable.ic_customize_hands,
     Destination.Accuracy to R.drawable.ic_accuracy,
 )
 
@@ -66,9 +72,11 @@ private val DrawerWidth = 280.dp
 fun AppShell(
     trainer: TrainerState,
     rules: TableRules,
+    customization: HandCustomization,
     history: List<PracticeAnswer>,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onRulesChange: (TableRules) -> Unit,
+    onCustomizationChange: (HandCustomization) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A root screen, then the sub-pages opened over it, so Back retraces the way in
@@ -124,6 +132,14 @@ fun AppShell(
             Destination.StrategyChart -> StrategyChartScreen(rules.ruleSet, onBack = { back() })
             Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = { back() })
             Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = { back() })
+            Destination.CustomizeHands -> CustomizeHandsScreen(
+                customization,
+                history,
+                onCustomizationChange,
+                onOpenHandsDealt = { open(Destination.HandsDealt) },
+                onBack = { back() },
+            )
+            Destination.HandsDealt -> HandsDealtScreen(customization, onCustomizationChange, onBack = { back() })
             Destination.Accuracy -> AccuracyScreen(history, rules.ruleSet, onBack = { back() })
         }
     }
