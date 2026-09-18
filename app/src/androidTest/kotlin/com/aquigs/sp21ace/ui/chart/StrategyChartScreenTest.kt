@@ -22,7 +22,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -33,6 +32,7 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.legend
+import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -171,7 +171,7 @@ class StrategyChartScreenTest {
         // the line needs with what its box allows
         val cutShort = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)
             .fetchSemanticsNodes()
-            .map { node -> mutableListOf<TextLayoutResult>().also { node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }.single() }
+            .map { it.textLayout() }
             .filter { it.layoutInput.text.text in gridText }
             .filter { it.multiParagraph.intrinsics.maxIntrinsicWidth > it.layoutInput.constraints.maxWidth || it.multiParagraph.height > it.layoutInput.constraints.maxHeight }
             .map { it.layoutInput.text.text }

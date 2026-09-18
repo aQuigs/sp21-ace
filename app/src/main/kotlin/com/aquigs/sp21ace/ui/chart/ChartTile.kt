@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Action
@@ -42,19 +43,22 @@ fun ChartTile(onClick: () -> Unit, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.surfaceBright,
         shadowElevation = 3.dp,
     ) {
-        // The letters are for the eye; a screen reader says what the tile does
-        Column(
-            modifier = Modifier.fillMaxSize().padding(10.dp).clearAndSetSemantics {},
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            TILE_ACTIONS.forEach { row ->
-                Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    row.forEach { action ->
-                        Box(
-                            modifier = Modifier.weight(1f).fillMaxHeight().clip(SwatchShape).actionFill(action, colors),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            ProvideDefaultFontScale { Text(text = action.code, fontSize = 9.sp, maxLines = 1) }
+        ProvideDefaultFontScale {
+            // The letters are for the eye; a screen reader says what the tile does
+            Column(
+                modifier = Modifier.fillMaxSize().padding(10.dp).clearAndSetSemantics {},
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                TILE_ACTIONS.forEach { row ->
+                    Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        row.forEach { action ->
+                            Box(
+                                modifier = Modifier.weight(1f).fillMaxHeight().clip(SwatchShape).actionFill(action, colors),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                // The body style's 24 sp line is taller than the square and sets the letter low
+                                Text(text = action.code, fontSize = 9.sp, lineHeight = 1.em, maxLines = 1)
+                            }
                         }
                     }
                 }

@@ -239,25 +239,25 @@ private fun Controls(showChartTile: Boolean, alignment: Alignment.Horizontal, on
 private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Move.entries.forEach { move ->
-            val name = stringResource(move.displayName)
+    ProvideDefaultFontScale {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Move.entries.forEach { move ->
+                val name = stringResource(move.displayName)
 
-            OutlinedButton(
-                onClick = { onAnswer(move) },
-                // Shrink evenly on a screen too short for five, such as a small phone at a large font size, rather than squeezing out the last
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .sizeIn(maxWidth = ButtonSize, maxHeight = ButtonSize)
-                    .aspectRatio(1f)
-                    .semantics { contentDescription = name },
-                shape = CircleShape,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
-                border = BorderStroke(3.dp, color),
-                contentPadding = PaddingValues(0.dp),
-            ) {
-                // The capitals and SURR. are for the eye; a screen reader says the move's name
-                ProvideDefaultFontScale {
+                OutlinedButton(
+                    onClick = { onAnswer(move) },
+                    // Shrink evenly on a screen too short for five, such as a small phone at a large font size, rather than squeezing out the last
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .sizeIn(maxWidth = ButtonSize, maxHeight = ButtonSize)
+                        .aspectRatio(1f)
+                        .semantics { contentDescription = name },
+                    shape = CircleShape,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
+                    border = BorderStroke(3.dp, color),
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    // The capitals and SURR. are for the eye; a screen reader says the move's name
                     Text(
                         text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
                         fontWeight = FontWeight.Bold,

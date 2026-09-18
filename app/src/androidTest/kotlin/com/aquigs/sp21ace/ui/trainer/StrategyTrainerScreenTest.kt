@@ -8,12 +8,13 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
@@ -47,7 +48,9 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.answer
+import com.aquigs.sp21ace.ui.assertFitsOnOneLine
 import com.aquigs.sp21ace.ui.components.displayName
+import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -76,39 +79,16 @@ class StrategyTrainerScreenTest {
 
     private fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
 
-    private fun DpRect.encloses(other: DpRect) = left <= other.left && top <= other.top && other.right <= right && other.bottom <= bottom
-
-    private fun SemanticsNodeInteraction.textLayout(): TextLayoutResult =
-        mutableListOf<TextLayoutResult>().also { fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }.single()
-
-    // By where the text's line ends, since a text given more room than it needs is laid out at the full width and reads as
-    // overflowing its node, and Compose pads a letter-spaced text's intrinsic width by half a pixel it never draws
-    private fun SemanticsNodeInteraction.assertFitsOnOneLine() {
-        val layout = textLayout()
-        val ends = layout.getLineRight(0)
-        val cutShort = layout.multiParagraph.didExceedMaxLines
-
-        assertTrue(
-            "${layout.layoutInput.text} ends at ${ends}px of ${layout.size.width}px on ${layout.lineCount} lines, cut short: $cutShort",
-            layout.lineCount == 1 && !cutShort && ends <= layout.size.width,
-        )
-    }
+    private fun Rect.encloses(other: Rect) = left <= other.left && top <= other.top && other.right <= right && other.bottom <= bottom
 
     // The unmerged tree still holds the text a control hides from a screen reader
-    private fun textsInside(description: String) = compose.onAllNodes(
+    private fun textsInside(description: String, count: Int): List<SemanticsNode> = compose.onAllNodes(
         hasAnyAncestor(hasContentDescription(description)) and SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult),
         useUnmergedTree = true,
-    )
+    ).fetchSemanticsNodes().also { assertEquals(description, count, it.size) }
 
     // Each answer button holds its label, and the chart tile a letter for each of its four colours
     private fun controlTexts() = Move.entries.map { string(it.displayName) to 1 } + (string(R.string.open_strategy_chart) to 4)
-
-    // The tree reports a label's style rather than the size autoSize drew it at, so the drawn size shows only in the room its
-    // line needs
-    private fun drawnTexts(description: String, count: Int): List<TextLayoutResult> {
-        val texts = textsInside(description).assertCountEquals(count)
-        return (0 until count).map { texts[it].textLayout() }
-    }
 
     private fun assertFullSize(description: String) = bounds(description).let {
         assertEquals(description, 64f, it.width.value, 0.5f)
@@ -353,7 +333,7 @@ class StrategyTrainerScreenTest {
         for (control in controls) {
             for (other in others) assertFalse("$control overlaps $other", control.overlaps(other))
         }
-        texts.forEach { it.assertFitsOnOneLine() }
+        texts.forEach { it.fetchSemanticsNode().textLayout().assertFitsOnOneLine() }
     }
 
     @Test
@@ -364,49 +344,40 @@ class StrategyTrainerScreenTest {
             settings = Settings(buttonLocation = location)
 
             for ((description, count) in controlTexts()) {
-                val control = bounds(description)
-                val texts = textsInside(description).assertCountEquals(count)
+                val control = compose.onNodeWithContentDescription(description).fetchSemanticsNode().boundsInRoot
 
-                for (index in 0 until count) {
-                    texts[index].assertFitsOnOneLine()
-                    val text = texts[index].getBoundsInRoot()
-                    assertTrue("With the buttons $location, $text is outside $description's $control", control.encloses(text))
+                for (text in textsInside(description, count)) {
+                    text.textLayout().assertFitsOnOneLine()
+                    assertTrue("With the buttons $location, ${text.boundsInRoot} is outside $description's $control", control.encloses(text.boundsInRoot))
                 }
             }
         }
     }
 
     @Test
-    fun atTheDefaultFontSizeTheButtonsAndTheTileAreFullSizeWithTheirTextAtItsLargest() {
-        showTrainer(configuration = DeviceConfigurationOverride.FontScale(1f))
-
-        for ((description, count) in controlTexts()) {
-            assertFullSize(description)
-
-            val fontSize = if (description == string(R.string.open_strategy_chart)) 9.sp else 13.sp
-            for (drawn in drawnTexts(description, count)) {
-                val input = drawn.layoutInput
-                val atFontSize = TextMeasurer(input.fontFamilyResolver, compose.density, input.layoutDirection)
-                    .measure(input.text, input.style.copy(fontSize = fontSize), maxLines = 1)
-                assertEquals("${input.text} at $fontSize", atFontSize.multiParagraph.intrinsics.maxIntrinsicWidth, drawn.multiParagraph.intrinsics.maxIntrinsicWidth, 0.01f)
-            }
-        }
-    }
-
-    @Test
-    fun atDoubleTheFontSizeTheButtonsAndTheTileLookAsTheyDoAtTheDefaultSize() {
+    fun atTheDefaultFontSizeTheButtonsAndTheTileAreFullSizeWithTheirLabelsAtTheirLargestAndAtDoubleItTheyLookTheSame() {
         var fontScale by mutableFloatStateOf(1f)
         // Read in composition, so a new scale lays the same screen out again
         showTrainer(configuration = DeviceConfigurationOverride { content -> DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale), content) })
 
-        fun looks() = controlTexts().flatMap { (description, count) ->
-            drawnTexts(description, count).map { "${it.layoutInput.text} needs ${it.multiParagraph.intrinsics.maxIntrinsicWidth}x${it.multiParagraph.height}px in ${it.size}" }
+        fun drawn() = controlTexts().associate { (description, count) ->
+            assertFullSize(description)
+            description to textsInside(description, count).map { it.textLayout().apply { assertFitsOnOneLine() } }
         }
-        val atDefault = looks()
+        fun sizes(texts: Map<String, List<TextLayoutResult>>) =
+            texts.values.flatten().map { "${it.layoutInput.text} needs ${it.multiParagraph.intrinsics.maxIntrinsicWidth}x${it.multiParagraph.height}px in ${it.size}" }
+        val atDefault = drawn()
+
+        // The tree reports a label's style rather than the size autoSize drew it at, so the drawn size shows in how wide its line is
+        for (move in Move.entries) {
+            val label = atDefault.getValue(string(move.displayName)).single()
+            val input = label.layoutInput
+            val atLargest = TextMeasurer(input.fontFamilyResolver, compose.density, input.layoutDirection).measure(input.text, input.style.copy(fontSize = 13.sp), maxLines = 1)
+            assertEquals("${input.text}", atLargest.multiParagraph.intrinsics.maxIntrinsicWidth, label.multiParagraph.intrinsics.maxIntrinsicWidth, 0.01f)
+        }
 
         fontScale = 2f
 
-        controlTexts().forEach { (description, _) -> assertFullSize(description) }
-        assertEquals(atDefault, looks())
+        assertEquals(sizes(atDefault), sizes(drawn()))
     }
 }
