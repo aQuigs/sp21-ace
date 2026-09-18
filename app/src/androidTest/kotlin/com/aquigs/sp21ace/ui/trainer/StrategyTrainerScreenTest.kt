@@ -73,6 +73,14 @@ class StrategyTrainerScreenTest {
     private fun SemanticsNodeInteraction.textLayout(): TextLayoutResult =
         mutableListOf<TextLayoutResult>().also { fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }.single()
 
+    // A screen reader hears the meter as one item, so its numbers and caption are only in the unmerged tree. The caption
+    // centres under the track.
+    private fun meterNumbersAreRightOfTheTrack(): Boolean {
+        fun centre(text: String) = compose.onNodeWithText(text, useUnmergedTree = true).getBoundsInRoot().let { (it.left + it.right) / 2 }
+
+        return centre("256") > centre(string(R.string.streak))
+    }
+
     private fun showTrainer(
         modifier: Modifier = Modifier,
         first: TrainerHand = sixteenVsAce,
@@ -225,15 +233,28 @@ class StrategyTrainerScreenTest {
     }
 
     @Test
-    fun inARightToLeftLanguageTheButtonsKeepToTheSideOfTheScreenTheSettingNames() {
+    fun theStreakMetersNumbersFaceTheEdgeOfTheScreenOnEitherSide() {
+        showTrainer()
+
+        assertFalse(meterNumbersAreRightOfTheTrack())
+
+        settings = Settings(buttonLocation = ButtonLocation.LEFT)
+
+        assertTrue(meterNumbersAreRightOfTheTrack())
+    }
+
+    @Test
+    fun inARightToLeftLanguageTheButtonsAndTheMetersNumbersKeepToTheSidesTheSettingNames() {
         settings = Settings(buttonLocation = ButtonLocation.LEFT)
         showTrainer(configuration = DeviceConfigurationOverride.LayoutDirection(LayoutDirection.Rtl))
 
         assertTrue(button(Move.HIT).getBoundsInRoot().right <= bounds(string(R.string.face_down_card)).left)
+        assertTrue(meterNumbersAreRightOfTheTrack())
 
         settings = Settings(buttonLocation = ButtonLocation.RIGHT)
 
         assertTrue(button(Move.HIT).getBoundsInRoot().left >= bounds("Ace of spades").right)
+        assertFalse(meterNumbersAreRightOfTheTrack())
     }
 
     @Test

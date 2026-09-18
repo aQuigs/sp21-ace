@@ -84,7 +84,8 @@ fun StrategyTrainerScreen(
         bottomBar = { PreviousHandPanel(state.lastGrade) },
     ) { padding ->
         val meter: @Composable RowScope.() -> Unit = {
-            if (settings.streakMeter) StreakMeter(state.streak, modifier = Modifier.fillMaxHeight())
+            // As in Blackjack Ace, the numbers face the screen's edge
+            if (settings.streakMeter) StreakMeter(state.streak, modifier = Modifier.fillMaxHeight(), numbersOnRight = buttonsOnLeft)
         }
         val meterGap: @Composable RowScope.() -> Unit = {
             if (settings.streakMeter) Spacer(Modifier.width(8.dp))
