@@ -2,7 +2,7 @@ package com.aquigs.sp21ace.domain.cards
 
 import java.io.Serializable
 
-enum class Suit { SPADES, HEARTS, DIAMONDS, CLUBS }
+enum class Suit(val letter: Char) { SPADES('s'), HEARTS('h'), DIAMONDS('d'), CLUBS('c') }
 
 /** A Spanish deck has no 10-spots, so J, Q and K are its only ten-value cards. */
 enum class Rank(val label: String, val value: Int) {
@@ -24,6 +24,18 @@ data class Card(val rank: Rank, val suit: Suit) : Serializable
 
 /** [decks] Spanish decks of 48 cards each, unshuffled. */
 fun spanishShoe(decks: Int): List<Card> = List(decks) { Rank.entries.flatMap { rank -> Suit.entries.map { Card(rank, it) } } }.flatten()
+
+/** A card written as its rank label and suit letter, such as "7h" or "Kc". */
+val Card.code: String get() = "${rank.label}${suit.letter}"
+
+// Every code reads as one of these, so answers loaded by the thousand share their cards
+private val CARDS_BY_CODE: Map<String, Card> = spanishShoe(decks = 1).associateBy { it.code }
+
+/** The card [code] names, such as "7h". */
+fun card(code: String): Card = requireNotNull(CARDS_BY_CODE[code]) { "Unknown card: $code" }
+
+/** The cards [codes] names, space-separated, such as "As 6d". */
+fun cards(codes: String): List<Card> = codes.split(" ").map(::card)
 
 /** A soft total counts one ace as 11, which it does only while that doesn't bust the hand. */
 data class HandTotal(val value: Int, val soft: Boolean)

@@ -23,15 +23,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.cards.Card
-import com.aquigs.sp21ace.domain.cards.Rank
-import com.aquigs.sp21ace.domain.cards.Suit
+import com.aquigs.sp21ace.domain.cards.card
+import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.answer
+import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -45,8 +45,8 @@ class StrategyTrainerScreenTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     // Hard 16 vs A is a hit when the dealer stands on soft 17
-    private val sixteenVsAce = TrainerHand(listOf(Card(Rank.NINE, Suit.CLUBS), Card(Rank.SEVEN, Suit.DIAMONDS)), Card(Rank.ACE, Suit.SPADES))
-    private val eightsVsSix = TrainerHand(listOf(Card(Rank.EIGHT, Suit.HEARTS), Card(Rank.EIGHT, Suit.SPADES)), Card(Rank.SIX, Suit.DIAMONDS))
+    private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
+    private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
@@ -62,7 +62,7 @@ class StrategyTrainerScreenTest {
             Sp21AceTheme {
                 StrategyTrainerScreen(
                     state = trainer,
-                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart, next::next) },
+                    onAnswer = { asked, move -> trainer.answer(asked, move, chart, next::next)?.let { trainer = it.state } },
                     onOpenDrawer = {},
                     onOpenChart = {},
                     modifier = modifier,

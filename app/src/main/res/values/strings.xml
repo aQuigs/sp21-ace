@@ -5,6 +5,7 @@
     <string name="strategy_trainer">Strategy Trainer</string>
     <string name="strategy_chart">Strategy Chart</string>
     <string name="table_rules">Table Rules</string>
+    <string name="accuracy">Accuracy</string>
     <string name="open_menu">Open navigation menu</string>
     <string name="back">Back</string>
 
@@ -47,6 +48,18 @@
     <string name="dealers_upcard">Dealer\'s upcard</string>
     <string name="your_hand">Your hand</string>
     <string name="square_description">%1$s vs %2$s: %3$s</string>
+
+    <string name="all_hands">All</string>
+    <string name="today">Today</string>
+    <string name="week">Week</string>
+    <string name="month">Month</string>
+    <string name="all_time">All Time</string>
+    <string name="overall">Overall</string>
+    <string name="correct">Correct</string>
+    <string name="incorrect">Incorrect</string>
+    <string name="longest_streak">Longest Streak</string>
+    <string name="percentage">%1$.1f%%</string>
+    <string name="no_data">--</string>
 
     <string name="face_down_card">Face-down card</string>
     <string name="card_name">%1$s of %2$s</string>

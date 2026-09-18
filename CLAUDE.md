@@ -32,10 +32,10 @@ Files headed `# Shared script:` or `# Shared workflow:` are copies of files in a
 ```text
 app/src/main/kotlin/com/aquigs/sp21ace/
 ├── MainActivity.kt      # composition root: wires domain state into the UI
-├── data/                # storage adapters (SharedPreferences)
-├── domain/              # pure Kotlin: cards, rules, strategy; no Android imports
+├── data/                # storage adapters (SharedPreferences, files)
+├── domain/              # pure Kotlin: cards, rules, strategy, practice history; no Android imports
 └── ui/                  # Compose: screens, components, theme
-app/src/test/            # JVM unit tests (domain)
+app/src/test/            # JVM unit tests (domain, and data's line formats)
 app/src/androidTest/     # Compose UI tests and the activity smoke test (emulator)
 scripts/                 # emulator, run, screenshot helpers (zsh)
 ```

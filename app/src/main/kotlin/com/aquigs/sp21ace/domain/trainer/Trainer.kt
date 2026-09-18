@@ -18,21 +18,27 @@ data class Grade(val hand: TrainerHand, val play: Play, val answer: Move, val co
  */
 data class TrainerState(val hand: TrainerHand, val lastGrade: Grade? = null, val streak: Int = 0) : Serializable
 
+/** A graded answer, and the trainer it leaves: the next hand dealt, the verdict shown and the streak moved on. */
+data class Answered(val state: TrainerState, val grade: Grade)
+
 /**
  * Grades the answer to [asked] and deals the next hand at once, because the trainer never waits for a continue tap. An
- * answer to a hand no longer on the table, such as a second tap before the screen redraws, changes nothing.
+ * answer to a hand no longer on the table, such as a second tap before the screen redraws, grades nothing: null.
  */
 fun TrainerState.answer(
     asked: TrainerHand,
     move: Move,
     chart: StrategyChart,
     deal: () -> TrainerHand = ::dealTrainerHand,
-): TrainerState {
-    if (asked != hand) return this
+): Answered? {
+    if (asked != hand) return null
 
     val grade = Grade(hand, chart.play(hand.player, hand.upcard), move, chart.firstMove(hand.player, hand.upcard))
-    return copy(hand = deal(), lastGrade = grade, streak = if (grade.isCorrect) streak + 1 else 0)
+    return Answered(copy(hand = deal(), lastGrade = grade, streak = nextStreak(streak, grade.isCorrect)), grade)
 }
+
+/** A right answer adds one to a streak, and a wrong one drops it to zero. */
+fun nextStreak(streak: Int, isCorrect: Boolean): Int = if (isCorrect) streak + 1 else 0
 
 /** The streak meter's doubling scale. */
 val STREAK_RUNGS = listOf(0, 1, 2, 4, 8, 16, 32, 64, 128, 256)

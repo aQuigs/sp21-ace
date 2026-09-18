@@ -1,0 +1,162 @@
+package com.aquigs.sp21ace.domain.history
+
+import com.aquigs.sp21ace.domain.cards.Suit
+import com.aquigs.sp21ace.domain.cards.card
+import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.domain.cards.isBlackjack
+import com.aquigs.sp21ace.domain.cards.spanishShoe
+import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
+import com.aquigs.sp21ace.domain.strategy.chartRow
+import com.aquigs.sp21ace.domain.strategy.firstMove
+import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+import java.time.Duration
+import java.time.Instant
+
+class AccuracyTest {
+    private val now = Instant.parse("2026-09-17T12:00:00Z")
+
+    private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
+    private val softSeventeenVsTen = TrainerHand(cards("As 6d"), card("Kh"))
+    private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
+
+    private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT) =
+        PracticeAnswer(at, RuleSet.S17, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
+
+    private fun List<PracticeAnswer>.figures(period: Period = Period.ALL_TIME, hands: HandFilter = HandFilter.ALL, at: Instant = now) =
+        accuracy(period, hands, at)
+
+    private fun streaks(rights: String) = rights.map { answer(right = it == 'R') }
+
+    @Test
+    fun todayWeekAndMonthReachBack24HoursSevenDaysAnd28DaysAndAllTimeHasNoStart() {
+        assertEquals(Instant.parse("2026-09-16T12:00:00Z"), Period.TODAY.start(now))
+        assertEquals(Instant.parse("2026-09-10T12:00:00Z"), Period.WEEK.start(now))
+        assertEquals(Instant.parse("2026-08-20T12:00:00Z"), Period.MONTH.start(now))
+        assertNull(Period.ALL_TIME.start(now))
+    }
+
+    @Test
+    fun aPeriodCountsAnswersNewerThanWhereItReachesBackTo() {
+        for (period in listOf(Period.TODAY, Period.WEEK, Period.MONTH)) {
+            val start = requireNotNull(period.start(now))
+            val history = listOf(answer(right = false, at = start), answer(at = start.plusMillis(1)))
+
+            assertEquals(period.name, Tally(correct = 1, incorrect = 0), history.figures(period).overall)
+        }
+
+        assertEquals(Tally(correct = 1, incorrect = 0), listOf(answer(at = Instant.EPOCH)).figures(Period.ALL_TIME).overall)
+    }
+
+    @Test
+    fun anAnswerStaysInTodayPastMidnightAndLeavesIt24HoursOn() {
+        val lateAtNight = Instant.parse("2026-09-17T23:00:00Z")
+        val history = listOf(answer(at = lateAtNight))
+
+        assertEquals(1, history.figures(Period.TODAY, at = Instant.parse("2026-09-18T08:00:00Z")).overall.total)
+        assertEquals(0, history.figures(Period.TODAY, at = lateAtNight.plus(Duration.ofHours(24))).overall.total)
+    }
+
+    @Test
+    fun anAnswerStampedAfterNowCountsOnlyUnderAllTime() {
+        // As when the device's clock was set ahead, then put back
+        val history = listOf(answer(at = now), answer(right = false, at = now.plusMillis(1)))
+
+        for (period in listOf(Period.TODAY, Period.WEEK, Period.MONTH)) {
+            assertEquals(period.name, Tally(correct = 1, incorrect = 0), history.figures(period).overall)
+        }
+        assertEquals(Tally(correct = 1, incorrect = 1), history.figures(Period.ALL_TIME).overall)
+    }
+
+    @Test
+    fun eachTabCountsOnlyItsKindOfHand() {
+        val history = listOf(
+            answer(hand = sixteenVsAce),
+            answer(right = false, hand = softSeventeenVsTen),
+            answer(hand = eightsVsSix, correctMove = Move.SPLIT),
+            answer(hand = eightsVsSix, correctMove = Move.SPLIT),
+        )
+
+        assertEquals(
+            mapOf(
+                HandFilter.HARD to Tally(correct = 1, incorrect = 0),
+                HandFilter.SOFT to Tally(correct = 0, incorrect = 1),
+                HandFilter.PAIRS to Tally(correct = 2, incorrect = 0),
+                HandFilter.ALL to Tally(correct = 3, incorrect = 1),
+            ),
+            HandFilter.entries.associateWith { history.figures(hands = it).overall },
+        )
+    }
+
+    @Test
+    fun eachMoveTalliesTheAnswersToHandsThatCalledForItWhateverTheAnswerAndOverallAddsThemUp() {
+        val figures = listOf(
+            answer(correctMove = Move.HIT),
+            answer(right = false, correctMove = Move.HIT),
+            answer(hand = eightsVsSix, correctMove = Move.SPLIT),
+            answer(right = false, hand = TrainerHand(cards("Kc 7d"), card("As")), correctMove = Move.SURRENDER),
+        ).figures()
+
+        assertEquals(
+            mapOf(
+                Move.HIT to Tally(correct = 1, incorrect = 1),
+                Move.STAND to Tally(correct = 0, incorrect = 0),
+                Move.DOUBLE to Tally(correct = 0, incorrect = 0),
+                Move.SPLIT to Tally(correct = 1, incorrect = 0),
+                Move.SURRENDER to Tally(correct = 0, incorrect = 1),
+            ),
+            figures.byMove,
+        )
+        assertEquals(Tally(correct = 2, incorrect = 2), figures.overall)
+    }
+
+    @Test
+    fun noAnswersHaveNoAccuracyButAllWrongOnesHaveNone() {
+        val figures = emptyList<PracticeAnswer>().figures()
+
+        assertEquals(Move.entries.associateWith { Tally(correct = 0, incorrect = 0) }, figures.byMove)
+        assertNull(figures.overall.accuracyPermille)
+        assertEquals(0, Tally(correct = 0, incorrect = 3).accuracyPermille)
+    }
+
+    @Test
+    fun accuracyRoundsDownSoOnlyNoneWrongReadsAsAHundredPercent() {
+        assertEquals(999, Tally(correct = 1999, incorrect = 1).accuracyPermille)
+        assertEquals(1000, Tally(correct = 2000, incorrect = 0).accuracyPermille)
+        assertEquals(666, Tally(correct = 2, incorrect = 1).accuracyPermille)
+        // 29% is a shade under 0.29 as a double, which rounding down in floating point would read as 28.9%
+        assertEquals(290, Tally(correct = 29, incorrect = 71).accuracyPermille)
+    }
+
+    @Test
+    fun theLongestStreakRunsOverEveryAnswerWhateverThePeriodAndTab() {
+        assertEquals(3, streaks("RRWRRRWR").figures().longestStreak)
+        assertEquals(4, streaks("RRWRRRR").figures().longestStreak)
+        assertEquals(0, streaks("WW").figures().longestStreak)
+        assertEquals(0, emptyList<PracticeAnswer>().figures().longestStreak)
+
+        // Three right last month, then a wrong soft hand and two right hard ones today
+        val history = List(3) { answer(at = now.minus(Duration.ofDays(40))) } + answer(right = false, hand = softSeventeenVsTen) + streaks("RR")
+        assertEquals(3, history.figures(Period.TODAY, HandFilter.HARD).longestStreak)
+    }
+
+    @Test
+    fun eachTabHasACardForEveryMoveItsHandsCallForInBlackjackAcesOrder() {
+        val deck = spanishShoe(decks = 1)
+        // The same card twice included, so the suited 7-7 bonus exception is there too
+        val hands = deck.flatMap { first -> deck.map { listOf(first, it) } }.filterNot { it.isBlackjack() }
+        val upcards = deck.filter { it.suit == Suit.SPADES }
+        val called = RuleSet.entries.map(StrategyCharts::forRules).flatMap { chart ->
+            hands.flatMap { hand -> upcards.map { upcard -> chartRow(hand).table to chart.firstMove(hand, upcard) } }
+        }.groupBy({ it.first }, { it.second })
+
+        for (tab in HandFilter.entries) {
+            val moves = (tab.table?.let { called.getValue(it) } ?: called.values.flatten()).toSet()
+            assertEquals(tab.name, listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER).filter { it in moves }, tab.moves)
+        }
+    }
+}
