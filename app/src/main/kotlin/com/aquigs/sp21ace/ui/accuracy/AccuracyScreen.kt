@@ -30,15 +30,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.history.Accuracy
 import com.aquigs.sp21ace.domain.history.HandFilter
 import com.aquigs.sp21ace.domain.history.Period
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
-import com.aquigs.sp21ace.domain.history.inPeriod
-import com.aquigs.sp21ace.domain.history.longestStreak
-import com.aquigs.sp21ace.domain.history.ofHands
-import com.aquigs.sp21ace.domain.history.tally
-import com.aquigs.sp21ace.domain.history.tallyByCorrectMove
+import com.aquigs.sp21ace.domain.history.accuracy
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.trainer.displayName
 import java.time.Clock
@@ -51,7 +48,7 @@ private val MaxCardWidth = 480.dp
 fun AccuracyScreen(history: List<PracticeAnswer>, clock: Clock, onBack: () -> Unit, modifier: Modifier = Modifier) {
     var hands by rememberSaveable { mutableStateOf(HandFilter.HARD) }
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
-    val answers = remember(history, clock, period, hands) { history.inPeriod(period, clock).ofHands(hands) }
+    val accuracy = remember(history, clock, period, hands) { history.accuracy(period, hands, clock) }
 
     SubPage(title = stringResource(R.string.accuracy), onBack = onBack, modifier = modifier) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -75,7 +72,7 @@ fun AccuracyScreen(history: List<PracticeAnswer>, clock: Clock, onBack: () -> Un
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 PeriodChips(selected = period, onSelect = { period = it })
-                Cards(answers, hands, Modifier.widthIn(max = MaxCardWidth).fillMaxWidth().padding(top = 32.dp, bottom = 16.dp))
+                Cards(accuracy, hands, Modifier.widthIn(max = MaxCardWidth).fillMaxWidth().padding(top = 32.dp, bottom = 16.dp))
             }
         }
     }
@@ -92,14 +89,14 @@ private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit) {
 }
 
 @Composable
-private fun Cards(answers: List<PracticeAnswer>, hands: HandFilter, modifier: Modifier = Modifier) {
-    val byMove = answers.tallyByCorrectMove()
+private fun Cards(accuracy: Accuracy, hands: HandFilter, modifier: Modifier = Modifier) {
+    val overall = accuracy.overall
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(48.dp)) {
         // Only All has a streak, as in Blackjack Ace: a run within one kind of hand would count past wrong answers to the others
-        if (hands == HandFilter.ALL) StreakCard(longest = answers.longestStreak().takeIf { answers.isNotEmpty() })
-        AccuracyCard(title = stringResource(R.string.overall), tally = answers.tally())
-        hands.moves.forEach { AccuracyCard(title = stringResource(it.displayName), tally = byMove.getValue(it)) }
+        if (hands == HandFilter.ALL) StreakCard(longest = accuracy.longestStreak.takeIf { overall.total > 0 })
+        AccuracyCard(title = stringResource(R.string.overall), tally = overall)
+        hands.moves.forEach { AccuracyCard(title = stringResource(it.displayName), tally = accuracy.byMove.getValue(it)) }
     }
 }
 
@@ -124,7 +121,7 @@ private fun StreakCard(longest: Int?) {
 private fun AccuracyCard(title: String, tally: Tally) {
     StatCard(title = title) {
         Figure(
-            value = tally.accuracy?.let { stringResource(R.string.percentage, it * 100) },
+            value = tally.accuracyPermille?.let { stringResource(R.string.percentage, it / 10.0) },
             label = stringResource(R.string.accuracy),
             color = MaterialTheme.colorScheme.primary,
         )

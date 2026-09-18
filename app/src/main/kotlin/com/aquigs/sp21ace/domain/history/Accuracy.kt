@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.domain.history
 
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.trainer.nextStreak
 import java.time.Clock
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -24,11 +25,6 @@ fun Period.start(clock: Clock): Instant? {
     }?.toInstant()
 }
 
-fun List<PracticeAnswer>.inPeriod(period: Period, clock: Clock): List<PracticeAnswer> {
-    val start = period.start(clock) ?: return this
-    return filter { it.answeredAt >= start }
-}
-
 /** The hands a tab counts: one chart table's, or every hand. [moves] are the correct moves those hands call for under any rule set, in Blackjack Ace's order. */
 enum class HandFilter(val table: ChartTable?, val moves: List<Move>) {
     HARD(ChartTable.HARD, listOf(Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER)),
@@ -37,20 +33,39 @@ enum class HandFilter(val table: ChartTable?, val moves: List<Move>) {
     ALL(null, listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER)),
 }
 
-fun List<PracticeAnswer>.ofHands(hands: HandFilter): List<PracticeAnswer> = hands.table?.let { table -> filter { it.row.table == table } } ?: this
-
 data class Tally(val correct: Int, val incorrect: Int) {
-    /** Null with nothing answered, which is no data rather than none right. */
-    val accuracy: Double? get() = (correct + incorrect).takeIf { it > 0 }?.let { correct.toDouble() / it }
+    val total: Int get() = correct + incorrect
+
+    /** In tenths of a percent, rounded down so 100.0% means none wrong. Null with nothing answered, which is no data rather than none right. */
+    val accuracyPermille: Int? get() = total.takeIf { it > 0 }?.let { (correct * 1000L / it).toInt() }
 }
 
-fun List<PracticeAnswer>.tally(): Tally = count { it.isCorrect }.let { Tally(correct = it, incorrect = size - it) }
-
-/** A tally for every move, those no answer called for included. */
-fun List<PracticeAnswer>.tallyByCorrectMove(): Map<Move, Tally> {
-    val byMove = groupBy { it.correctMove }
-    return Move.entries.associateWith { byMove[it].orEmpty().tally() }
+/** A tab's figures over a period: a tally for every move the hands called for, and the most right answers in a row. */
+data class Accuracy(val byMove: Map<Move, Tally>, val longestStreak: Int) {
+    val overall: Tally get() = Tally(byMove.values.sumOf { it.correct }, byMove.values.sumOf { it.incorrect })
 }
 
-/** The most right answers in a row, in the order they were given. */
-fun List<PracticeAnswer>.longestStreak(): Int = runningFold(0) { run, answer -> if (answer.isCorrect) run + 1 else 0 }.max()
+/**
+ * Counts, in one pass and in the order given, the answers to [hands] since [period] started. An answer stamped after now,
+ * as when the device's clock was set ahead and then put back, counts only under All Time.
+ */
+fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, clock: Clock): Accuracy {
+    val start = period.start(clock)
+    val now = clock.instant()
+    val correct = IntArray(Move.entries.size)
+    val incorrect = IntArray(Move.entries.size)
+    var streak = 0
+    var longestStreak = 0
+
+    for (answer in this) {
+        if (start != null && answer.answeredAt !in start..now) continue
+        if (hands.table != null && answer.row.table != hands.table) continue
+
+        val counts = if (answer.isCorrect) correct else incorrect
+        counts[answer.correctMove.ordinal]++
+        streak = nextStreak(streak, answer.isCorrect)
+        longestStreak = maxOf(longestStreak, streak)
+    }
+
+    return Accuracy(Move.entries.associateWith { Tally(correct[it.ordinal], incorrect[it.ordinal]) }, longestStreak)
+}

@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -30,6 +31,8 @@ class AccuracyTest {
 
     private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT) =
         PracticeAnswer(at, RuleSet.S17, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
+
+    private fun List<PracticeAnswer>.figures(period: Period = Period.ALL_TIME, hands: HandFilter = HandFilter.ALL) = accuracy(period, hands, newYork)
 
     private fun streaks(rights: String) = rights.map { answer(right = it == 'R') }
 
@@ -58,51 +61,53 @@ class AccuracyTest {
     fun aPeriodCountsAnswersFromItsStartOn() {
         for (period in listOf(Period.TODAY, Period.WEEK, Period.MONTH)) {
             val start = requireNotNull(period.start(newYork))
-            val atTheStart = answer(at = start)
+            val history = listOf(answer(right = false, at = start.minusMillis(1)), answer(at = start))
 
-            assertEquals(period.name, listOf(atTheStart), listOf(answer(at = start.minusMillis(1)), atTheStart).inPeriod(period, newYork))
+            assertEquals(period.name, Tally(correct = 1, incorrect = 0), history.figures(period).overall)
         }
 
-        val longAgo = answer(at = Instant.EPOCH)
-        assertEquals(listOf(longAgo), listOf(longAgo).inPeriod(Period.ALL_TIME, newYork))
+        assertEquals(Tally(correct = 1, incorrect = 0), listOf(answer(at = Instant.EPOCH)).figures(Period.ALL_TIME).overall)
     }
 
     @Test
-    fun eachTabKeepsOnlyItsKindOfHand() {
-        val hard = answer(hand = sixteenVsAce)
-        val soft = answer(hand = softSeventeenVsTen)
-        val pair = answer(hand = eightsVsSix, correctMove = Move.SPLIT)
-        val history = listOf(hard, soft, pair)
+    fun anAnswerStampedAfterNowCountsOnlyUnderAllTime() {
+        // As when the device's clock was set ahead, then put back
+        val history = listOf(answer(at = now), answer(right = false, at = now.plusMillis(1)))
+
+        for (period in listOf(Period.TODAY, Period.WEEK, Period.MONTH)) {
+            assertEquals(period.name, Tally(correct = 1, incorrect = 0), history.figures(period).overall)
+        }
+        assertEquals(Tally(correct = 1, incorrect = 1), history.figures(Period.ALL_TIME).overall)
+    }
+
+    @Test
+    fun eachTabCountsOnlyItsKindOfHand() {
+        val history = listOf(
+            answer(hand = sixteenVsAce),
+            answer(right = false, hand = softSeventeenVsTen),
+            answer(hand = eightsVsSix, correctMove = Move.SPLIT),
+            answer(hand = eightsVsSix, correctMove = Move.SPLIT),
+        )
 
         assertEquals(
-            mapOf(HandFilter.HARD to listOf(hard), HandFilter.SOFT to listOf(soft), HandFilter.PAIRS to listOf(pair), HandFilter.ALL to history),
-            HandFilter.entries.associateWith { history.ofHands(it) },
+            mapOf(
+                HandFilter.HARD to Tally(correct = 1, incorrect = 0),
+                HandFilter.SOFT to Tally(correct = 0, incorrect = 1),
+                HandFilter.PAIRS to Tally(correct = 2, incorrect = 0),
+                HandFilter.ALL to Tally(correct = 3, incorrect = 1),
+            ),
+            HandFilter.entries.associateWith { history.figures(hands = it).overall },
         )
     }
 
     @Test
-    fun theTallyCountsRightAndWrongAnswers() {
-        val tally = listOf(answer(), answer(right = false), answer()).tally()
-
-        assertEquals(Tally(correct = 2, incorrect = 1), tally)
-        assertEquals(2.0 / 3, requireNotNull(tally.accuracy), 1e-9)
-    }
-
-    @Test
-    fun noAnswersHaveNoAccuracyButAllWrongOnesHaveNone() {
-        assertEquals(Tally(correct = 0, incorrect = 0), emptyList<PracticeAnswer>().tally())
-        assertNull(Tally(correct = 0, incorrect = 0).accuracy)
-        assertEquals(0.0, requireNotNull(Tally(correct = 0, incorrect = 3).accuracy), 0.0)
-    }
-
-    @Test
-    fun eachMoveTalliesTheAnswersToHandsThatCalledForItWhateverTheAnswer() {
-        val history = listOf(
+    fun eachMoveTalliesTheAnswersToHandsThatCalledForItWhateverTheAnswerAndOverallAddsThemUp() {
+        val figures = listOf(
             answer(correctMove = Move.HIT),
             answer(right = false, correctMove = Move.HIT),
             answer(hand = eightsVsSix, correctMove = Move.SPLIT),
             answer(right = false, hand = TrainerHand(cards("Kc 7d"), card("As")), correctMove = Move.SURRENDER),
-        )
+        ).figures()
 
         assertEquals(
             mapOf(
@@ -112,16 +117,38 @@ class AccuracyTest {
                 Move.SPLIT to Tally(correct = 1, incorrect = 0),
                 Move.SURRENDER to Tally(correct = 0, incorrect = 1),
             ),
-            history.tallyByCorrectMove(),
+            figures.byMove,
         )
+        assertEquals(Tally(correct = 2, incorrect = 2), figures.overall)
     }
 
     @Test
-    fun theLongestStreakIsTheLongestRunOfRightAnswersWhereverItFalls() {
-        assertEquals(3, streaks("RRWRRRWR").longestStreak())
-        assertEquals(4, streaks("RRWRRRR").longestStreak())
-        assertEquals(0, streaks("WW").longestStreak())
-        assertEquals(0, emptyList<PracticeAnswer>().longestStreak())
+    fun noAnswersHaveNoAccuracyButAllWrongOnesHaveNone() {
+        val figures = emptyList<PracticeAnswer>().figures()
+
+        assertEquals(Move.entries.associateWith { Tally(correct = 0, incorrect = 0) }, figures.byMove)
+        assertNull(figures.overall.accuracyPermille)
+        assertEquals(0, Tally(correct = 0, incorrect = 3).accuracyPermille)
+    }
+
+    @Test
+    fun accuracyRoundsDownSoOnlyNoneWrongReadsAsAHundredPercent() {
+        assertEquals(999, Tally(correct = 1999, incorrect = 1).accuracyPermille)
+        assertEquals(1000, Tally(correct = 2000, incorrect = 0).accuracyPermille)
+        assertEquals(666, Tally(correct = 2, incorrect = 1).accuracyPermille)
+        // 29% is a shade under 0.29 as a double, which rounding down in floating point would read as 28.9%
+        assertEquals(290, Tally(correct = 29, incorrect = 71).accuracyPermille)
+    }
+
+    @Test
+    fun theLongestStreakIsTheLongestRunOfRightAnswersWhereverItFallsInThePeriod() {
+        assertEquals(3, streaks("RRWRRRWR").figures().longestStreak)
+        assertEquals(4, streaks("RRWRRRR").figures().longestStreak)
+        assertEquals(0, streaks("WW").figures().longestStreak)
+        assertEquals(0, emptyList<PracticeAnswer>().figures().longestStreak)
+
+        val threeRightYesterday = List(3) { answer(at = now.minus(Duration.ofDays(1))) }
+        assertEquals(2, (threeRightYesterday + streaks("WRR")).figures(Period.TODAY).longestStreak)
     }
 
     @Test
