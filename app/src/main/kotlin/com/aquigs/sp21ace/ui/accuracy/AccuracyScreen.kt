@@ -48,6 +48,8 @@ import kotlinx.coroutines.delay
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
 
+private val TextInset = 32.dp
+
 /**
  * How often the trainer's answers were right over a period, for one kind of hand or all, by the move each hand called for,
  * and for one kind of hand square by square over [rules]' chart. [now] is read again when the screen resumes and every
@@ -90,7 +92,7 @@ fun AccuracyScreen(
                     .padding(vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                PeriodChips(selected = period, onSelect = { period = it }, modifier = Modifier.padding(horizontal = 32.dp))
+                PeriodChips(selected = period, onSelect = { period = it }, modifier = Modifier.padding(horizontal = TextInset))
                 hands.table?.let { table ->
                     AccuracyHeatmap(
                         chart = StrategyCharts.forRules(rules),
@@ -102,7 +104,7 @@ fun AccuracyScreen(
                 Cards(
                     accuracy,
                     hands,
-                    Modifier.padding(horizontal = 32.dp).widthIn(max = MaxContentWidth).fillMaxWidth().padding(top = 32.dp, bottom = 16.dp),
+                    Modifier.padding(start = TextInset, top = 32.dp, end = TextInset, bottom = 16.dp).widthIn(max = MaxContentWidth).fillMaxWidth(),
                 )
             }
         }

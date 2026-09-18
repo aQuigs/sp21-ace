@@ -65,10 +65,10 @@ class WordingTest {
 
     @Test
     fun wordsTheSquaresOfAHandAlreadyDoubledBlankOnesIncluded() {
-        assertEquals("Redouble", StrategyCharts.forRules(H17_REDOUBLE).inPlainWords(AFTER_DOUBLE_HARD, "11", Upcard.TWO))
-        assertEquals("Rescue", StrategyCharts.forRules(H17_REDOUBLE).inPlainWords(AFTER_DOUBLE_HARD, "16", Upcard.EIGHT))
-        assertEquals("Rescue", StrategyCharts.forRules(S17).inPlainWords(RESCUE, "16", Upcard.TEN))
-        assertEquals("Stand, no rescue", StrategyCharts.forRules(S17).inPlainWords(RESCUE, "12", Upcard.TWO))
+        assertEquals("Redouble", squareWords(H17_REDOUBLE, AFTER_DOUBLE_HARD, "11", Upcard.TWO))
+        assertEquals("Rescue", squareWords(H17_REDOUBLE, AFTER_DOUBLE_HARD, "16", Upcard.EIGHT))
+        assertEquals("Rescue", squareWords(S17, RESCUE, "16", Upcard.TEN))
+        assertEquals("Stand, no rescue", squareWords(S17, RESCUE, "12", Upcard.TWO))
     }
 
     @Test
@@ -109,4 +109,7 @@ class WordingTest {
     // Read from the shipped charts, which ChartCellsTest pins to the fixtures, so every code worded here is a real square
     private fun words(ruleSet: RuleSet, table: ChartTable, hand: String, upcard: Upcard, correctMove: Move): String =
         requireNotNull(StrategyCharts.forRules(ruleSet).play(table, hand, upcard)).inPlainWords(correctMove)
+
+    private fun squareWords(ruleSet: RuleSet, table: ChartTable, hand: String, upcard: Upcard): String =
+        ChartSquare(ChartRow(table, hand), upcard).inPlainWords(StrategyCharts.forRules(ruleSet).play(table, hand, upcard))
 }

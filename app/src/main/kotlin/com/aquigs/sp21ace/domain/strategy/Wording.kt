@@ -31,9 +31,8 @@ fun Play.inPlainWords(correctMove: Move? = null, afterDoubling: Boolean = false)
     }
 }
 
-/** A square in words, blank ones included. */
-fun StrategyChart.inPlainWords(table: ChartTable, hand: String, upcard: Upcard): String =
-    play(table, hand, upcard)?.inPlainWords(afterDoubling = table.afterDoubling) ?: NO_RESCUE
+/** The square in words from the [play] its chart prints there, blank ones included. */
+fun ChartSquare.inPlainWords(play: Play?): String = play?.inPlainWords(afterDoubling = row.table.afterDoubling) ?: NO_RESCUE
 
 /** A line of a table's legend: a symbol as the table prints it, what it means, and the action whose colour it sits on. */
 data class LegendEntry(val symbol: String, val meaning: String, val fill: Action? = null)
