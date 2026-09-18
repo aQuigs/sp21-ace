@@ -29,7 +29,7 @@ class AccuracyTest {
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
     private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT) =
-        PracticeAnswer(at, RuleSet.S17, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove, right)
+        PracticeAnswer(at, RuleSet.S17, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
 
     private fun streaks(rights: String) = rights.map { answer(right = it == 'R') }
 

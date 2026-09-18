@@ -2,10 +2,23 @@ package com.aquigs.sp21ace.domain.cards
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CardTest {
+    @Test
+    fun everyCardReadsBackFromItsCodeAndNothingElseReadsAsACard() {
+        for (each in spanishShoe(decks = 1)) {
+            assertEquals(each, card(each.code))
+        }
+
+        // A 10-spot, which a Spanish deck doesn't have, an unknown suit, and no rank
+        for (code in listOf("10h", "Ax", "s", "")) {
+            assertThrows(code, IllegalArgumentException::class.java) { card(code) }
+        }
+    }
+
     @Test
     fun aSpanishShoeHasFortyEightCardsADeckWithJQKAsItsOnlyTens() {
         val shoe = spanishShoe(decks = 6)

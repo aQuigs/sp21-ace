@@ -10,9 +10,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.cards.Card
-import com.aquigs.sp21ace.domain.cards.Rank
-import com.aquigs.sp21ace.domain.cards.Suit
+import com.aquigs.sp21ace.domain.cards.card
+import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -35,13 +34,13 @@ class AccuracyScreenTest {
     private val now = Instant.parse("2026-09-17T12:00:00Z")
 
     // Hard 16 vs A and soft 17 vs K are both hits when the dealer stands on soft 17
-    private val sixteenVsAce = TrainerHand(listOf(Card(Rank.NINE, Suit.CLUBS), Card(Rank.SEVEN, Suit.DIAMONDS)), Card(Rank.ACE, Suit.SPADES))
-    private val softSeventeenVsKing = TrainerHand(listOf(Card(Rank.ACE, Suit.HEARTS), Card(Rank.SIX, Suit.DIAMONDS)), Card(Rank.KING, Suit.HEARTS))
+    private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
+    private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
 
     private fun string(id: Int) = compose.activity.getString(id)
 
     private fun answer(right: Boolean, daysAgo: Long = 0, hand: TrainerHand = sixteenVsAce) =
-        PracticeAnswer(now.minus(Duration.ofDays(daysAgo)), RuleSet.S17, hand, if (right) Move.HIT else Move.STAND, Move.HIT, right)
+        PracticeAnswer(now.minus(Duration.ofDays(daysAgo)), RuleSet.S17, hand, if (right) Move.HIT else Move.STAND, Move.HIT)
 
     private fun showAccuracy(history: List<PracticeAnswer>) {
         compose.setContent { Sp21AceTheme { AccuracyScreen(history, Clock.fixed(now, ZoneOffset.UTC), onBack = {}) } }
@@ -50,15 +49,15 @@ class AccuracyScreenTest {
     private fun tap(title: Int) = compose.onNodeWithText(string(title)).performClick()
 
     // A card is one item for a screen reader, so its texts come together: the title, then each figure before its label
-    private fun card(vararg texts: String): List<String> =
+    private fun cardTexts(vararg texts: String): List<String> =
         compose.onNode(texts.map(::hasText).reduce(SemanticsMatcher::and)).fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
 
-    private fun accuracyCard(title: Int) = card(string(title), string(R.string.correct))
+    private fun accuracyCard(title: Int) = cardTexts(string(title), string(R.string.correct))
 
     private fun figures(title: Int, accuracy: String, correct: Int, incorrect: Int) =
         listOf(string(title), accuracy, string(R.string.accuracy), "$correct", string(R.string.correct), "$incorrect", string(R.string.incorrect))
 
-    private fun streakCard() = card(string(R.string.longest_streak))
+    private fun streakCard() = cardTexts(string(R.string.longest_streak))
 
     @Test
     fun todayIsTheDefaultAndTheChipsSwitchThePeriod() {

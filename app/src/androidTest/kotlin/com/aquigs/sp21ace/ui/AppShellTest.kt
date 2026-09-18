@@ -26,9 +26,8 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.Sp21AceApp
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.TableRulesStore
-import com.aquigs.sp21ace.domain.cards.Card
-import com.aquigs.sp21ace.domain.cards.Rank
-import com.aquigs.sp21ace.domain.cards.Suit
+import com.aquigs.sp21ace.domain.cards.card
+import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
@@ -47,8 +46,8 @@ class AppShellTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     // Hard 16 vs A is a hit when the dealer stands on soft 17, and a surrender when the dealer hits
-    private val sixteenVsAce = TrainerHand(listOf(Card(Rank.NINE, Suit.CLUBS), Card(Rank.SEVEN, Suit.DIAMONDS)), Card(Rank.ACE, Suit.SPADES))
-    private val eightsVsSix = TrainerHand(listOf(Card(Rank.EIGHT, Suit.HEARTS), Card(Rank.EIGHT, Suit.SPADES)), Card(Rank.SIX, Suit.DIAMONDS))
+    private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
+    private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
     // Their own files, so the tests never overwrite the rules or the history the app itself saved
     private val store by lazy { TableRulesStore(compose.activity, "table_rules_app_shell_test") }
