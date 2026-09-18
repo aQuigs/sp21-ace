@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 
@@ -44,6 +45,12 @@ fun SettingsPage(title: String, onBack: () -> Unit, modifier: Modifier = Modifie
 /** A page's intro, with an info icon beside its first line, as in Blackjack Ace, where a list item would centre it on the paragraph. */
 @Composable
 fun SettingsIntro(text: String, modifier: Modifier = Modifier) {
+    SettingsIntro(AnnotatedString(text), modifier)
+}
+
+/** An intro with styled words, such as the choices it explains in bold. */
+@Composable
+fun SettingsIntro(text: AnnotatedString, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.padding(horizontal = ListItemInset, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(ListItemInset),
