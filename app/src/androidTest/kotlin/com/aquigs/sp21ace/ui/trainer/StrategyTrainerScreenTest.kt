@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -11,10 +12,12 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -25,10 +28,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.cards.card
@@ -70,8 +76,44 @@ class StrategyTrainerScreenTest {
 
     private fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
 
+    private fun DpRect.encloses(other: DpRect) = left <= other.left && top <= other.top && other.right <= right && other.bottom <= bottom
+
     private fun SemanticsNodeInteraction.textLayout(): TextLayoutResult =
         mutableListOf<TextLayoutResult>().also { fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }.single()
+
+    // By where the text's line ends, since a text given more room than it needs is laid out at the full width and reads as
+    // overflowing its node, and Compose pads a letter-spaced text's intrinsic width by half a pixel it never draws
+    private fun SemanticsNodeInteraction.assertFitsOnOneLine() {
+        val layout = textLayout()
+        val ends = layout.getLineRight(0)
+        val cutShort = layout.multiParagraph.didExceedMaxLines
+
+        assertTrue(
+            "${layout.layoutInput.text} ends at ${ends}px of ${layout.size.width}px on ${layout.lineCount} lines, cut short: $cutShort",
+            layout.lineCount == 1 && !cutShort && ends <= layout.size.width,
+        )
+    }
+
+    // The unmerged tree still holds the text a control hides from a screen reader
+    private fun textsInside(description: String) = compose.onAllNodes(
+        hasAnyAncestor(hasContentDescription(description)) and SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult),
+        useUnmergedTree = true,
+    )
+
+    // Each answer button holds its label, and the chart tile a letter for each of its four colours
+    private fun controlTexts() = Move.entries.map { string(it.displayName) to 1 } + (string(R.string.open_strategy_chart) to 4)
+
+    // The tree reports a label's style rather than the size autoSize drew it at, so the drawn size shows only in the room its
+    // line needs
+    private fun drawnTexts(description: String, count: Int): List<TextLayoutResult> {
+        val texts = textsInside(description).assertCountEquals(count)
+        return (0 until count).map { texts[it].textLayout() }
+    }
+
+    private fun assertFullSize(description: String) = bounds(description).let {
+        assertEquals(description, 64f, it.width.value, 0.5f)
+        assertEquals(description, 64f, it.height.value, 0.5f)
+    }
 
     // A screen reader hears the meter as one item, so its numbers and caption are only in the unmerged tree. The caption
     // centres under the track.
@@ -311,12 +353,60 @@ class StrategyTrainerScreenTest {
         for (control in controls) {
             for (other in others) assertFalse("$control overlaps $other", control.overlaps(other))
         }
-        // By the text's own single-line width, since a text given more room than it needs is laid out at the full width and
-        // reads as overflowing its node
-        for (text in texts) {
-            val layout = text.textLayout()
-            val needs = layout.multiParagraph.intrinsics.maxIntrinsicWidth
-            assertTrue("${layout.layoutInput.text} needs ${needs}px, is ${layout.size.width}px on ${layout.lineCount} lines", layout.lineCount == 1 && needs <= layout.size.width)
+        texts.forEach { it.assertFitsOnOneLine() }
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeEveryButtonLabelAndTileLetterFitsInsideItsControlOnEitherSide() {
+        showTrainer(Modifier.size(360.dp, 640.dp), configuration = DeviceConfigurationOverride.FontScale(2f))
+
+        for (location in ButtonLocation.entries) {
+            settings = Settings(buttonLocation = location)
+
+            for ((description, count) in controlTexts()) {
+                val control = bounds(description)
+                val texts = textsInside(description).assertCountEquals(count)
+
+                for (index in 0 until count) {
+                    texts[index].assertFitsOnOneLine()
+                    val text = texts[index].getBoundsInRoot()
+                    assertTrue("With the buttons $location, $text is outside $description's $control", control.encloses(text))
+                }
+            }
         }
+    }
+
+    @Test
+    fun atTheDefaultFontSizeTheButtonsAndTheTileAreFullSizeWithTheirTextAtItsLargest() {
+        showTrainer(configuration = DeviceConfigurationOverride.FontScale(1f))
+
+        for ((description, count) in controlTexts()) {
+            assertFullSize(description)
+
+            val fontSize = if (description == string(R.string.open_strategy_chart)) 9.sp else 13.sp
+            for (drawn in drawnTexts(description, count)) {
+                val input = drawn.layoutInput
+                val atFontSize = TextMeasurer(input.fontFamilyResolver, compose.density, input.layoutDirection)
+                    .measure(input.text, input.style.copy(fontSize = fontSize), maxLines = 1)
+                assertEquals("${input.text} at $fontSize", atFontSize.multiParagraph.intrinsics.maxIntrinsicWidth, drawn.multiParagraph.intrinsics.maxIntrinsicWidth, 0.01f)
+            }
+        }
+    }
+
+    @Test
+    fun atDoubleTheFontSizeTheButtonsAndTheTileLookAsTheyDoAtTheDefaultSize() {
+        var fontScale by mutableFloatStateOf(1f)
+        // Read in composition, so a new scale lays the same screen out again
+        showTrainer(configuration = DeviceConfigurationOverride { content -> DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale), content) })
+
+        fun looks() = controlTexts().flatMap { (description, count) ->
+            drawnTexts(description, count).map { "${it.layoutInput.text} needs ${it.multiParagraph.intrinsics.maxIntrinsicWidth}x${it.multiParagraph.height}px in ${it.size}" }
+        }
+        val atDefault = looks()
+
+        fontScale = 2f
+
+        controlTexts().forEach { (description, _) -> assertFullSize(description) }
+        assertEquals(atDefault, looks())
     }
 }

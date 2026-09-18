@@ -60,6 +60,7 @@ import com.aquigs.sp21ace.ui.chart.ChartTile
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
+import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
 import com.aquigs.sp21ace.ui.components.appBarColors
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
@@ -256,12 +257,14 @@ private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifie
                 contentPadding = PaddingValues(0.dp),
             ) {
                 // The capitals and SURR. are for the eye; a screen reader says the move's name
-                Text(
-                    text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
-                    fontWeight = FontWeight.Bold,
-                    autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.sp),
-                    maxLines = 1,
-                )
+                ProvideDefaultFontScale {
+                    Text(
+                        text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
+                        fontWeight = FontWeight.Bold,
+                        autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.sp),
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

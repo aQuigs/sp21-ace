@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Action
+import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
 private val TILE_ACTIONS = listOf(listOf(Action.HIT, Action.STAND), listOf(Action.DOUBLE, Action.SURRENDER))
@@ -53,7 +54,7 @@ fun ChartTile(onClick: () -> Unit, modifier: Modifier = Modifier) {
                             modifier = Modifier.weight(1f).fillMaxHeight().clip(SwatchShape).actionFill(action, colors),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(text = action.code, fontSize = 9.sp, maxLines = 1)
+                            ProvideDefaultFontScale { Text(text = action.code, fontSize = 9.sp, maxLines = 1) }
                         }
                     }
                 }
