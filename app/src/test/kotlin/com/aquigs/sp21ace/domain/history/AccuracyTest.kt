@@ -14,16 +14,11 @@ import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
-import java.time.ZoneOffset
 
 class AccuracyTest {
-    // 08:00 in New York, where the day began at 04:00 UTC
     private val now = Instant.parse("2026-09-17T12:00:00Z")
-    private val newYork = Clock.fixed(now, ZoneId.of("America/New_York"))
 
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val softSeventeenVsTen = TrainerHand(cards("As 6d"), card("Kh"))
@@ -32,42 +27,38 @@ class AccuracyTest {
     private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT) =
         PracticeAnswer(at, RuleSet.S17, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
 
-    private fun List<PracticeAnswer>.figures(period: Period = Period.ALL_TIME, hands: HandFilter = HandFilter.ALL) = accuracy(period, hands, newYork)
+    private fun List<PracticeAnswer>.figures(period: Period = Period.ALL_TIME, hands: HandFilter = HandFilter.ALL, at: Instant = now) =
+        accuracy(period, hands, at)
 
     private fun streaks(rights: String) = rights.map { answer(right = it == 'R') }
 
     @Test
-    fun todayStartsAtMidnightInTheClocksTimeZoneAndStartsOverAtTheNext() {
-        assertEquals(Instant.parse("2026-09-17T04:00:00Z"), Period.TODAY.start(newYork))
-        assertEquals(Instant.parse("2026-09-17T00:00:00Z"), Period.TODAY.start(Clock.fixed(now, ZoneOffset.UTC)))
-        assertEquals(Instant.parse("2026-09-18T04:00:00Z"), nextMidnight(newYork))
+    fun todayWeekAndMonthReachBack24HoursSevenDaysAnd28DaysAndAllTimeHasNoStart() {
+        assertEquals(Instant.parse("2026-09-16T12:00:00Z"), Period.TODAY.start(now))
+        assertEquals(Instant.parse("2026-09-10T12:00:00Z"), Period.WEEK.start(now))
+        assertEquals(Instant.parse("2026-08-20T12:00:00Z"), Period.MONTH.start(now))
+        assertNull(Period.ALL_TIME.start(now))
     }
 
     @Test
-    fun weekAndMonthReachBackSevenAndThirtyDaysAndAllTimeHasNoStart() {
-        assertEquals(Instant.parse("2026-09-10T12:00:00Z"), Period.WEEK.start(newYork))
-        assertEquals(Instant.parse("2026-08-18T12:00:00Z"), Period.MONTH.start(newYork))
-        assertNull(Period.ALL_TIME.start(newYork))
-    }
-
-    @Test
-    fun aWeekAcrossTheEndOfDaylightSavingReachesBackSevenDaysOnTheLocalClock() {
-        // 07:00 on 3 November in New York, two days after the clocks went back, so a week earlier was 07:00 summer time
-        val clock = Clock.fixed(Instant.parse("2026-11-03T12:00:00Z"), ZoneId.of("America/New_York"))
-
-        assertEquals(Instant.parse("2026-10-27T11:00:00Z"), Period.WEEK.start(clock))
-    }
-
-    @Test
-    fun aPeriodCountsAnswersFromItsStartOn() {
+    fun aPeriodCountsAnswersNewerThanWhereItReachesBackTo() {
         for (period in listOf(Period.TODAY, Period.WEEK, Period.MONTH)) {
-            val start = requireNotNull(period.start(newYork))
-            val history = listOf(answer(right = false, at = start.minusMillis(1)), answer(at = start))
+            val start = requireNotNull(period.start(now))
+            val history = listOf(answer(right = false, at = start), answer(at = start.plusMillis(1)))
 
             assertEquals(period.name, Tally(correct = 1, incorrect = 0), history.figures(period).overall)
         }
 
         assertEquals(Tally(correct = 1, incorrect = 0), listOf(answer(at = Instant.EPOCH)).figures(Period.ALL_TIME).overall)
+    }
+
+    @Test
+    fun anAnswerStaysInTodayPastMidnightAndLeavesIt24HoursOn() {
+        val lateAtNight = Instant.parse("2026-09-17T23:00:00Z")
+        val history = listOf(answer(at = lateAtNight))
+
+        assertEquals(1, history.figures(Period.TODAY, at = Instant.parse("2026-09-18T08:00:00Z")).overall.total)
+        assertEquals(0, history.figures(Period.TODAY, at = lateAtNight.plus(Duration.ofHours(24))).overall.total)
     }
 
     @Test
@@ -142,18 +133,19 @@ class AccuracyTest {
     }
 
     @Test
-    fun theLongestStreakIsTheLongestRunOfRightAnswersWhereverItFallsInThePeriod() {
+    fun theLongestStreakRunsOverEveryAnswerWhateverThePeriodAndTab() {
         assertEquals(3, streaks("RRWRRRWR").figures().longestStreak)
         assertEquals(4, streaks("RRWRRRR").figures().longestStreak)
         assertEquals(0, streaks("WW").figures().longestStreak)
         assertEquals(0, emptyList<PracticeAnswer>().figures().longestStreak)
 
-        val threeRightYesterday = List(3) { answer(at = now.minus(Duration.ofDays(1))) }
-        assertEquals(2, (threeRightYesterday + streaks("WRR")).figures(Period.TODAY).longestStreak)
+        // Three right last month, then a wrong soft hand and two right hard ones today
+        val history = List(3) { answer(at = now.minus(Duration.ofDays(40))) } + answer(right = false, hand = softSeventeenVsTen) + streaks("RR")
+        assertEquals(3, history.figures(Period.TODAY, HandFilter.HARD).longestStreak)
     }
 
     @Test
-    fun eachTabHasACardForEveryMoveItsHandsCallForAndNoOther() {
+    fun eachTabHasACardForEveryMoveItsHandsCallForInBlackjackAcesOrder() {
         val deck = spanishShoe(decks = 1)
         // The same card twice included, so the suited 7-7 bonus exception is there too
         val hands = deck.flatMap { first -> deck.map { listOf(first, it) } }.filterNot { it.isBlackjack() }
@@ -163,8 +155,8 @@ class AccuracyTest {
         }.groupBy({ it.first }, { it.second })
 
         for (tab in HandFilter.entries) {
-            val moves = tab.table?.let { called.getValue(it) } ?: called.values.flatten()
-            assertEquals(tab.name, moves.toSet(), tab.moves.toSet())
+            val moves = (tab.table?.let { called.getValue(it) } ?: called.values.flatten()).toSet()
+            assertEquals(tab.name, listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER).filter { it in moves }, tab.moves)
         }
     }
 }

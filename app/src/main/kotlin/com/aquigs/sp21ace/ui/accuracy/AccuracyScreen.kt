@@ -37,44 +37,41 @@ import com.aquigs.sp21ace.domain.history.Period
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
-import com.aquigs.sp21ace.domain.history.nextMidnight
 import com.aquigs.sp21ace.ui.chart.title
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.PageTabRow
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.components.displayName
 import kotlinx.coroutines.delay
-import java.time.Clock
-import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * How often the trainer's answers were right over a period, for one kind of hand or all, and by the move each hand called
- * for. [now] is read again when the screen resumes and at local midnight, so Today moves on with the calendar and the time zone.
+ * for. [now] is read again when the screen resumes and every minute, so answers age out of a period while it's open.
  */
 @Composable
 fun AccuracyScreen(
     history: List<PracticeAnswer>,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    now: () -> Clock = { Clock.fixed(Instant.now(), ZoneId.systemDefault()) },
+    now: () -> Instant = Instant::now,
 ) {
     var hands by rememberSaveable { mutableStateOf(HandFilter.HARD) }
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
     val currentNow by rememberUpdatedState(now)
-    var clock by remember { mutableStateOf(now()) }
-    val accuracy = remember(history, clock, period, hands) { history.accuracy(period, hands, clock) }
+    var asOf by remember { mutableStateOf(now()) }
+    val accuracy = remember(history, asOf, period, hands) { history.accuracy(period, hands, asOf) }
 
-    // Nothing else changes with time, so without these a screen left open overnight, or reopened after a flight, keeps
-    // counting yesterday's answers, or midnight somewhere else, as today's
+    // Nothing else changes with time, so without these a screen left open, or reopened hours later, keeps counting answers
+    // that have aged out of the period
     LifecycleResumeEffect(Unit) {
-        clock = currentNow()
+        asOf = currentNow()
         onPauseOrDispose {}
     }
-    LaunchedEffect(clock) {
-        delay(Duration.between(clock.instant(), nextMidnight(clock)).toMillis())
-        clock = currentNow()
+    LaunchedEffect(asOf) {
+        delay(1.minutes)
+        asOf = currentNow()
     }
 
     SubPage(title = stringResource(R.string.accuracy), onBack = onBack, modifier = modifier) { padding ->
@@ -107,12 +104,10 @@ private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit) {
 
 @Composable
 private fun Cards(accuracy: Accuracy, hands: HandFilter, modifier: Modifier = Modifier) {
-    val overall = accuracy.overall
-
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(48.dp)) {
-        // Only All has a streak, as in Blackjack Ace: a run within one kind of hand would count past wrong answers to the others
-        if (hands == HandFilter.ALL) StreakCard(longest = accuracy.longestStreak.takeIf { overall.total > 0 })
-        AccuracyCard(title = stringResource(R.string.overall), tally = overall)
+        // Only All has the Streak card, as in Blackjack Ace, since the streak runs over every answer whatever the tab or period
+        if (hands == HandFilter.ALL) StreakCard(longest = accuracy.longestStreak)
+        AccuracyCard(title = stringResource(R.string.overall), tally = accuracy.overall)
         hands.moves.forEach { AccuracyCard(title = stringResource(it.displayName), tally = accuracy.byMove.getValue(it)) }
     }
 }
@@ -128,9 +123,9 @@ private fun StatCard(title: String, content: @Composable ColumnScope.() -> Unit)
 }
 
 @Composable
-private fun StreakCard(longest: Int?) {
+private fun StreakCard(longest: Int) {
     StatCard(title = stringResource(R.string.streak)) {
-        Figure(value = longest?.toString(), label = stringResource(R.string.longest_streak), color = MaterialTheme.colorScheme.onSurface)
+        Figure(value = longest.toString(), label = stringResource(R.string.longest_streak), color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

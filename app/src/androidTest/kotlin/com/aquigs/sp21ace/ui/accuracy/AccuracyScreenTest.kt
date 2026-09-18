@@ -19,10 +19,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneOffset
 
 @RunWith(AndroidJUnit4::class)
 class AccuracyScreenTest {
@@ -35,12 +33,14 @@ class AccuracyScreenTest {
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
 
+    private val allMoves = listOf(R.string.move_split, R.string.move_hit, R.string.move_double, R.string.move_stand, R.string.move_surrender)
+
     private fun string(id: Int) = compose.activity.getString(id)
 
-    private fun answer(right: Boolean, daysAgo: Long = 0, hand: TrainerHand = sixteenVsAce, at: Instant = now.minus(Duration.ofDays(daysAgo))) =
-        PracticeAnswer(at, RuleSet.S17, hand, if (right) Move.HIT else Move.STAND, Move.HIT)
+    private fun answer(right: Boolean, daysAgo: Long = 0, hand: TrainerHand = sixteenVsAce) =
+        PracticeAnswer(now.minus(Duration.ofDays(daysAgo)), RuleSet.S17, hand, if (right) Move.HIT else Move.STAND, Move.HIT)
 
-    private fun showAccuracy(history: List<PracticeAnswer>, clock: () -> Clock = { Clock.fixed(now, ZoneOffset.UTC) }) {
+    private fun showAccuracy(history: List<PracticeAnswer>, clock: () -> Instant = { now }) {
         compose.setContent { Sp21AceTheme { AccuracyScreen(history, onBack = {}, now = clock) } }
     }
 
@@ -50,7 +50,11 @@ class AccuracyScreenTest {
 
     private fun figures(title: Int, accuracy: String, correct: Int, incorrect: Int) = compose.activity.accuracyCardTexts(title, accuracy, correct, incorrect)
 
+    private fun noData(title: Int) = figures(title, "--", correct = 0, incorrect = 0)
+
     private fun streakCard() = compose.cardTexts(string(R.string.longest_streak))
+
+    private fun streak(longest: Int) = listOf(string(R.string.streak), "$longest", string(R.string.longest_streak))
 
     @Test
     fun todayIsTheDefaultAndTheChipsSwitchThePeriod() {
@@ -70,18 +74,29 @@ class AccuracyScreenTest {
     }
 
     @Test
-    fun resumingPastMidnightStartsTodayOver() {
-        var clock = Clock.fixed(Instant.parse("2026-09-17T23:00:00Z"), ZoneOffset.UTC)
-        showAccuracy(listOf(answer(right = true, at = Instant.parse("2026-09-17T22:00:00Z"))), clock = { clock })
+    fun resumingADayLaterDropsTheAnswerFromToday() {
+        var clock = now
+        showAccuracy(listOf(answer(right = true)), clock = { clock })
 
         assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
 
-        // The phone locked overnight, then opened again
-        clock = Clock.fixed(Instant.parse("2026-09-18T08:00:00Z"), ZoneOffset.UTC)
+        // The phone locked, then opened again a day later
+        clock = now.plus(Duration.ofHours(24))
         compose.activityRule.scenario.moveToState(Lifecycle.State.STARTED)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
 
-        assertEquals(figures(R.string.overall, "--", correct = 0, incorrect = 0), accuracyCard(R.string.overall))
+        assertEquals(noData(R.string.overall), accuracyCard(R.string.overall))
+    }
+
+    @Test
+    fun leftOpenTheScreenLetsAnAnswerAgeOutWithinAMinute() {
+        var clock = now
+        showAccuracy(listOf(answer(right = true)), clock = { clock })
+
+        clock = now.plus(Duration.ofHours(24))
+        compose.mainClock.advanceTimeBy(60_000)
+
+        assertEquals(noData(R.string.overall), accuracyCard(R.string.overall))
     }
 
     @Test
@@ -100,23 +115,35 @@ class AccuracyScreenTest {
     }
 
     @Test
-    fun withNoAnswersEveryFigureIsNoData() {
+    fun withNoAnswersEveryAccuracyIsNoDataAndTheStreakIsNought() {
         showAccuracy(emptyList())
 
         for (title in listOf(R.string.overall, R.string.move_hit, R.string.move_double, R.string.move_stand, R.string.move_surrender)) {
-            assertEquals(figures(title, "--", correct = 0, incorrect = 0), accuracyCard(title))
+            assertEquals(noData(title), accuracyCard(title))
         }
         // No hard hand calls for a split
         compose.onNodeWithText(string(R.string.move_split)).assertDoesNotExist()
 
         tap(R.string.all_hands)
 
-        assertEquals(figures(R.string.move_split, "--", correct = 0, incorrect = 0), accuracyCard(R.string.move_split))
-        assertEquals(listOf(string(R.string.streak), "--", string(R.string.longest_streak)), streakCard())
+        assertEquals(noData(R.string.move_split), accuracyCard(R.string.move_split))
+        assertEquals(streak(longest = 0), streakCard())
     }
 
     @Test
-    fun onlyTheAllTabHasTheLongestStreakInThePeriod() {
+    fun aPeriodWithNoAnswersShowsNoDataOnEveryCardButStillTheStreak() {
+        showAccuracy(List(2) { answer(right = true, daysAgo = 3) })
+
+        tap(R.string.all_hands)
+
+        for (title in listOf(R.string.overall) + allMoves) {
+            assertEquals(noData(title), accuracyCard(title))
+        }
+        assertEquals(streak(longest = 2), streakCard())
+    }
+
+    @Test
+    fun onlyTheAllTabHasTheStreakAndItRunsOverEveryAnswerWhateverThePeriod() {
         // Three right last week, then a wrong answer and two right today, the second a soft hand
         showAccuracy(
             List(3) { answer(right = true, daysAgo = 3) } +
@@ -127,10 +154,6 @@ class AccuracyScreenTest {
 
         tap(R.string.all_hands)
 
-        assertEquals(listOf(string(R.string.streak), "2", string(R.string.longest_streak)), streakCard())
-
-        tap(R.string.week)
-
-        assertEquals(listOf(string(R.string.streak), "3", string(R.string.longest_streak)), streakCard())
+        assertEquals(streak(longest = 3), streakCard())
     }
 }
