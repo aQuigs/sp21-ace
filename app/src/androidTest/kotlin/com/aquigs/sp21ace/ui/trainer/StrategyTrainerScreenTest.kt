@@ -2,10 +2,13 @@ package com.aquigs.sp21ace.ui.trainer
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -19,12 +22,16 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.domain.settings.ButtonLocation
+import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
@@ -34,6 +41,7 @@ import com.aquigs.sp21ace.domain.trainer.answer
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -47,26 +55,43 @@ class StrategyTrainerScreenTest {
     // Hard 16 vs A is a hit when the dealer stands on soft 17
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
+    private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
+
+    private var settings by mutableStateOf(Settings())
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
     private fun button(move: Move) = compose.onNodeWithContentDescription(string(move.displayName))
 
-    private fun showTrainer(modifier: Modifier = Modifier, deals: List<TrainerHand> = listOf(eightsVsSix)) {
+    private fun bounds(description: String) = compose.onNodeWithContentDescription(description).getBoundsInRoot()
+
+    private fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
+
+    private fun showTrainer(
+        modifier: Modifier = Modifier,
+        first: TrainerHand = sixteenVsAce,
+        deals: List<TrainerHand> = listOf(eightsVsSix),
+        fontScale: Float? = null,
+    ) {
         val chart = StrategyCharts.forRules(RuleSet.S17)
         // Only these hands are left to deal, so grading one answer more would throw
         val next = deals.iterator()
-        var trainer by mutableStateOf(TrainerState(sixteenVsAce))
+        var trainer by mutableStateOf(TrainerState(first))
 
         compose.setContent {
-            Sp21AceTheme {
-                StrategyTrainerScreen(
-                    state = trainer,
-                    onAnswer = { asked, move -> trainer.answer(asked, move, chart) { next.next() }?.let { trainer = it.state } },
-                    onOpenDrawer = {},
-                    onOpenChart = {},
-                    modifier = modifier,
-                )
+            val density = LocalDensity.current
+
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale ?: density.fontScale)) {
+                Sp21AceTheme {
+                    StrategyTrainerScreen(
+                        state = trainer,
+                        settings = settings,
+                        onAnswer = { asked, move -> trainer.answer(asked, move, chart) { next.next() }?.let { trainer = it.state } },
+                        onOpenDrawer = {},
+                        onOpenChart = {},
+                        modifier = modifier,
+                    )
+                }
             }
         }
     }
@@ -162,10 +187,10 @@ class StrategyTrainerScreenTest {
     fun theChartTileSitsAboveTheButtonsAndClearOfTheCards() {
         showTrainer()
 
-        val tile = compose.onNodeWithContentDescription(string(R.string.open_strategy_chart)).getBoundsInRoot()
+        val tile = bounds(string(R.string.open_strategy_chart))
 
         assertTrue(tile.bottom <= button(Move.HIT).getBoundsInRoot().top)
-        assertTrue(tile.left >= compose.onNodeWithContentDescription("Ace of spades").getBoundsInRoot().right)
+        assertTrue(tile.left >= bounds("Ace of spades").right)
     }
 
     @Test
@@ -180,5 +205,72 @@ class StrategyTrainerScreenTest {
         button(Move.STAND).performClick()
 
         compose.onNodeWithContentDescription(string(R.string.streak_count, 0)).assertIsDisplayed()
+    }
+
+    @Test
+    fun theButtonLocationMovesTheButtonsAndTheTileToTheOtherSideOfTheCards() {
+        showTrainer()
+
+        assertTrue(button(Move.HIT).getBoundsInRoot().left >= bounds("Ace of spades").right)
+
+        settings = Settings(buttonLocation = ButtonLocation.LEFT)
+
+        val cardsLeft = bounds(string(R.string.face_down_card)).left
+        assertTrue(button(Move.HIT).getBoundsInRoot().right <= cardsLeft)
+        assertTrue(bounds(string(R.string.open_strategy_chart)).right <= cardsLeft)
+    }
+
+    @Test
+    fun handTotalsShowOnTheLabelsLinesAtTheCardsRightEdgeAndHideAgain() {
+        // A soft 17 reads as the chart's soft row, and a king as its ten column
+        showTrainer(first = softSeventeenVsKing)
+
+        compose.onNodeWithText("A-6").assertDoesNotExist()
+
+        settings = Settings(handTotals = true)
+
+        val you = compose.onNodeWithText(string(R.string.you)).getBoundsInRoot()
+        val playerTotal = compose.onNodeWithText("A-6").assertIsDisplayed().getBoundsInRoot()
+        assertEquals(bounds("6 of diamonds").right.value, playerTotal.right.value, 1f)
+        assertTrue(playerTotal.top < you.bottom && you.top < playerTotal.bottom)
+        compose.onNodeWithText("10").assertIsDisplayed()
+
+        settings = Settings(handTotals = false)
+
+        compose.onNodeWithText("A-6").assertDoesNotExist()
+        compose.onNodeWithText("10").assertDoesNotExist()
+    }
+
+    @Test
+    fun theChartTileAndTheStreakMeterHideOnTheirOwnAndTheButtonsKeepTheirPlace() {
+        showTrainer()
+        val surrender = button(Move.SURRENDER).getBoundsInRoot()
+        val tile = compose.onNodeWithContentDescription(string(R.string.open_strategy_chart))
+        val meter = compose.onNodeWithContentDescription(string(R.string.streak_count, 0))
+
+        settings = Settings(chartButton = false)
+
+        tile.assertDoesNotExist()
+        meter.assertIsDisplayed()
+        assertEquals(surrender, button(Move.SURRENDER).getBoundsInRoot())
+
+        settings = Settings(streakMeter = false)
+
+        tile.assertIsDisplayed()
+        meter.assertDoesNotExist()
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeTheButtonsOnTheLeftCoverNeitherTheCardsNorTheStreakMeter() {
+        settings = Settings(buttonLocation = ButtonLocation.LEFT)
+        // Android eases its largest font size down, so doubling every size is the harder case
+        showTrainer(Modifier.size(360.dp, 640.dp), fontScale = 2f)
+
+        val controls = Move.entries.map { bounds(string(it.displayName)) } + bounds(string(R.string.open_strategy_chart))
+        val others = listOf(string(R.string.face_down_card), "Ace of spades", "9 of clubs", "7 of diamonds", string(R.string.streak_count, 0)).map(::bounds)
+
+        for (control in controls) {
+            for (other in others) assertFalse("$control overlaps $other", control.overlaps(other))
+        }
     }
 }

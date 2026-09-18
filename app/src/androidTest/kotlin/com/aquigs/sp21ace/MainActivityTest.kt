@@ -1,19 +1,25 @@
 package com.aquigs.sp21ace
 
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.data.PracticeHistoryStore
+import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
+import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.accuracy.cardTexts
 import org.junit.After
@@ -27,10 +33,11 @@ class MainActivityTest {
     @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
 
-    // These tests use the app's real rules and history files, so put back what a fresh install opens with
+    // These tests use the app's real rules, settings and history files, so put back what a fresh install opens with
     @After
     fun tearDown() {
         TableRulesStore(compose.activity).save(TableRules())
+        SettingsStore(compose.activity).save(Settings())
         PracticeHistoryStore.forApp(compose.activity).clear()
     }
 
@@ -76,6 +83,25 @@ class MainActivityTest {
         compose.activityRule.scenario.recreate()
 
         compose.onNode(hasText(compose.activity.getString(R.string.soft_17)) and hasText(compose.activity.getString(R.string.dealer_hits))).assertIsDisplayed()
+    }
+
+    @Test
+    fun keepsTheChosenColorThemeWhenRecreated() {
+        // The theme the system isn't using, so only a theme the app applies itself shows
+        val systemDark = compose.activity.resources.configuration.isNightModeActive
+        val chosen = compose.activity.getString(if (systemDark) R.string.theme_light else R.string.theme_dark)
+
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.open_menu)).performClick()
+        compose.onNode(hasText(compose.activity.getString(R.string.settings)) and isSelectable()).performClick()
+        compose.onNodeWithText(compose.activity.getString(R.string.color_theme)).performClick()
+        compose.onNodeWithText(chosen).performClick()
+
+        compose.activityRule.scenario.recreate()
+
+        compose.onNode(hasText(compose.activity.getString(R.string.color_theme)) and hasText(chosen)).assertIsDisplayed()
+        val screen = compose.onRoot().captureToImage().toPixelMap()
+        // The page's margin, clear of any row's text
+        assertEquals(!systemDark, screen[4, screen.height * 3 / 4].luminance() < 0.5f)
     }
 
     @Test

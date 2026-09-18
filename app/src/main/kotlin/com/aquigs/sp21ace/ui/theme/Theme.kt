@@ -11,6 +11,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import com.aquigs.sp21ace.domain.settings.ColorTheme
 
 /**
  * Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy, answer
@@ -164,6 +165,18 @@ fun Sp21AceTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composabl
     CompositionLocalProvider(LocalSp21AceColors provides if (darkTheme) DarkSp21AceColors else LightSp21AceColors) {
         MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
     }
+}
+
+/** The theme [colorTheme] picks, where [ColorTheme.SYSTEM] follows the system's. */
+@Composable
+fun Sp21AceTheme(colorTheme: ColorTheme, content: @Composable () -> Unit) {
+    val darkTheme = when (colorTheme) {
+        ColorTheme.SYSTEM -> isSystemInDarkTheme()
+        ColorTheme.LIGHT -> false
+        ColorTheme.DARK -> true
+    }
+
+    Sp21AceTheme(darkTheme = darkTheme, content = content)
 }
 
 object Sp21AceTheme {

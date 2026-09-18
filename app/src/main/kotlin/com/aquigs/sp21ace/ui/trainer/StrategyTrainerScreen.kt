@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -37,15 +40,20 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.settings.ButtonLocation
+import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.domain.trainer.Grade
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
+import com.aquigs.sp21ace.domain.trainer.dealerTotal
+import com.aquigs.sp21ace.domain.trainer.playerTotal
 import com.aquigs.sp21ace.ui.chart.ChartTile
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.OverlappingCards
@@ -55,49 +63,69 @@ import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
 private val ButtonSize = 64.dp
+private val LabelGap = 8.dp
 
+/** The cards, with the answer buttons down one edge and, as [settings] choose, the hand totals, the chart tile and the streak meter. */
 @Composable
 fun StrategyTrainerScreen(
     state: TrainerState,
+    settings: Settings,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onOpenDrawer: () -> Unit,
     onOpenChart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val buttonsOnLeft = settings.buttonLocation == ButtonLocation.LEFT
+
     Scaffold(
         modifier = modifier,
         topBar = { FeedbackBar(state.lastGrade, onOpenDrawer) },
         bottomBar = { PreviousHandPanel(state.lastGrade) },
     ) { padding ->
+        // The meter trades edges with the buttons, so the buttons stay at the screen's edge under the thumb
+        val meter = @Composable {
+            if (settings.streakMeter) {
+                StreakMeter(
+                    state.streak,
+                    modifier = Modifier.fillMaxHeight().padding(start = if (buttonsOnLeft) 8.dp else 0.dp, end = if (buttonsOnLeft) 0.dp else 8.dp),
+                )
+            }
+        }
+        val controls = @Composable {
+            Controls(
+                showChartTile = settings.chartButton,
+                alignment = if (buttonsOnLeft) Alignment.Start else Alignment.End,
+                onOpenChart = onOpenChart,
+                // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
+                onAnswer = { move -> onAnswer(state.hand, move) },
+            )
+        }
+
         Row(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            StreakMeter(state.streak, modifier = Modifier.fillMaxHeight().padding(end = 8.dp))
+            if (buttonsOnLeft) controls() else meter()
 
             Column(
                 modifier = Modifier.weight(1f).fillMaxHeight().wrapContentWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                HandArea(label = stringResource(R.string.dealer), modifier = Modifier.weight(1f)) {
+                HandArea(
+                    label = stringResource(R.string.dealer),
+                    total = state.hand.dealerTotal.takeIf { settings.handTotals },
+                    modifier = Modifier.weight(1f),
+                ) {
                     CardBack()
                     PlayingCard(state.hand.upcard)
                 }
-                HandArea(label = stringResource(R.string.you), modifier = Modifier.weight(1f)) {
+                HandArea(
+                    label = stringResource(R.string.you),
+                    total = state.hand.playerTotal.takeIf { settings.handTotals },
+                    modifier = Modifier.weight(1f),
+                ) {
                     state.hand.player.forEach { PlayingCard(it) }
                 }
             }
 
-            // As wide as a button, the tile takes no room from the cards
-            Column(
-                modifier = Modifier.fillMaxHeight(),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.End,
-            ) {
-                ChartTile(onClick = onOpenChart, modifier = Modifier.size(ButtonSize))
-                AnswerButtons(
-                    // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
-                    onAnswer = { move -> onAnswer(state.hand, move) },
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
+            if (buttonsOnLeft) meter() else controls()
         }
     }
 }
@@ -162,16 +190,48 @@ private fun FeedbackText(grade: Grade) {
     )
 }
 
+/** A hand's label over its cards, with its [total], when given, on the label's baseline at the cards' right edge, as in Blackjack Ace. */
 @Composable
-private fun HandArea(label: String, modifier: Modifier = Modifier, cards: @Composable () -> Unit) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = label,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.headlineSmall,
+private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, cards: @Composable () -> Unit) {
+    val color = MaterialTheme.colorScheme.primary
+
+    Layout(
+        contents = listOf<@Composable () -> Unit>(
+            { Text(text = label, color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall) },
+            { total?.let { Text(text = it, color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge) } },
+            { OverlappingCards(content = cards) },
+        ),
+        modifier = modifier,
+    ) { (labelMeasurables, totalMeasurables, cardMeasurables), constraints ->
+        val gap = LabelGap.roundToPx()
+        val label = labelMeasurables.single().measure(Constraints(maxWidth = constraints.maxWidth))
+        val total = totalMeasurables.singleOrNull()?.measure(Constraints(maxWidth = (constraints.maxWidth - label.width - gap).coerceAtLeast(0)))
+
+        // The two texts differ in size, so whichever sits lower on the shared baseline is pushed down
+        val labelTop = total?.let { maxOf(0, it[FirstBaseline] - label[FirstBaseline]) } ?: 0
+        val totalTop = total?.let { maxOf(0, label[FirstBaseline] - it[FirstBaseline]) } ?: 0
+        val headerHeight = maxOf(labelTop + label.height, totalTop + (total?.height ?: 0))
+        val cards = cardMeasurables.single().measure(
+            Constraints(maxWidth = constraints.maxWidth, maxHeight = (constraints.maxHeight - headerHeight - gap).coerceAtLeast(0)),
         )
-        OverlappingCards(modifier = Modifier.weight(1f, fill = false), content = cards)
+        val width = maxOf(cards.width, label.width + (total?.let { gap + it.width } ?: 0))
+
+        layout(width, (headerHeight + gap + cards.height).coerceIn(constraints.minHeight, constraints.maxHeight)) {
+            label.placeRelative(0, labelTop)
+            total?.placeRelative(width - total.width, totalTop)
+            cards.placeRelative(0, headerHeight + gap)
+        }
+    }
+}
+
+/** The chart tile over the answer buttons. As wide as a button, the tile takes no room from the cards. */
+@Composable
+private fun Controls(showChartTile: Boolean, alignment: Alignment.Horizontal, onOpenChart: () -> Unit, onAnswer: (Move) -> Unit) {
+    Column(modifier = Modifier.fillMaxHeight(), horizontalAlignment = alignment) {
+        if (showChartTile) ChartTile(onClick = onOpenChart, modifier = Modifier.size(ButtonSize))
+        // Holds the buttons at the bottom whether or not the tile shows
+        Spacer(Modifier.weight(1f))
+        AnswerButtons(onAnswer = onAnswer, modifier = Modifier.padding(top = 8.dp))
     }
 }
 

@@ -1,13 +1,18 @@
 package com.aquigs.sp21ace.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -31,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
@@ -41,6 +47,9 @@ import com.aquigs.sp21ace.ui.hands.CustomizeHandsScreen
 import com.aquigs.sp21ace.ui.hands.HandsDealtScreen
 import com.aquigs.sp21ace.ui.rules.Soft17Screen
 import com.aquigs.sp21ace.ui.rules.TableRulesScreen
+import com.aquigs.sp21ace.ui.settings.ButtonLocationScreen
+import com.aquigs.sp21ace.ui.settings.ColorThemeScreen
+import com.aquigs.sp21ace.ui.settings.SettingsScreen
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
 
@@ -53,6 +62,9 @@ enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     CustomizeHands(R.string.customize_hands, isRoot = false),
     HandsDealt(R.string.hands_dealt, isRoot = false),
     Accuracy(R.string.accuracy, isRoot = false),
+    Settings(R.string.settings, isRoot = false),
+    ColorTheme(R.string.color_theme, isRoot = false),
+    ButtonLocation(R.string.button_location, isRoot = false),
 }
 
 // In Blackjack Ace's order. The drawer keeps its own list, because not every destination belongs in it, such as a picker
@@ -73,10 +85,13 @@ fun AppShell(
     trainer: TrainerState,
     rules: TableRules,
     customization: HandCustomization,
+    settings: Settings,
     history: List<PracticeAnswer>,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onRulesChange: (TableRules) -> Unit,
     onCustomizationChange: (HandCustomization) -> Unit,
+    onSettingsChange: (Settings) -> Unit,
+    onClearHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A root screen, then the sub-pages opened over it, so Back retraces the way in
@@ -125,6 +140,7 @@ fun AppShell(
         when (destination) {
             Destination.StrategyTrainer -> StrategyTrainerScreen(
                 state = trainer,
+                settings = settings,
                 onAnswer = onAnswer,
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenChart = { open(Destination.StrategyChart) },
@@ -141,6 +157,16 @@ fun AppShell(
             )
             Destination.HandsDealt -> HandsDealtScreen(customization, onCustomizationChange, onBack = { back() })
             Destination.Accuracy -> AccuracyScreen(history, rules.ruleSet, onBack = { back() })
+            Destination.Settings -> SettingsScreen(
+                settings,
+                onSettingsChange,
+                onOpenColorTheme = { open(Destination.ColorTheme) },
+                onOpenButtonLocation = { open(Destination.ButtonLocation) },
+                onClearHistory = onClearHistory,
+                onBack = { back() },
+            )
+            Destination.ColorTheme -> ColorThemeScreen(settings, onSettingsChange, onBack = { back() })
+            Destination.ButtonLocation -> ButtonLocationScreen(settings, onSettingsChange, onBack = { back() })
         }
     }
 }
@@ -150,25 +176,35 @@ private fun Drawer(selected: Destination, onSelect: (Destination) -> Unit) {
     // The overload taking drawerState registers its own back handler, which would compete with AppShell's.
     // Stopping below the status bar keeps the dark app bar behind its light icons, which a light drawer would hide.
     ModalDrawerSheet(modifier = Modifier.width(DrawerWidth).windowInsetsPadding(WindowInsets.statusBars)) {
-        // The extra 16dp is the item's own start padding, so the header lines up with the icons
-        Text(
-            text = stringResource(R.string.basic_strategy),
-            modifier = Modifier
-                .padding(NavigationDrawerItemDefaults.ItemPadding)
-                .padding(start = 16.dp, top = 18.dp, bottom = 18.dp)
-                .semantics { heading() },
-            color = MaterialTheme.colorScheme.secondary,
-            style = MaterialTheme.typography.titleSmall,
-        )
-
-        BASIC_STRATEGY_ITEMS.forEach { (destination, icon) ->
-            NavigationDrawerItem(
-                label = { Text(stringResource(destination.title)) },
-                selected = destination == selected,
-                onClick = { onSelect(destination) },
-                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                icon = { Icon(painterResource(icon), contentDescription = null) },
+        // Scrolls, as Blackjack Ace's does, so Settings at the bottom stays in reach on a short screen at a large font size
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            // The extra 16dp is the item's own start padding, so the header lines up with the icons
+            Text(
+                text = stringResource(R.string.basic_strategy),
+                modifier = Modifier
+                    .padding(NavigationDrawerItemDefaults.ItemPadding)
+                    .padding(start = 16.dp, top = 18.dp, bottom = 18.dp)
+                    .semantics { heading() },
+                color = MaterialTheme.colorScheme.secondary,
+                style = MaterialTheme.typography.titleSmall,
             )
+
+            BASIC_STRATEGY_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
+
+            // As in Blackjack Ace, Settings belongs to no section, so it sits below them all, inset as far as the header
+            HorizontalDivider(modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(horizontal = 16.dp, vertical = 8.dp))
+            DrawerItem(Destination.Settings, R.drawable.ic_settings, selected, onSelect)
         }
     }
+}
+
+@Composable
+private fun DrawerItem(destination: Destination, @DrawableRes icon: Int, selected: Destination, onSelect: (Destination) -> Unit) {
+    NavigationDrawerItem(
+        label = { Text(stringResource(destination.title)) },
+        selected = destination == selected,
+        onClick = { onSelect(destination) },
+        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+        icon = { Icon(painterResource(icon), contentDescription = null) },
+    )
 }
