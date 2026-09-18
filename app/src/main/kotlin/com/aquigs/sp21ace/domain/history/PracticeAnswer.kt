@@ -16,13 +16,11 @@ import java.time.Instant
 data class PracticeAnswer(val answeredAt: Instant, val ruleSet: RuleSet, val hand: TrainerHand, val answer: Move, val correctMove: Move) {
     constructor(answeredAt: Instant, ruleSet: RuleSet, grade: Grade) : this(answeredAt, ruleSet, grade.hand, grade.answer, grade.correctMove)
 
-    // Only a hand with a chart row was ever asked, so a record of any other, such as a hand past 21, is refused
-    init {
-        chartRow(hand.player)
-    }
-
     val isCorrect: Boolean get() = answer == correctMove
 
-    /** The chart square the hand is read from. Its row's table is the kind of hand: hard, soft or a pair. */
-    val square: ChartSquare get() = ChartSquare(chartRow(hand.player), hand.upcard.upcard)
+    /**
+     * The chart square the hand is read from, its row's table the kind of hand: hard, soft or a pair. Only a hand with a chart
+     * row was ever asked, so a record of any other, such as a hand past 21, is refused.
+     */
+    val square: ChartSquare = ChartSquare(chartRow(hand.player), hand.upcard.upcard)
 }

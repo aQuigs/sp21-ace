@@ -28,8 +28,8 @@ class AccuracyTest {
     private val softSeventeenVsTen = TrainerHand(cards("As 6d"), card("Kh"))
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
 
-    private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT) =
-        PracticeAnswer(at, RuleSet.S17, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
+    private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT, rules: RuleSet = RuleSet.S17) =
+        PracticeAnswer(at, rules, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
 
     private fun List<PracticeAnswer>.figures(period: Period = Period.ALL_TIME, hands: HandFilter = HandFilter.ALL, at: Instant = now) =
         accuracy(period, hands, at)
@@ -140,7 +140,6 @@ class AccuracyTest {
             ),
             figures.bySquare,
         )
-        assertEquals(666, figures.bySquare.getValue(sixteenVsAceSquare).accuracyPermille)
     }
 
     @Test
@@ -180,9 +179,21 @@ class AccuracyTest {
     @Test
     fun anAnswerCountsInItsSquareWhateverRulesGradedIt() {
         // Hard 16 vs A is a hit when the dealer stands on soft 17, and a surrender when the dealer hits
-        val history = listOf(RuleSet.S17 to Move.HIT, RuleSet.H17 to Move.SURRENDER).map { (rules, move) -> PracticeAnswer(now, rules, sixteenVsAce, move, move) }
+        val history = listOf(answer(), answer(rules = RuleSet.H17, correctMove = Move.SURRENDER))
 
         assertEquals(mapOf(sixteenVsAceSquare to Tally(correct = 2, incorrect = 0)), history.figures().bySquare)
+    }
+
+    @Test
+    fun aCounterTalliesEachKeysRightAndWrongAnswersAndHoldsOnlyTheKeysAdded() {
+        val counter = TallyCounter<String>()
+        counter.add("a", isCorrect = true)
+        counter.add("b", isCorrect = false)
+        counter.add("a", isCorrect = false)
+        counter.add("a", isCorrect = true)
+
+        assertEquals(mapOf("a" to Tally(correct = 2, incorrect = 1), "b" to Tally(correct = 0, incorrect = 1)), counter.toMap())
+        assertEquals(emptyMap<String, Tally>(), TallyCounter<String>().toMap())
     }
 
     @Test

@@ -34,6 +34,19 @@ data class Tally(val correct: Int, val incorrect: Int) {
 
     /** In tenths of a percent, rounded down so 100.0% means none wrong. Null with nothing answered, which is no data rather than none right. */
     val accuracyPermille: Int? get() = total.takeIf { it > 0 }?.let { (correct * 1000L / it).toInt() }
+
+    operator fun plus(other: Tally): Tally = Tally(correct + other.correct, incorrect + other.incorrect)
+}
+
+/** Tallies answers under keys of the caller's choosing, holding only the keys added. */
+class TallyCounter<K> {
+    private val tallies = HashMap<K, Tally>()
+
+    fun add(key: K, isCorrect: Boolean) {
+        tallies.merge(key, if (isCorrect) Tally(correct = 1, incorrect = 0) else Tally(correct = 0, incorrect = 1), Tally::plus)
+    }
+
+    fun toMap(): Map<K, Tally> = tallies.toMap()
 }
 
 /**
@@ -42,7 +55,7 @@ data class Tally(val correct: Int, val incorrect: Int) {
  * whatever the period and tab, as Blackjack Ace's Streak card counts.
  */
 data class Accuracy(val byMove: Map<Move, Tally>, val bySquare: Map<ChartSquare, Tally>, val longestStreak: Int) {
-    val overall: Tally get() = Tally(byMove.values.sumOf { it.correct }, byMove.values.sumOf { it.incorrect })
+    val overall: Tally get() = byMove.values.fold(Tally(correct = 0, incorrect = 0), Tally::plus)
 }
 
 /**
@@ -52,9 +65,8 @@ data class Accuracy(val byMove: Map<Move, Tally>, val bySquare: Map<ChartSquare,
  */
 fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, now: Instant): Accuracy {
     val start = period.start(now)
-    val correct = IntArray(Move.entries.size)
-    val incorrect = IntArray(Move.entries.size)
-    val bySquare = HashMap<ChartSquare, Tally>()
+    val byMove = TallyCounter<Move>()
+    val bySquare = TallyCounter<ChartSquare>()
     var streak = 0
     var longestStreak = 0
 
@@ -63,15 +75,13 @@ fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, now: Instan
         longestStreak = maxOf(longestStreak, streak)
 
         if (start != null && (answer.answeredAt <= start || answer.answeredAt > now)) continue
-        val square = answer.square
-        if (hands.table != null && square.row.table != hands.table) continue
+        if (hands.table != null && answer.square.row.table != hands.table) continue
 
-        val counts = if (answer.isCorrect) correct else incorrect
-        counts[answer.correctMove.ordinal]++
-
-        val tally = bySquare[square] ?: Tally(correct = 0, incorrect = 0)
-        bySquare[square] = if (answer.isCorrect) tally.copy(correct = tally.correct + 1) else tally.copy(incorrect = tally.incorrect + 1)
+        byMove.add(answer.correctMove, answer.isCorrect)
+        bySquare.add(answer.square, answer.isCorrect)
     }
 
-    return Accuracy(Move.entries.associateWith { Tally(correct[it.ordinal], incorrect[it.ordinal]) }, bySquare, longestStreak)
+    // A move no answer called for still gets a tally, so its card reads as no data
+    val moves = byMove.toMap()
+    return Accuracy(Move.entries.associateWith { moves[it] ?: Tally(correct = 0, incorrect = 0) }, bySquare.toMap(), longestStreak)
 }
