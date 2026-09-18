@@ -25,13 +25,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
 
         // Dealer stands on soft 17 until the table rules let the player choose
-        val chart = StrategyCharts.forRules(RuleSet.S17)
+        val rules = RuleSet.S17
 
         setContent {
             var trainer by rememberSaveable { mutableStateOf(TrainerState(dealTrainerHand())) }
 
             Sp21AceTheme {
-                AppShell(trainer = trainer, onAnswer = { asked, move -> trainer = trainer.answer(asked, move, chart) })
+                AppShell(
+                    trainer = trainer,
+                    rules = rules,
+                    onAnswer = { asked, move -> trainer = trainer.answer(asked, move, StrategyCharts.forRules(rules)) },
+                )
             }
         }
     }

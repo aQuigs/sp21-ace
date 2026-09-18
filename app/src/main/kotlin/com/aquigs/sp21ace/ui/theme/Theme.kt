@@ -14,7 +14,8 @@ import androidx.compose.ui.graphics.lerp
 
 /**
  * Colours with no Material role: dark theme's primary is a light tint, but the app bar stays a deep navy, answer
- * feedback turns it green or red, and the recap of the previous hand takes a tint of the same green or red.
+ * feedback turns it green or red, the recap of the previous hand takes a tint of the same green or red, and each chart
+ * action has a fill of its own.
  */
 @Immutable
 data class Sp21AceColors(
@@ -22,12 +23,16 @@ data class Sp21AceColors(
     val onAppBar: Color,
     val correct: Color,
     val wrong: Color,
+    val chart: ChartColors,
     private val surface: Color,
     private val tintFraction: Float,
 ) {
     val correctTint: Color = lerp(surface, correct, tintFraction)
     val wrongTint: Color = lerp(surface, wrong, tintFraction)
 }
+
+@Immutable
+data class ChartColors(val hit: Color, val stand: Color, val double: Color, val split: Color, val surrender: Color)
 
 // The brand saffron #D99A1E only reaches about 2.3:1 on the light surfaces, so text-bearing roles use a darker tone.
 private val LightColors = lightColorScheme(
@@ -101,17 +106,31 @@ private val LightSp21AceColors = Sp21AceColors(
     onAppBar = LightColors.onPrimary,
     correct = Color(0xFF2E7D32),
     wrong = LightColors.error,
+    chart = ChartColors(
+        hit = Color(0xFFF7C5B8),
+        stand = Color(0xFFCFE4C6),
+        double = Color(0xFFF5DC9C),
+        split = Color(0xFFC3D7F0),
+        surrender = Color(0xFFE6CCE3),
+    ),
     surface = LightColors.surface,
     tintFraction = 0.15f,
 )
 
 // Deeper than the light theme's tones so a full-width bar doesn't glare against charcoal, and a stronger tint, because
-// charcoal swallows a faint one.
+// charcoal swallows a faint one. The chart fills go deep rather than pastel, so the dark theme's light text reads on them.
 private val DarkSp21AceColors = Sp21AceColors(
     appBar = Color(0xFF1B2C42),
     onAppBar = DarkColors.onSurface,
     correct = Color(0xFF2F6F3A),
     wrong = Color(0xFF9E2A24),
+    chart = ChartColors(
+        hit = Color(0xFF74402F),
+        stand = Color(0xFF3E5A3A),
+        double = Color(0xFF6B5320),
+        split = Color(0xFF2F4C6E),
+        surrender = Color(0xFF5E4260),
+    ),
     surface = DarkColors.surface,
     tintFraction = 0.3f,
 )

@@ -33,4 +33,20 @@ class PlayTest {
             assertThrows(code, IllegalArgumentException::class.java) { Play.parse(code) }
         }
     }
+
+    // The parser accepts only the charts' own order of play, card count, mark and dagger, so a square that reads back as
+    // itself was printed in chart notation
+    @Test
+    fun everySquarePrintsACodeThatReadsBackAsTheSamePlay() {
+        val misprinted = RuleSet.entries.flatMap { ruleSet ->
+            val chart = StrategyCharts.forRules(ruleSet)
+
+            chart.tables
+                .flatMap { table -> chart.hands(table).flatMap { hand -> Upcard.entries.mapNotNull { chart.play(table, hand, it) } } }
+                .filter { Play.parse(it.code) != it }
+                .map { "$ruleSet ${it.code}" }
+        }
+
+        assertEquals(emptyList<String>(), misprinted)
+    }
 }
