@@ -29,15 +29,18 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
+import com.aquigs.sp21ace.ui.accuracy.AccuracyScreen
 import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
 import com.aquigs.sp21ace.ui.rules.Soft17Screen
 import com.aquigs.sp21ace.ui.rules.TableRulesScreen
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
+import java.time.Clock
 
 /** Root screens carry the menu. Every other destination opens over one as a sub-page with a back arrow. */
 enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
@@ -45,6 +48,7 @@ enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     StrategyChart(R.string.strategy_chart, isRoot = false),
     TableRules(R.string.table_rules, isRoot = false),
     Soft17(R.string.soft_17, isRoot = false),
+    Accuracy(R.string.accuracy, isRoot = false),
 }
 
 // In Blackjack Ace's order. The drawer keeps its own list, because not every destination belongs in it, such as a picker
@@ -53,6 +57,7 @@ private val BASIC_STRATEGY_ITEMS = listOf(
     Destination.StrategyTrainer to R.drawable.ic_home,
     Destination.TableRules to R.drawable.ic_table_rules,
     Destination.StrategyChart to R.drawable.ic_chart,
+    Destination.Accuracy to R.drawable.ic_accuracy,
 )
 
 // Blackjack Ace's drawer leaves about a third of the screen uncovered; Material's 360dp default covers almost all of it.
@@ -62,6 +67,8 @@ private val DrawerWidth = 280.dp
 fun AppShell(
     trainer: TrainerState,
     rules: TableRules,
+    history: List<PracticeAnswer>,
+    clock: Clock,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onRulesChange: (TableRules) -> Unit,
     modifier: Modifier = Modifier,
@@ -119,6 +126,7 @@ fun AppShell(
             Destination.StrategyChart -> StrategyChartScreen(rules.ruleSet, onBack = { back() })
             Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = { back() })
             Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = { back() })
+            Destination.Accuracy -> AccuracyScreen(history, clock, onBack = { back() })
         }
     }
 }

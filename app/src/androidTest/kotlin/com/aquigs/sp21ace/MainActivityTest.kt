@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import org.junit.After
@@ -25,9 +26,12 @@ class MainActivityTest {
     @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
 
-    // These tests use the app's real rules file, so put back the defaults a fresh install opens with
+    // These tests use the app's real rules and history files, so put back what a fresh install opens with
     @After
-    fun tearDown() = TableRulesStore(compose.activity).save(TableRules())
+    fun tearDown() {
+        TableRulesStore(compose.activity).save(TableRules())
+        PracticeHistoryStore(compose.activity).clear()
+    }
 
     @Test
     fun opensOnTheStrategyTrainerWithAHandDealt() {
@@ -71,6 +75,33 @@ class MainActivityTest {
         compose.activityRule.scenario.recreate()
 
         compose.onNode(hasText(compose.activity.getString(R.string.soft_17)) and hasText(compose.activity.getString(R.string.dealer_hits))).assertIsDisplayed()
+    }
+
+    @Test
+    fun anAnswerStillCountsOnAccuracyWhenRecreated() {
+        val before = answersOnAccuracy()
+
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.move_hit)).performClick()
+        compose.activityRule.scenario.recreate()
+
+        assertEquals(before + 1, answersOnAccuracy())
+    }
+
+    // Counted on the All tab, since the hand dealt is random, and against a count taken first, since the app's own history may
+    // already hold answers from today
+    private fun answersOnAccuracy(): Int {
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.open_menu)).performClick()
+        compose.onNode(hasText(compose.activity.getString(R.string.accuracy)) and isSelectable()).performClick()
+        compose.onNodeWithText(compose.activity.getString(R.string.all_hands)).performClick()
+
+        val correct = compose.activity.getString(R.string.correct)
+        val incorrect = compose.activity.getString(R.string.incorrect)
+        val overall = compose.onNode(hasText(compose.activity.getString(R.string.overall)) and hasText(correct))
+            .fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.back)).performClick()
+
+        // Each count sits before its label
+        return listOf(correct, incorrect).sumOf { overall[overall.indexOf(it) - 1].toInt() }
     }
 
     // Hands are dealt at random, so compare every card, bar and recap word rather than expected values

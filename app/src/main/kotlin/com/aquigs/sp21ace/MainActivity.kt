@@ -12,7 +12,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.TableRulesStore
+import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
@@ -20,6 +22,7 @@ import com.aquigs.sp21ace.domain.trainer.answer
 import com.aquigs.sp21ace.domain.trainer.dealTrainerHand
 import com.aquigs.sp21ace.ui.AppShell
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
+import java.time.Clock
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,22 +31,43 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
 
         val store = TableRulesStore(this)
+        val historyStore = PracticeHistoryStore(this)
 
-        setContent { Sp21AceTheme { Sp21AceApp(store) } }
+        setContent { Sp21AceTheme { Sp21AceApp(store, historyStore) } }
     }
 }
 
-/** Holds the trainer and the table rules, saves the rules as they change and grades by them. Tests pass their own [store] and [deal]. */
+/**
+ * Holds the trainer, the table rules and the practice history, saves the rules and each answer as they change, and grades
+ * by the rules. Tests pass their own stores, [deal] and [clock].
+ */
 @Composable
-internal fun Sp21AceApp(store: TableRulesStore, deal: () -> TrainerHand = ::dealTrainerHand) {
+internal fun Sp21AceApp(
+    store: TableRulesStore,
+    historyStore: PracticeHistoryStore,
+    deal: () -> TrainerHand = ::dealTrainerHand,
+    clock: Clock = Clock.systemDefaultZone(),
+) {
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal())) }
     // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
     var rules by remember { mutableStateOf(store.load()) }
+    var history by remember { mutableStateOf(historyStore.load()) }
 
     AppShell(
         trainer = trainer,
         rules = rules,
-        onAnswer = { asked, move -> trainer = trainer.answer(asked, move, StrategyCharts.forRules(rules.ruleSet), deal) },
+        history = history,
+        clock = clock,
+        onAnswer = { asked, move ->
+            val next = trainer.answer(asked, move, StrategyCharts.forRules(rules.ruleSet), deal)
+            // An answer to a hand no longer on the table leaves the trainer as it was, and isn't one to record
+            if (next !== trainer) {
+                val answer = PracticeAnswer(clock.instant(), rules.ruleSet, requireNotNull(next.lastGrade))
+                history = history + answer
+                historyStore.append(answer)
+            }
+            trainer = next
+        },
         onRulesChange = {
             rules = it
             store.save(it)

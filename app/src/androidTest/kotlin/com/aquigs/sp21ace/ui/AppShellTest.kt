@@ -5,6 +5,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsSelected
@@ -23,6 +24,7 @@ import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.Sp21AceApp
+import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.Rank
@@ -31,11 +33,13 @@ import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class AppShellTest {
@@ -46,8 +50,9 @@ class AppShellTest {
     private val sixteenVsAce = TrainerHand(listOf(Card(Rank.NINE, Suit.CLUBS), Card(Rank.SEVEN, Suit.DIAMONDS)), Card(Rank.ACE, Suit.SPADES))
     private val eightsVsSix = TrainerHand(listOf(Card(Rank.EIGHT, Suit.HEARTS), Card(Rank.EIGHT, Suit.SPADES)), Card(Rank.SIX, Suit.DIAMONDS))
 
-    // Its own file, so the tests never overwrite the rules the app itself saved
+    // Their own files, so the tests never overwrite the rules or the history the app itself saved
     private val store by lazy { TableRulesStore(compose.activity, "table_rules_app_shell_test") }
+    private val historyStore by lazy { PracticeHistoryStore(File(compose.activity.filesDir, "practice_history_app_shell_test.txt")) }
 
     private fun string(id: Int) = compose.activity.getString(id)
 
@@ -62,14 +67,20 @@ class AppShellTest {
         // Edge to edge like MainActivity, or the status bar inset never reaches the composables
         compose.runOnUiThread { compose.activity.enableEdgeToEdge() }
         store.save(TableRules())
+        historyStore.clear()
 
         // The app's own wiring, dealing 16 vs A first and a pair of 8s after every answer
         var dealt = 0
-        compose.setContent { Sp21AceTheme(darkTheme = false) { Sp21AceApp(store, deal = { if (dealt++ == 0) sixteenVsAce else eightsVsSix }) } }
+        compose.setContent {
+            Sp21AceTheme(darkTheme = false) { Sp21AceApp(store, historyStore, deal = { if (dealt++ == 0) sixteenVsAce else eightsVsSix }) }
+        }
     }
 
     @After
-    fun tearDown() = store.save(TableRules())
+    fun tearDown() {
+        store.save(TableRules())
+        historyStore.clear()
+    }
 
     private fun openFromDrawer(title: Int) {
         compose.onNodeWithContentDescription(string(R.string.open_menu)).performClick()
@@ -81,17 +92,37 @@ class AppShellTest {
         compose.onNodeWithText(string(R.string.dealer_hits)).performClick()
     }
 
+    // The Overall card is one item for a screen reader, so its texts come together: the title, then each figure before its label
+    private fun overallCard(): List<String> = compose.onNode(hasText(string(R.string.overall)) and hasText(string(R.string.correct)))
+        .fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
+
     @Test
-    fun menuButtonOpensTheDrawerOnTheStrategyTrainer() {
+    fun menuButtonOpensTheDrawerOnTheStrategyTrainerWithItsItemsInBlackjackAcesOrder() {
         drawerItem(R.string.strategy_trainer).assertIsNotDisplayed()
 
         compose.onNodeWithContentDescription(string(R.string.open_menu)).performClick()
 
         compose.onNodeWithText(string(R.string.basic_strategy)).assertIsDisplayed()
-        drawerItem(R.string.strategy_trainer).assertIsDisplayed().assertIsSelected()
-        drawerItem(R.string.table_rules).assertIsDisplayed()
-        drawerItem(R.string.strategy_chart).assertIsDisplayed()
-        assertTrue(drawerItem(R.string.strategy_chart).getBoundsInRoot().top >= drawerItem(R.string.table_rules).getBoundsInRoot().bottom)
+        drawerItem(R.string.strategy_trainer).assertIsSelected()
+        val items = listOf(R.string.strategy_trainer, R.string.table_rules, R.string.strategy_chart, R.string.accuracy)
+            .map { drawerItem(it).assertIsDisplayed().getBoundsInRoot() }
+        items.zipWithNext().forEach { (above, below) -> assertTrue(below.top >= above.bottom) }
+    }
+
+    @Test
+    fun theTrainersAnswersCountOnAccuracyUnderTheirKindOfHand() {
+        // Right on hard 16 vs A, then wrong on the pair of 8s
+        compose.onNodeWithContentDescription(string(R.string.move_hit)).performClick()
+        compose.onNodeWithContentDescription(string(R.string.move_stand)).performClick()
+
+        openFromDrawer(R.string.accuracy)
+
+        appBarTitle(R.string.accuracy).assertIsDisplayed()
+        assertEquals(listOf("Overall", "100.0%", "Accuracy", "1", "Correct", "0", "Incorrect"), overallCard())
+
+        compose.onNodeWithText(string(R.string.table_pairs)).performClick()
+
+        assertEquals(listOf("Overall", "0.0%", "Accuracy", "0", "Correct", "1", "Incorrect"), overallCard())
     }
 
     @Test
