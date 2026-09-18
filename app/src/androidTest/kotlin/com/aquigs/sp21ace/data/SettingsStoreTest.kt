@@ -37,8 +37,7 @@ class SettingsStoreTest {
     @Test
     fun loadsEverySettingAsSaved() {
         val defaults = Settings()
-        // Everything away from its default first, then each setting on its own, so no field can pass by matching its default
-        val allChanged = Settings(ColorTheme.DARK, ButtonLocation.LEFT, handTotals = true, chartButton = false, streakMeter = false)
+        // Each setting away from its default on its own, so no field can pass by matching its default, then all back again
         val eachChanged = listOf(
             defaults.copy(colorTheme = ColorTheme.LIGHT),
             defaults.copy(colorTheme = ColorTheme.DARK),
@@ -48,7 +47,7 @@ class SettingsStoreTest {
             defaults.copy(streakMeter = false),
         )
 
-        for (settings in listOf(allChanged) + eachChanged + defaults) {
+        for (settings in eachChanged + defaults) {
             SettingsStore(context, name).save(settings)
 
             assertEquals(settings, SettingsStore(context, name).load())

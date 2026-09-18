@@ -47,11 +47,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * Holds the trainer, the table rules, how hands are dealt and the settings, saves each as it changes, themes the app by the
- * settings, deals through the rules and the customization, grades by the rules and records each grade. Tests pass their own
- * stores and [deal].
- */
+/** The composition root. Tests pass their own stores and [deal]. */
 @Composable
 internal fun Sp21AceApp(
     store: TableRulesStore,
@@ -66,7 +62,7 @@ internal fun Sp21AceApp(
     var customization by remember { mutableStateOf(handsStore.load()) }
     var settings by remember { mutableStateOf(settingsStore.load()) }
     val history by historyStore.history.collectAsState()
-    // A change of settings applies from the next hand, while the one on the table stays
+    // Each deal reads the rules, the customization and the history, so a change applies from the next hand while the one on the table stays
     val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
     val dark = settings.colorTheme.isDark()

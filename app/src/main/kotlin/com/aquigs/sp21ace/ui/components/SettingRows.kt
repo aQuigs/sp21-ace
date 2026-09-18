@@ -33,8 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
@@ -79,17 +77,10 @@ fun SettingsIntro(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** A heading over a group of settings, lined up with the rows' titles and coloured as the drawer's section headings are. */
+/** A heading over a group of settings, lined up with the rows' titles. */
 @Composable
 fun SettingsHeader(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        modifier = modifier
-            .padding(start = ListItemInset + IconSpace + ListItemInset, top = 16.dp, end = ListItemInset, bottom = 4.dp)
-            .semantics { heading() },
-        color = MaterialTheme.colorScheme.secondary,
-        style = MaterialTheme.typography.titleSmall,
-    )
+    SectionHeading(text, modifier.padding(start = ListItemInset + IconSpace + ListItemInset, top = 16.dp, end = ListItemInset, bottom = 4.dp))
 }
 
 /** A setting with several values: its title over the value chosen, opening a [ChoicePage] of the values. */

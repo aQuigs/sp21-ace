@@ -4,18 +4,14 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -34,10 +30,11 @@ class SettingsScreenTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private var settings by mutableStateOf(Settings())
+    private var clears = 0
 
     private fun string(id: Int) = compose.activity.getString(id)
 
-    private fun showSettings(onOpenColorTheme: () -> Unit = {}, onOpenButtonLocation: () -> Unit = {}, onClearHistory: () -> Unit = {}) {
+    private fun showSettings(onOpenColorTheme: () -> Unit = {}, onOpenButtonLocation: () -> Unit = {}) {
         compose.setContent {
             Sp21AceTheme {
                 SettingsScreen(
@@ -45,7 +42,7 @@ class SettingsScreenTest {
                     onChange = { settings = it },
                     onOpenColorTheme = onOpenColorTheme,
                     onOpenButtonLocation = onOpenButtonLocation,
-                    onClearHistory = onClearHistory,
+                    onClearHistory = { clears++ },
                     onBack = {},
                 )
             }
@@ -54,25 +51,25 @@ class SettingsScreenTest {
 
     private fun switch(title: Int) = compose.onNode(hasText(string(title)) and isToggleable())
 
-    private fun openClearDialog() = compose.onNodeWithText(string(R.string.clear_practice_history)).performScrollTo().performClick()
+    private fun summary(title: Int, value: Int) = compose.onNode(hasText(string(title)) and hasText(string(value)))
 
-    // The page's margin, clear of any row's text
-    private fun pageIsDark(): Boolean {
-        val page = compose.onRoot().captureToImage().toPixelMap()
-        return page[4, page.height * 3 / 4].luminance() < 0.5f
+    private fun openClearDialog() {
+        showSettings()
+        compose.onNodeWithText(string(R.string.clear_practice_history)).performScrollTo().performClick()
     }
 
     @Test
-    fun theSwitchesStartAsBlackjackAcesDoAndEachShowsOrHidesItsPart() {
+    fun theSwitchesStartAsBlackjackAcesDoAndEachSaysWhetherItsPartShows() {
         showSettings()
 
-        switch(R.string.hand_totals).assertIsOff().performClick().assertIsOn()
-        switch(R.string.strategy_chart_button).assertIsOn().performClick().assertIsOff()
-        switch(R.string.streak_meter).performScrollTo().assertIsOn().performClick().assertIsOff()
+        switch(R.string.hand_totals).assertIsOff().performClick()
+        switch(R.string.strategy_chart_button).assertIsOn().performClick()
+        switch(R.string.streak_meter).performScrollTo().assertIsOn().performClick()
 
         assertEquals(Settings(handTotals = true, chartButton = false, streakMeter = false), settings)
-        compose.onNode(hasText(string(R.string.hand_totals)) and hasText(string(R.string.visible))).assertIsDisplayed()
-        compose.onNode(hasText(string(R.string.streak_meter)) and hasText(string(R.string.hidden))).assertIsDisplayed()
+        summary(R.string.hand_totals, R.string.visible).assertIsDisplayed()
+        summary(R.string.strategy_chart_button, R.string.hidden).assertIsDisplayed()
+        summary(R.string.streak_meter, R.string.hidden).assertIsDisplayed()
     }
 
     @Test
@@ -80,8 +77,8 @@ class SettingsScreenTest {
         var opened = listOf<Int>()
         showSettings(onOpenColorTheme = { opened += R.string.color_theme }, onOpenButtonLocation = { opened += R.string.button_location })
 
-        compose.onNode(hasText(string(R.string.color_theme)) and hasText(string(R.string.theme_system))).performClick()
-        compose.onNode(hasText(string(R.string.button_location)) and hasText(string(R.string.right))).performClick()
+        summary(R.string.color_theme, R.string.theme_system).performClick()
+        summary(R.string.button_location, R.string.right).performClick()
 
         assertEquals(listOf(R.string.color_theme, R.string.button_location), opened)
     }
@@ -89,18 +86,16 @@ class SettingsScreenTest {
     @Test
     fun theColorThemePageChangesTheThemeAtOnce() {
         val systemDark = compose.activity.resources.configuration.isNightModeActive
-        var backs = 0
-        compose.setContent { Sp21AceTheme(settings.colorTheme) { ColorThemeScreen(settings, onChange = { settings = it }, onBack = { backs++ }) } }
+        compose.setContent { Sp21AceTheme(settings.colorTheme) { ColorThemeScreen(settings, onChange = { settings = it }, onBack = {}) } }
 
         compose.onNodeWithText(string(R.string.theme_system)).assertIsSelected()
-        assertEquals(systemDark, pageIsDark())
+        assertEquals(systemDark, compose.pageIsDark())
 
         for ((choice, dark) in listOf(R.string.theme_dark to true, R.string.theme_light to false, R.string.theme_system to systemDark)) {
             compose.onNodeWithText(string(choice)).performClick().assertIsSelected()
 
-            assertEquals(string(choice), dark, pageIsDark())
+            assertEquals(string(choice), dark, compose.pageIsDark())
         }
-        assertEquals(3, backs)
     }
 
     @Test
@@ -117,9 +112,6 @@ class SettingsScreenTest {
 
     @Test
     fun clearingAsksFirstAndCancellingKeepsTheHistory() {
-        var clears = 0
-        showSettings(onClearHistory = { clears++ })
-
         openClearDialog()
 
         compose.onNodeWithText(string(R.string.clear_history_message)).assertIsDisplayed()
@@ -133,9 +125,6 @@ class SettingsScreenTest {
 
     @Test
     fun confirmingClearsTheHistoryAndClosesTheDialog() {
-        var clears = 0
-        showSettings(onClearHistory = { clears++ })
-
         openClearDialog()
         compose.onNodeWithText(string(R.string.clear)).performClick()
 

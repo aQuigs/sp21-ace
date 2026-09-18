@@ -2,20 +2,16 @@ package com.aquigs.sp21ace
 
 import android.app.UiModeManager
 import android.os.Build
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.data.PracticeHistoryStore
@@ -24,6 +20,7 @@ import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.accuracy.cardTexts
+import com.aquigs.sp21ace.ui.settings.pageIsDark
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -81,8 +78,7 @@ class MainActivityTest {
 
     @Test
     fun keepsTheChosenTableRulesWhenRecreated() {
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.open_menu)).performClick()
-        compose.onNode(hasText(compose.activity.getString(R.string.table_rules)) and isSelectable()).performClick()
+        openFromDrawer(R.string.table_rules)
         compose.onNodeWithText(compose.activity.getString(R.string.soft_17)).performClick()
         compose.onNodeWithText(compose.activity.getString(R.string.dealer_hits)).performClick()
 
@@ -97,17 +93,14 @@ class MainActivityTest {
         val systemDark = compose.activity.resources.configuration.isNightModeActive
         val chosen = compose.activity.getString(if (systemDark) R.string.theme_light else R.string.theme_dark)
 
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.open_menu)).performClick()
-        compose.onNode(hasText(compose.activity.getString(R.string.settings)) and isSelectable()).performClick()
+        openFromDrawer(R.string.settings)
         compose.onNodeWithText(compose.activity.getString(R.string.color_theme)).performClick()
         compose.onNodeWithText(chosen).performClick()
 
         compose.activityRule.scenario.recreate()
 
         compose.onNode(hasText(compose.activity.getString(R.string.color_theme)) and hasText(chosen)).assertIsDisplayed()
-        val screen = compose.onRoot().captureToImage().toPixelMap()
-        // The page's margin, clear of any row's text
-        assertEquals(!systemDark, screen[4, screen.height * 3 / 4].luminance() < 0.5f)
+        assertEquals(!systemDark, compose.pageIsDark())
     }
 
     @Test
@@ -120,11 +113,15 @@ class MainActivityTest {
         assertEquals(before + 1, answersOnAccuracy())
     }
 
+    private fun openFromDrawer(title: Int) {
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.open_menu)).performClick()
+        compose.onNode(hasText(compose.activity.getString(title)) and isSelectable()).performClick()
+    }
+
     // Counted on the All tab, since the hand dealt is random, and against a count taken first, since the app's own history may
     // already hold answers from today
     private fun answersOnAccuracy(): Int {
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.open_menu)).performClick()
-        compose.onNode(hasText(compose.activity.getString(R.string.accuracy)) and isSelectable()).performClick()
+        openFromDrawer(R.string.accuracy)
         compose.onNodeWithText(compose.activity.getString(R.string.all_hands)).performClick()
 
         val correct = compose.activity.getString(R.string.correct)

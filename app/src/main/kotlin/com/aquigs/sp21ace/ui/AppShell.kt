@@ -14,7 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
@@ -30,8 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
@@ -43,6 +40,7 @@ import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.accuracy.AccuracyScreen
 import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
+import com.aquigs.sp21ace.ui.components.SectionHeading
 import com.aquigs.sp21ace.ui.hands.CustomizeHandsScreen
 import com.aquigs.sp21ace.ui.hands.HandsDealtScreen
 import com.aquigs.sp21ace.ui.rules.Soft17Screen
@@ -179,14 +177,9 @@ private fun Drawer(selected: Destination, onSelect: (Destination) -> Unit) {
         // Scrolls, as Blackjack Ace's does, so Settings at the bottom stays in reach on a short screen at a large font size
         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
             // The extra 16dp is the item's own start padding, so the header lines up with the icons
-            Text(
+            SectionHeading(
                 text = stringResource(R.string.basic_strategy),
-                modifier = Modifier
-                    .padding(NavigationDrawerItemDefaults.ItemPadding)
-                    .padding(start = 16.dp, top = 18.dp, bottom = 18.dp)
-                    .semantics { heading() },
-                color = MaterialTheme.colorScheme.secondary,
-                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(start = 16.dp, top = 18.dp, bottom = 18.dp),
             )
 
             BASIC_STRATEGY_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
