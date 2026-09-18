@@ -4,17 +4,20 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
-import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -25,10 +28,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.cards.card
@@ -41,7 +47,10 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.answer
+import com.aquigs.sp21ace.ui.assertFits
+import com.aquigs.sp21ace.ui.assertFitsOnOneLine
 import com.aquigs.sp21ace.ui.components.displayName
+import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -60,6 +69,10 @@ class StrategyTrainerScreenTest {
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
     private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
 
+    // Hard 15 vs 6 is debated, stands but hits with 6 cards, and gives way to a hit while a spaded 6-7-8 is possible: the
+    // longest feedback there is
+    private val spadedFifteenVsSix = TrainerHand(cards("7s 8s"), card("6d"))
+
     private var settings by mutableStateOf(Settings())
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
@@ -70,8 +83,19 @@ class StrategyTrainerScreenTest {
 
     private fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
 
-    private fun SemanticsNodeInteraction.textLayout(): TextLayoutResult =
-        mutableListOf<TextLayoutResult>().also { fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }.single()
+    // The unmerged tree still holds the text a control hides from a screen reader
+    private fun textsInside(description: String, count: Int): List<SemanticsNode> = compose.onAllNodes(
+        hasAnyAncestor(hasContentDescription(description)) and SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult),
+        useUnmergedTree = true,
+    ).fetchSemanticsNodes().also { assertEquals(description, count, it.size) }
+
+    // Each answer button holds its label, and the chart tile a letter for each of its four colours
+    private fun controlTexts() = Move.entries.map { string(it.displayName) to 1 } + (string(R.string.open_strategy_chart) to 4)
+
+    private fun assertFullSize(description: String) = bounds(description).let {
+        assertEquals(description, 64f, it.width.value, 0.5f)
+        assertEquals(description, 64f, it.height.value, 0.5f)
+    }
 
     // A screen reader hears the meter as one item, so its numbers and caption are only in the unmerged tree. The caption
     // centres under the track.
@@ -311,12 +335,79 @@ class StrategyTrainerScreenTest {
         for (control in controls) {
             for (other in others) assertFalse("$control overlaps $other", control.overlaps(other))
         }
-        // By the text's own single-line width, since a text given more room than it needs is laid out at the full width and
-        // reads as overflowing its node
-        for (text in texts) {
-            val layout = text.textLayout()
-            val needs = layout.multiParagraph.intrinsics.maxIntrinsicWidth
-            assertTrue("${layout.layoutInput.text} needs ${needs}px, is ${layout.size.width}px on ${layout.lineCount} lines", layout.lineCount == 1 && needs <= layout.size.width)
+        texts.forEach { it.fetchSemanticsNode().textLayout().assertFitsOnOneLine() }
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeEveryButtonLabelAndTileLetterFitsInsideItsControlOnEitherSide() {
+        showTrainer(Modifier.size(360.dp, 640.dp), configuration = DeviceConfigurationOverride.FontScale(2f))
+        // The 3 dp ring is drawn inside the circle in the label's colour, so a label has to end a little clear of it
+        val ringInset = with(compose.density) { 4.dp.toPx() }
+
+        for (location in ButtonLocation.entries) {
+            settings = Settings(buttonLocation = location)
+
+            textsInside(string(R.string.open_strategy_chart), 4).forEach { it.textLayout().assertFitsOnOneLine() }
+            for (move in Move.entries) {
+                val name = string(move.displayName)
+                val insideRing = compose.onNodeWithContentDescription(name).fetchSemanticsNode().size.width - 2 * ringInset
+                val label = textsInside(name, 1).single().textLayout()
+
+                label.assertFitsOnOneLine()
+                assertTrue(
+                    "With the buttons $location, ${label.layoutInput.text} ends at ${label.getLineRight(0)}px, past the ring's inside at ${insideRing}px",
+                    label.getLineRight(0) <= insideRing,
+                )
+            }
         }
+    }
+
+    @Test
+    fun atTheDefaultFontSizeTheButtonsAndTheTileAreFullSizeWithTheirLabelsAtTheirLargestAndAtDoubleItTheyLookTheSame() {
+        var fontScale by mutableFloatStateOf(1f)
+        // Tall enough that five full-size buttons and the tile fit above a recap grown by the double font. The scale is read in
+        // composition, so a new scale lays the same screen out again.
+        showTrainer(
+            Modifier.size(411.dp, 880.dp),
+            configuration = DeviceConfigurationOverride { content -> DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale), content) },
+        )
+
+        fun drawn() = controlTexts().associate { (description, count) ->
+            assertFullSize(description)
+            description to textsInside(description, count).map { it.textLayout().apply { assertFitsOnOneLine() } }
+        }
+        fun sizes(texts: Map<String, List<TextLayoutResult>>) =
+            texts.values.flatten().map { "${it.layoutInput.text} needs ${it.multiParagraph.intrinsics.maxIntrinsicWidth}x${it.multiParagraph.height}px in ${it.size}" }
+        val atDefault = drawn()
+
+        // The tree reports a label's style rather than the size autoSize drew it at, so the drawn size shows in how wide its line is
+        for (move in Move.entries) {
+            val label = atDefault.getValue(string(move.displayName)).single()
+            val input = label.layoutInput
+            val atLargest = TextMeasurer(input.fontFamilyResolver, compose.density, input.layoutDirection).measure(input.text, input.style.copy(fontSize = 13.sp), maxLines = 1)
+            assertEquals("${input.text}", atLargest.multiParagraph.intrinsics.maxIntrinsicWidth, label.multiParagraph.intrinsics.maxIntrinsicWidth, 0.01f)
+        }
+
+        fontScale = 2f
+
+        assertEquals(sizes(atDefault), sizes(drawn()))
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeTheLongestFeedbackFitsTheBar() {
+        showTrainer(Modifier.size(360.dp, 640.dp), first = spadedFifteenVsSix, configuration = DeviceConfigurationOverride.FontScale(2f))
+
+        button(Move.HIT).performClick()
+
+        compose.onNodeWithText("Hard 15 vs 6", substring = true).fetchSemanticsNode().textLayout().assertFits()
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeASurrenderFitsItsRecapTile() {
+        showTrainer(Modifier.size(360.dp, 640.dp), configuration = DeviceConfigurationOverride.FontScale(2f))
+
+        button(Move.SURRENDER).performClick()
+
+        compose.onNodeWithText(string(R.string.move_surrender), useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFitsOnOneLine()
     }
 }

@@ -60,7 +60,9 @@ import com.aquigs.sp21ace.ui.chart.ChartTile
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
+import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
 import com.aquigs.sp21ace.ui.components.appBarColors
+import com.aquigs.sp21ace.ui.components.autoSizeDownTo
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
@@ -185,7 +187,7 @@ private fun FeedbackText(grade: Grade) {
             contentDescription = "$verdict. ${grade.hand.matchup}. $words"
         },
         // The longest squares need three lines, and an em line height keeps them inside the bar as autoSize shrinks the text
-        autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 16.sp),
+        autoSize = autoSizeDownTo(minSize = 10.dp, maxFontSize = 16.sp),
         maxLines = 3,
         style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 1.2.em),
     )
@@ -238,30 +240,34 @@ private fun Controls(showChartTile: Boolean, alignment: Alignment.Horizontal, on
 private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Move.entries.forEach { move ->
-            val name = stringResource(move.displayName)
+    ProvideDefaultFontScale {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Move.entries.forEach { move ->
+                val name = stringResource(move.displayName)
 
-            OutlinedButton(
-                onClick = { onAnswer(move) },
-                // Shrink evenly on a screen too short for five, such as a small phone at a large font size, rather than squeezing out the last
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .sizeIn(maxWidth = ButtonSize, maxHeight = ButtonSize)
-                    .aspectRatio(1f)
-                    .semantics { contentDescription = name },
-                shape = CircleShape,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
-                border = BorderStroke(3.dp, color),
-                contentPadding = PaddingValues(0.dp),
-            ) {
-                // The capitals and SURR. are for the eye; a screen reader says the move's name
-                Text(
-                    text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
-                    fontWeight = FontWeight.Bold,
-                    autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.sp),
-                    maxLines = 1,
-                )
+                OutlinedButton(
+                    onClick = { onAnswer(move) },
+                    // Shrink evenly on a screen too short for five, such as a small phone at a large font size, rather than squeezing out the last
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .sizeIn(maxWidth = ButtonSize, maxHeight = ButtonSize)
+                        .aspectRatio(1f)
+                        .semantics { contentDescription = name },
+                    shape = CircleShape,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
+                    border = BorderStroke(3.dp, color),
+                    // The ring is drawn inside the circle in the label's colour, so the label is fitted inside the ring rather than across it
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                ) {
+                    // The capitals and SURR. are for the eye; a screen reader says the move's name
+                    Text(
+                        text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
+                        fontWeight = FontWeight.Bold,
+                        // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen needs less
+                        autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = 13.sp),
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
