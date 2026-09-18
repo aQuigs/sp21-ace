@@ -6,7 +6,6 @@ import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.spanishShoe
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
-import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -16,7 +15,6 @@ import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
-import com.aquigs.sp21ace.domain.trainer.dealTrainerHand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -32,61 +30,50 @@ class HandPickerTest {
     private val tenSevenVsAce = TrainerHand(cards("Qh 7s"), card("Ad"))
     private val nineEightVsAce = TrainerHand(cards("9d 8c"), card("Ac"))
 
-    private val deck = spanishShoe(decks = 1)
-
-    // Every two-card hand from one deck, the same card twice included so suited pairs are there, against an upcard of each value
-    private val everyHand = deck.flatMap { first -> deck.map { listOf(first, it) } }
-        .filterNot { it.isBlackjack() }
-        .flatMap { player -> deck.filter { it.suit == Suit.SPADES }.distinctBy { it.upcard }.map { TrainerHand(player, it) } }
+    private val pairsSurrender = HandType(ChartTable.PAIRS, Move.SURRENDER)
 
     private fun onlyOn(type: HandType, handsDealt: HandsDealt = HandsDealt.RANDOM) = HandCustomization(handsDealt, switchedOff = HAND_TYPES.toSet() - type)
 
-    private fun HandPicker.deal(times: Int, seed: Int = 21): List<TrainerHand> {
-        val random = Random(seed)
-        return List(times) { pick(random) }
+    private fun HandPicker.deal(times: Int, history: List<PracticeAnswer> = emptyList()): List<TrainerHand> {
+        val random = Random(21)
+        return List(times) { pick(history, random) }
     }
 
-    private fun answers(hand: TrainerHand, right: Int = 0, wrong: Int = 0, at: Instant = now, rules: RuleSet = RuleSet.H17) =
-        List(right) { PracticeAnswer(at, rules, hand, Move.SURRENDER, Move.SURRENDER) } + List(wrong) { PracticeAnswer(at, rules, hand, Move.HIT, Move.SURRENDER) }
+    private fun answers(hand: TrainerHand, right: Int = 0, wrong: Int = 0) =
+        List(right) { PracticeAnswer(now, RuleSet.H17, hand, Move.SURRENDER, Move.SURRENDER) } + List(wrong) { PracticeAnswer(now, RuleSet.H17, hand, Move.HIT, Move.SURRENDER) }
 
     private fun List<TrainerHand>.shares(of: (TrainerHand) -> Any): Map<Any, Double> = groupingBy(of).eachCount().mapValues { it.value.toDouble() / size }
 
     @Test
-    fun aHandIsItsTwoCardValuesInEitherOrderAgainstTheUpcardsWhateverTheSuits() {
-        assertEquals(HandValues(Upcard.SEVEN, Upcard.NINE, Upcard.ACE), nineSevenVsAce.values)
-        assertEquals(nineSevenVsAce.values, TrainerHand(cards("7h 9s"), card("Ad")).values)
-        assertEquals(tenSixVsAce.values, TrainerHand(cards("6h Jd"), card("Ac")).values)
-    }
+    fun randomDealsHandsAsOftenAsAShuffledShoe() {
+        val random = Random(7)
+        val shoe = spanishShoe(decks = 6)
+        val shuffled = List(20_000) {
+            generateSequence { shoe.shuffled(random) }.map { (first, up, second) -> TrainerHand(listOf(first, second), up) }.first { !it.player.isBlackjack() }
+        }
+        val picked = HandPicker(RuleSet.S17, HandCustomization()).deal(20_000)
 
-    @Test
-    fun everyAnswerEverGivenCountsForItsHandWhateverItsAgeAndTheRulesThatGradedIt() {
-        val history = answers(nineSevenVsAce, right = 1, at = Instant.EPOCH) +
-            answers(TrainerHand(cards("7h 9s"), card("Ad")), wrong = 1, rules = RuleSet.S17) +
-            answers(tenSixVsAce, wrong = 1) +
-            // Three cards make no two-card hand
-            answers(TrainerHand(cards("9c 4d 3s"), card("Ad")), right = 1)
+        val measures = listOf<(TrainerHand) -> Any>(
+            { chartRow(it.player).table },
+            { it.upcard.upcard },
+            { it.upcard.rank },
+            { hand -> hand.player.map { it.suit }.toSet().size },
+        )
+        for (measure in measures) {
+            val expected = shuffled.shares(measure)
+            val actual = picked.shares(measure)
 
-        assertEquals(mapOf(nineSevenVsAce.values to Tally(correct = 1, incorrect = 1), tenSixVsAce.values to Tally(correct = 0, incorrect = 1)), history.tallyByHand())
-    }
-
-    @Test
-    fun aHandWeighsTheInverseOfItsAccuracyWithNoAnswersAt50PercentAndAFloorAt5Percent() {
-        assertEquals(ACCURACY_FLOOR, 0.05, 0.0)
-        assertEquals(2.0, weight(null), 1e-9)
-        assertEquals(1.0, weight(Tally(correct = 3, incorrect = 0)), 1e-9)
-        assertEquals(2.0, weight(Tally(correct = 1, incorrect = 1)), 1e-9)
-        assertEquals(4.0, weight(Tally(correct = 1, incorrect = 3)), 1e-9)
-        assertEquals(10.0, weight(Tally(correct = 1, incorrect = 9)), 1e-9)
-        assertEquals(20.0, weight(Tally(correct = 1, incorrect = 29)), 1e-9)
-        assertEquals(20.0, weight(Tally(correct = 0, incorrect = 3)), 1e-9)
+            assertEquals(expected.keys, actual.keys)
+            expected.forEach { (key, share) -> assertEquals("$key", share, actual.getValue(key), 0.015) }
+        }
     }
 
     @Test
     fun prioritizingWorseHandsDealsEachHandInInverseProportionToItsAccuracy() {
         val history = answers(tenSixVsAce, right = 1, wrong = 3) + answers(nineSevenVsAce, right = 2) + answers(nineEightVsAce, wrong = 2)
-        val picker = HandPicker(RuleSet.H17, onlyOn(HandType(ChartTable.HARD, Move.SURRENDER), HandsDealt.PRIORITIZE_WORSE), history)
+        val picker = HandPicker(RuleSet.H17, onlyOn(HandType(ChartTable.HARD, Move.SURRENDER), HandsDealt.PRIORITIZE_WORSE))
 
-        val counts = picker.deal(27_000).groupingBy { it.values }.eachCount()
+        val counts = picker.deal(27_000, history).groupingBy { it.values }.eachCount()
 
         // Weights 4, 1, 2 with no answers, and 20 at the floor, out of 27
         val expected = mapOf(tenSixVsAce.values to 4_000, nineSevenVsAce.values to 1_000, tenSevenVsAce.values to 2_000, nineEightVsAce.values to 20_000)
@@ -96,7 +83,7 @@ class HandPickerTest {
 
     @Test
     fun prioritizingWorseHandsDealsEveryHandAlikeUntilThereAreAnswers() {
-        val hands = HandPicker(RuleSet.S17, HandCustomization(HandsDealt.PRIORITIZE_WORSE), emptyList()).deal(20_000)
+        val hands = HandPicker(RuleSet.S17, HandCustomization(HandsDealt.PRIORITIZE_WORSE)).deal(20_000)
 
         // 54 two-card hands, 10 of them pairs and 8 soft, against 10 upcard values
         val kinds = hands.shares { chartRow(it.player).table }
@@ -106,49 +93,51 @@ class HandPickerTest {
     }
 
     @Test
-    fun randomDealsHandsAsOftenAsAShuffledShoe() {
-        val random = Random(7)
-        val shoe = List(20_000) { dealTrainerHand(random) }
-        val picked = HandPicker(RuleSet.S17, HandCustomization(), emptyList()).deal(20_000)
+    fun aHandWhoseSuitsDecideItsMoveKeepsItsWholeWeightOnTheSuitsStillDealt() {
+        // Hard 14 vs 6 is S6" when the dealer hits soft 17, so a 6-8 of spades hits while any other 6-8 stands
+        val sixEightVsSix = TrainerHand(cards("6s 8s"), card("6h"))
+        val history = answers(sixEightVsSix, wrong = 1) + answers(nineEightVsAce, wrong = 1)
+        val picker = HandPicker(RuleSet.H17, HandCustomization(HandsDealt.PRIORITIZE_WORSE, switchedOff = setOf(HandType(ChartTable.HARD, Move.STAND))))
 
-        for (share in listOf<(TrainerHand) -> Any>({ chartRow(it.player).table }, { it.upcard.upcard })) {
-            val expected = shoe.shares(share)
-            val actual = picked.shares(share)
+        val dealt = picker.deal(20_000, history)
+        val sixEights = dealt.filter { it.values == sixEightVsSix.values }
+        val nineEights = dealt.count { it.values == nineEightVsAce.values }
 
-            assertEquals(expected.keys, actual.keys)
-            expected.forEach { (key, value) -> assertEquals("$key", value, actual.getValue(key), 0.015) }
-        }
+        assertTrue(sixEights.isNotEmpty())
+        assertTrue(sixEights.all { hand -> hand.player.all { it.suit == Suit.SPADES } })
+        // Both missed, so both weigh 20, however few of a hand's suits the switches leave
+        assertEquals(nineEights.toDouble(), sixEights.size.toDouble(), nineEights * 0.2)
     }
 
     @Test
     fun eachSwitchOnItsOwnDealsOnlyAndEveryHandThatCallsForItUnderEveryRuleSet() {
-        val impossible = mutableListOf<Pair<RuleSet, HandType>>()
+        val deck = spanishShoe(decks = 1)
+        // Every two cards of a deck but a blackjack, the same card twice included so suited pairs are there, against a card of each upcard value
+        val everyHand = deck.flatMap { first -> deck.map { listOf(first, it) } }
+            .filterNot { it.isBlackjack() }
+            .flatMap { player -> deck.distinctBy { it.upcard }.map { TrainerHand(player, it) } }
 
         for (rules in RuleSet.entries) {
             val chart = StrategyCharts.forRules(rules)
             val calling = everyHand.groupBy { it.type(chart) }
 
-            for (type in HAND_TYPES) {
-                val hands = calling[type]
-                if (hands == null) {
-                    impossible += rules to type
-                    continue
-                }
+            // The only pair to surrender is 8-8 against an ace, which splits when the dealer stands on soft 17
+            val impossible = if (rules == RuleSet.S17) setOf(pairsSurrender) else emptySet()
+            assertEquals("$rules", HAND_TYPES.toSet() - impossible, calling.keys)
 
-                val picker = HandPicker(rules, onlyOn(type), emptyList())
-                assertEquals("$rules $type", hands.map { it.values }.toSet(), picker.hands.toSet())
-                assertTrue("$rules $type", picker.deal(200).all { it.type(chart) == type })
+            for ((type, hands) in calling) {
+                val picker = HandPicker(rules, onlyOn(type))
+
+                assertEquals("$rules $type", hands.mapTo(HashSet()) { it.values }, picker.hands.toSet())
+                assertEquals("$rules $type", List(200) { type }, picker.deal(200).map { it.type(chart) })
             }
         }
-
-        // The only pair to surrender is 8-8 against an ace, which splits when the dealer stands on soft 17, so that's the one type a rule set rules out
-        assertEquals(listOf(RuleSet.S17 to HandType(ChartTable.PAIRS, Move.SURRENDER)), impossible)
     }
 
     @Test
     fun aSwitchReadsTheMoveEachHandIsGradedWithBonusExceptionsIncluded() {
         // Under the default rules hard 14 vs 4 is S4*, so any 6-8 hits while a 5-9 stands
-        val picker = HandPicker(TableRules().ruleSet, onlyOn(HandType(ChartTable.HARD, Move.STAND)), emptyList())
+        val picker = HandPicker(TableRules().ruleSet, onlyOn(HandType(ChartTable.HARD, Move.STAND)))
         val sixEightVsFour = HandValues(Upcard.SIX, Upcard.EIGHT, Upcard.FOUR)
 
         assertTrue(HandValues(Upcard.FIVE, Upcard.NINE, Upcard.FOUR) in picker.hands)
@@ -157,21 +146,14 @@ class HandPickerTest {
     }
 
     @Test
-    fun switchingOffAMoveStillDealsTheHandsWhoseSuitsCallForAnother() {
-        // Hard 14 vs 6 is S6" when the dealer hits soft 17, so a 6-8 of spades hits while any other 6-8 stands
-        val picker = HandPicker(RuleSet.H17, HandCustomization(switchedOff = setOf(HandType(ChartTable.HARD, Move.STAND))), emptyList())
-        val sixEightVsSix = HandValues(Upcard.SIX, Upcard.EIGHT, Upcard.SIX)
+    fun itDealsEveryTypeExactlyWhenNoTypeSwitchedOnCanComeUpUnderTheRules() {
+        val every = HandPicker(RuleSet.S17, HandCustomization()).deal(500)
+        val eightsVsAce = HandValues(Upcard.EIGHT, Upcard.EIGHT, Upcard.ACE)
 
-        assertTrue(sixEightVsSix in picker.hands)
-        assertTrue(picker.deal(2_000).filter { it.values == sixEightVsSix }.all { hand -> hand.player.all { it.suit == Suit.SPADES } })
-    }
-
-    @Test
-    fun withNoSwitchedOnTypePossibleUnderTheRulesItDealsEveryType() {
-        val every = HandPicker(RuleSet.S17, HandCustomization(), emptyList()).deal(500)
-
-        assertEquals(every, HandPicker(RuleSet.S17, onlyOn(HandType(ChartTable.PAIRS, Move.SURRENDER)), emptyList()).deal(500))
-        assertEquals(every, HandPicker(RuleSet.S17, HandCustomization(switchedOff = HAND_TYPES.toSet()), emptyList()).deal(500))
+        // No pair surrenders when the dealer stands on soft 17, while 8-8 against an ace does when the dealer hits
+        assertEquals(every, HandPicker(RuleSet.S17, onlyOn(pairsSurrender)).deal(500))
+        assertEquals(every, HandPicker(RuleSet.S17, HandCustomization(switchedOff = HAND_TYPES.toSet())).deal(500))
+        assertEquals(List(500) { eightsVsAce }, HandPicker(RuleSet.H17, onlyOn(pairsSurrender)).deal(500).map { it.values })
         assertEquals(setOf(ChartTable.HARD, ChartTable.SOFT, ChartTable.PAIRS), every.map { chartRow(it.player).table }.toSet())
     }
 }

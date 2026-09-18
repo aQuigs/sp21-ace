@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.dealing.DEALT_ROWS
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.ChartSquare
@@ -26,7 +27,6 @@ import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
-import com.aquigs.sp21ace.domain.trainer.DEALT_ROWS
 import com.aquigs.sp21ace.ui.components.ChartGrid
 import com.aquigs.sp21ace.ui.components.CodeSquare
 import com.aquigs.sp21ace.ui.theme.HeatmapColors

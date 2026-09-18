@@ -33,13 +33,13 @@ import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
 import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.HandType
+import com.aquigs.sp21ace.domain.dealing.type
+import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.TableRules
-import com.aquigs.sp21ace.domain.strategy.chartRow
-import com.aquigs.sp21ace.domain.strategy.firstMove
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
 import com.aquigs.sp21ace.ui.accuracy.cardTexts
@@ -72,7 +72,7 @@ class AppShellTest {
     private var handsDealt = 0
 
     // Deals 16 vs A first and a pair of 8s after every answer, unless a test deals through the picker instead
-    private var dealHand: (HandPicker) -> TrainerHand = { if (handsDealt++ == 0) sixteenVsAce else eightsVsSix }
+    private var dealHand: (HandPicker, List<PracticeAnswer>) -> TrainerHand = { _, _ -> if (handsDealt++ == 0) sixteenVsAce else eightsVsSix }
 
     private fun string(id: Int) = compose.activity.getString(id)
 
@@ -91,7 +91,7 @@ class AppShellTest {
         historyStore.clear()
 
         compose.setContent {
-            Sp21AceTheme(darkTheme = false) { Sp21AceApp(store, historyStore, handsStore, deal = { dealHand(it) }) }
+            Sp21AceTheme(darkTheme = false) { Sp21AceApp(store, historyStore, handsStore, deal = { picker, history -> dealHand(picker, history) }) }
         }
     }
 
@@ -289,7 +289,7 @@ class AppShellTest {
         val pairsSplit = HandType(ChartTable.PAIRS, Move.SPLIT)
         val random = Random(21)
         val dealt = mutableListOf<TrainerHand>()
-        dealHand = { picker -> picker.pick(random).also { dealt += it } }
+        dealHand = { picker, history -> picker.pick(history, random).also { dealt += it } }
 
         openFromDrawer(R.string.customize_hands)
         HAND_TYPES.filter { it != pairsSplit }.forEach { compose.handTypeSwitch(compose.activity, it).performScrollTo().performClick() }
@@ -299,8 +299,6 @@ class AppShellTest {
         compose.onNodeWithContentDescription("9 of clubs").assertIsDisplayed()
         repeat(20) { compose.onNodeWithContentDescription(string(R.string.move_split)).performClick() }
 
-        val chart = StrategyCharts.forRules(RuleSet.S17)
-        assertEquals(20, dealt.size)
-        dealt.forEach { assertEquals("$it", pairsSplit, HandType(chartRow(it.player).table, chart.firstMove(it.player, it.upcard))) }
+        assertEquals(List(20) { pairsSplit }, dealt.map { it.type(StrategyCharts.forRules(RuleSet.S17)) })
     }
 }

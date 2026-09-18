@@ -17,11 +17,10 @@ import com.aquigs.sp21ace.data.HandCustomizationStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.dealing.HandPicker
+import com.aquigs.sp21ace.domain.dealing.record
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
-import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
-import com.aquigs.sp21ace.domain.trainer.answer
 import com.aquigs.sp21ace.ui.AppShell
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import java.time.Instant
@@ -49,15 +48,15 @@ internal fun Sp21AceApp(
     store: TableRulesStore,
     historyStore: PracticeHistoryStore,
     handsStore: HandCustomizationStore,
-    deal: (HandPicker) -> TrainerHand = { it.pick() },
+    deal: (picker: HandPicker, history: List<PracticeAnswer>) -> TrainerHand = { picker, history -> picker.pick(history) },
 ) {
     // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
     var rules by remember { mutableStateOf(store.load()) }
     var customization by remember { mutableStateOf(handsStore.load()) }
     val history by historyStore.history.collectAsState()
-    // Reads the settings as it deals, so a change applies from the next hand while the one on the table stays
-    val dealNext = { deal(HandPicker(rules.ruleSet, customization, history.orEmpty())) }
-    var trainer by rememberSaveable { mutableStateOf(TrainerState(dealNext())) }
+    // A change of settings applies from the next hand, while the one on the table stays
+    val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
+    var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
 
     AppShell(
         trainer = trainer,
@@ -65,9 +64,10 @@ internal fun Sp21AceApp(
         customization = customization,
         history = history.orEmpty(),
         onAnswer = { asked, move ->
-            trainer.answer(asked, move, StrategyCharts.forRules(rules.ruleSet), dealNext)?.let { (next, grade) ->
+            // The store's history, since the collected one can trail a quick second answer
+            trainer.record(asked, move, rules.ruleSet, historyStore.history.value.orEmpty(), Instant.now()) { deal(picker, it) }?.let { (next, answer) ->
                 trainer = next
-                historyStore.append(PracticeAnswer(Instant.now(), rules.ruleSet, grade))
+                historyStore.append(answer)
             }
         },
         onRulesChange = {
