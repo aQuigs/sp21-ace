@@ -32,6 +32,7 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.legend
+import com.aquigs.sp21ace.ui.assertFitsOnOneLine
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
@@ -167,16 +168,11 @@ class StrategyChartScreenTest {
         val gridText = Upcard.entries.map { it.label } + hands + chart.legend(ChartTable.HARD).map { it.symbol } +
             hands.flatMap { hand -> Upcard.entries.mapNotNull { chart.play(ChartTable.HARD, hand, it)?.code } }
 
-        // Text that can't wrap reports overflow whenever its line is narrower than its box, so compare the width and height
-        // the line needs with what its box allows
-        val cutShort = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)
             .fetchSemanticsNodes()
             .map { it.textLayout() }
             .filter { it.layoutInput.text.text in gridText }
-            .filter { it.multiParagraph.intrinsics.maxIntrinsicWidth > it.layoutInput.constraints.maxWidth || it.multiParagraph.height > it.layoutInput.constraints.maxHeight }
-            .map { it.layoutInput.text.text }
-
-        assertEquals(emptyList<String>(), cutShort)
+            .forEach { it.assertFitsOnOneLine() }
     }
 
     @Test

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.trainer.STREAK_RUNGS
 import com.aquigs.sp21ace.domain.trainer.streakRung
+import com.aquigs.sp21ace.ui.components.autoSizeDownTo
 import kotlin.math.roundToInt
 
 private val CircleSize = 36.dp
@@ -62,7 +62,7 @@ fun StreakMeter(streak: Int, modifier: Modifier = Modifier, numbersOnRight: Bool
                         fontWeight = FontWeight.Bold,
                         // Low enough that a four-digit streak still fits the circle at the largest font sizes, on a line as tall as
                         // the number, because the body style's 24 sp line outgrows the circle there and sets the number low
-                        autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = 14.sp),
+                        autoSize = autoSizeDownTo(minSize = 6.dp, maxFontSize = 14.sp),
                         lineHeight = 1.em,
                         maxLines = 1,
                     )

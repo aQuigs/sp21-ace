@@ -256,13 +256,15 @@ private fun AnswerButtons(onAnswer: (Move) -> Unit, modifier: Modifier = Modifie
                     shape = CircleShape,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
                     border = BorderStroke(3.dp, color),
-                    contentPadding = PaddingValues(0.dp),
+                    // The ring is drawn inside the circle in the label's colour, so the label is fitted inside the ring rather than across it
+                    contentPadding = PaddingValues(horizontal = 4.dp),
                 ) {
                     // The capitals and SURR. are for the eye; a screen reader says the move's name
                     Text(
                         text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
                         fontWeight = FontWeight.Bold,
-                        autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.sp),
+                        // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen needs less
+                        autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = 13.sp),
                         maxLines = 1,
                     )
                 }

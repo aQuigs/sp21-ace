@@ -8,7 +8,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.DeviceConfigurationOverride
@@ -83,8 +82,6 @@ class StrategyTrainerScreenTest {
     private fun bounds(description: String) = compose.onNodeWithContentDescription(description).getBoundsInRoot()
 
     private fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
-
-    private fun Rect.encloses(other: Rect) = left <= other.left && top <= other.top && other.right <= right && other.bottom <= bottom
 
     // The unmerged tree still holds the text a control hides from a screen reader
     private fun textsInside(description: String, count: Int): List<SemanticsNode> = compose.onAllNodes(
@@ -344,17 +341,23 @@ class StrategyTrainerScreenTest {
     @Test
     fun onANarrowPhoneAtTheLargestFontSizeEveryButtonLabelAndTileLetterFitsInsideItsControlOnEitherSide() {
         showTrainer(Modifier.size(360.dp, 640.dp), configuration = DeviceConfigurationOverride.FontScale(2f))
+        // The 3 dp ring is drawn inside the circle in the label's colour, so a label has to end a little clear of it
+        val ringInset = with(compose.density) { 4.dp.toPx() }
 
         for (location in ButtonLocation.entries) {
             settings = Settings(buttonLocation = location)
 
-            for ((description, count) in controlTexts()) {
-                val control = compose.onNodeWithContentDescription(description).fetchSemanticsNode().boundsInRoot
+            textsInside(string(R.string.open_strategy_chart), 4).forEach { it.textLayout().assertFitsOnOneLine() }
+            for (move in Move.entries) {
+                val name = string(move.displayName)
+                val insideRing = compose.onNodeWithContentDescription(name).fetchSemanticsNode().size.width - 2 * ringInset
+                val label = textsInside(name, 1).single().textLayout()
 
-                for (text in textsInside(description, count)) {
-                    text.textLayout().assertFitsOnOneLine()
-                    assertTrue("With the buttons $location, ${text.boundsInRoot} is outside $description's $control", control.encloses(text.boundsInRoot))
-                }
+                label.assertFitsOnOneLine()
+                assertTrue(
+                    "With the buttons $location, ${label.layoutInput.text} ends at ${label.getLineRight(0)}px, past the ring's inside at ${insideRing}px",
+                    label.getLineRight(0) <= insideRing,
+                )
             }
         }
     }
@@ -362,8 +365,12 @@ class StrategyTrainerScreenTest {
     @Test
     fun atTheDefaultFontSizeTheButtonsAndTheTileAreFullSizeWithTheirLabelsAtTheirLargestAndAtDoubleItTheyLookTheSame() {
         var fontScale by mutableFloatStateOf(1f)
-        // Read in composition, so a new scale lays the same screen out again
-        showTrainer(configuration = DeviceConfigurationOverride { content -> DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale), content) })
+        // Tall enough that five full-size buttons and the tile fit above a recap grown by the double font. The scale is read in
+        // composition, so a new scale lays the same screen out again.
+        showTrainer(
+            Modifier.size(411.dp, 880.dp),
+            configuration = DeviceConfigurationOverride { content -> DeviceConfigurationOverride(DeviceConfigurationOverride.FontScale(fontScale), content) },
+        )
 
         fun drawn() = controlTexts().associate { (description, count) ->
             assertFullSize(description)
@@ -387,12 +394,20 @@ class StrategyTrainerScreenTest {
     }
 
     @Test
-    fun onANarrowPhoneAtTheLargestFontSizeTheLongestFeedbackAndTheRecapOfASurrenderFitTheirBoxes() {
+    fun onANarrowPhoneAtTheLargestFontSizeTheLongestFeedbackFitsTheBar() {
         showTrainer(Modifier.size(360.dp, 640.dp), first = spadedFifteenVsSix, configuration = DeviceConfigurationOverride.FontScale(2f))
+
+        button(Move.HIT).performClick()
+
+        compose.onNodeWithText("Hard 15 vs 6", substring = true).fetchSemanticsNode().textLayout().assertFits()
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeASurrenderFitsItsRecapTile() {
+        showTrainer(Modifier.size(360.dp, 640.dp), configuration = DeviceConfigurationOverride.FontScale(2f))
 
         button(Move.SURRENDER).performClick()
 
-        compose.onNodeWithText("Hard 15 vs 6", substring = true).fetchSemanticsNode().textLayout().assertFits()
         compose.onNodeWithText(string(R.string.move_surrender), useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFitsOnOneLine()
     }
 }

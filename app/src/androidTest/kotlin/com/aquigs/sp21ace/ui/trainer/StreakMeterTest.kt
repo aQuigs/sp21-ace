@@ -62,9 +62,9 @@ class StreakMeterTest {
     }
 
     @Test
-    fun atTheLargestFontSizeAThreeDigitStreakFitsItsCircle() {
-        showMeter(100, configuration = DeviceConfigurationOverride.FontScale(2f))
+    fun atTheLargestFontSizeAFourDigitStreakFitsItsCircle() {
+        showMeter(1024, configuration = DeviceConfigurationOverride.FontScale(2f))
 
-        compose.onNodeWithText("100", useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFitsOnOneLine()
+        compose.onNodeWithText("1024", useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFitsOnOneLine()
     }
 }
