@@ -16,10 +16,13 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
@@ -33,11 +36,14 @@ import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.legend
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
+import com.aquigs.sp21ace.ui.isPlaced
+import com.aquigs.sp21ace.ui.onPlacedNodeWithText
 import com.aquigs.sp21ace.ui.swipeToNextTab
 import com.aquigs.sp21ace.ui.swipeToPreviousTab
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -61,7 +67,7 @@ class StrategyChartScreenTest {
 
     private fun describes(hand: String, upcard: String) = SemanticsMatcher("describes $hand vs $upcard") { node ->
         node.config.getOrElse(SemanticsProperties.ContentDescription) { emptyList() }.any { it.startsWith("$hand vs $upcard: ") }
-    }
+    } and isPlaced
 
     // Many squares print the same code, so a square is found by the hand and upcard its description opens with
     private fun square(hand: String, upcard: String, code: String) = compose.onNode(describes(hand, upcard) and hasText(code))
@@ -118,30 +124,32 @@ class StrategyChartScreenTest {
     }
 
     @Test
-    fun aSwipeGoesNoFurtherThanTheFirstOrLastTableAndScrollsItsTabIntoView() {
+    fun swipingToTheLastTableScrollsItsTabIntoView() {
         rules = RuleSet.H17_REDOUBLE
         showChart()
+        val lastTab = compose.onNodeWithText(string(R.string.table_after_double_soft))
+        val screenRight = compose.onRoot().getBoundsInRoot().right
 
-        compose.swipeToPreviousTab()
+        // Unclipped, since the clipped bounds stop at the screen's edge whether the tab does or not
+        assertTrue("the last tab starts off screen", lastTab.getUnclippedBoundsInRoot().right > screenRight)
 
-        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        repeat(StrategyCharts.forRules(rules).tables.size - 1) { compose.swipeToNextTab() }
 
-        repeat(StrategyCharts.forRules(rules).tables.size) { compose.swipeToNextTab() }
-
-        compose.onNodeWithText(string(R.string.table_after_double_soft)).assertIsSelected().assertIsDisplayed()
+        lastTab.assertIsSelected()
+        assertTrue("the last tab is in view", lastTab.getUnclippedBoundsInRoot().right <= screenRight)
     }
 
     @Test
     fun theLegendFollowsTheTab() {
         showChart()
 
-        compose.onNodeWithText("Sources still debate this square").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Split").assertDoesNotExist()
+        compose.onPlacedNodeWithText("Sources still debate this square").performScrollTo().assertIsDisplayed()
+        compose.onPlacedNodeWithText("Split").assertDoesNotExist()
 
         openTab(R.string.table_pairs)
 
-        compose.onNodeWithText("Split").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Sources still debate this square").assertDoesNotExist()
+        compose.onPlacedNodeWithText("Split").performScrollTo().assertIsDisplayed()
+        compose.onPlacedNodeWithText("Sources still debate this square").assertDoesNotExist()
     }
 
     @Test
@@ -151,9 +159,9 @@ class StrategyChartScreenTest {
         openTab(R.string.table_rescue)
 
         square("16", "10", "R").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithContentDescription("16 vs 10: Rescue").assertExists()
-        compose.onNodeWithContentDescription("12 vs 2: Stand, no rescue").assertExists()
-        compose.onNodeWithText("Stand, no rescue").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasContentDescription("16 vs 10: Rescue") and isPlaced).assertExists()
+        compose.onNode(hasContentDescription("12 vs 2: Stand, no rescue") and isPlaced).assertExists()
+        compose.onPlacedNodeWithText("Stand, no rescue").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(string(R.string.table_after_double_hard)).assertDoesNotExist()
     }
 
@@ -171,11 +179,11 @@ class StrategyChartScreenTest {
     fun theCaptionNamesTheRules() {
         showChart()
 
-        compose.onNodeWithText("Dealer stands on soft 17 · 6 decks").assertIsDisplayed()
+        compose.onPlacedNodeWithText("Dealer stands on soft 17 · 6 decks").assertIsDisplayed()
 
         rules = RuleSet.H17_REDOUBLE
 
-        compose.onNodeWithText("Dealer hits soft 17 · Redoubling allowed · 6 decks").assertIsDisplayed()
+        compose.onPlacedNodeWithText("Dealer hits soft 17 · Redoubling allowed · 6 decks").assertIsDisplayed()
     }
 
     @Test

@@ -22,6 +22,8 @@ import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.ui.isPlaced
+import com.aquigs.sp21ace.ui.onPlacedNodeWithText
 import com.aquigs.sp21ace.ui.swipeToNextTab
 import com.aquigs.sp21ace.ui.swipeToPreviousTab
 import com.aquigs.sp21ace.ui.theme.HeatmapColors
@@ -85,7 +87,7 @@ class AccuracyScreenTest {
     }
 
     // The tabs scroll, so one may start out of view
-    private fun tap(title: Int) = compose.onNodeWithText(string(title)).performScrollTo().performClick()
+    private fun tap(title: Int) = compose.onPlacedNodeWithText(string(title)).performScrollTo().performClick()
 
     private fun accuracyCard(title: Int) = compose.cardTexts(string(title), string(R.string.correct))
 
@@ -107,7 +109,7 @@ class AccuracyScreenTest {
     fun todayIsTheDefaultAndTheChipsSwitchThePeriod() {
         showAccuracy(listOf(answer(right = true), answer(right = false, daysAgo = 3), answer(right = false, daysAgo = 20), answer(right = true, daysAgo = 60)))
 
-        compose.onNodeWithText(string(R.string.today)).assertIsSelected()
+        compose.onPlacedNodeWithText(string(R.string.today)).assertIsSelected()
         assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
 
         tap(R.string.week).assertIsSelected()
@@ -169,13 +171,13 @@ class AccuracyScreenTest {
         compose.swipeToNextTab()
 
         compose.onNodeWithText(string(R.string.table_soft)).assertIsSelected()
-        compose.onNodeWithText(string(R.string.week)).assertIsSelected()
+        compose.onPlacedNodeWithText(string(R.string.week)).assertIsSelected()
         assertEquals(figures(R.string.overall, "0.0%", correct = 0, incorrect = 1), accuracyCard(R.string.overall))
 
         compose.swipeToPreviousTab()
 
         compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
-        compose.onNodeWithText(string(R.string.week)).assertIsSelected()
+        compose.onPlacedNodeWithText(string(R.string.week)).assertIsSelected()
         assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
     }
 
@@ -215,7 +217,7 @@ class AccuracyScreenTest {
                 listOf(answer(right = false), answer(right = true), answer(right = true, hand = softSeventeenVsKing)),
         )
 
-        compose.onNodeWithText(string(R.string.longest_streak)).assertDoesNotExist()
+        compose.onPlacedNodeWithText(string(R.string.longest_streak)).assertDoesNotExist()
 
         tap(R.string.all_hands)
 
@@ -265,7 +267,7 @@ class AccuracyScreenTest {
 
         // Two ten-value cards are a pair, so only 3 or more cards make hard 20, and 21 leaves nothing to decide
         compose.square("20 vs 2: Stand, no answers", "S")
-        compose.onNode(hasContentDescription("21 vs ", substring = true)).assertDoesNotExist()
+        compose.onNode(hasContentDescription("21 vs ", substring = true) and isPlaced).assertDoesNotExist()
     }
 
     @Test
@@ -290,7 +292,7 @@ class AccuracyScreenTest {
 
         tap(R.string.all_hands)
 
-        compose.onNode(hasContentDescription(" vs ", substring = true)).assertDoesNotExist()
+        compose.onNode(hasContentDescription(" vs ", substring = true) and isPlaced).assertDoesNotExist()
     }
 
     @Test
@@ -310,7 +312,7 @@ class AccuracyScreenTest {
 
         compose.square("16 vs A: Rescue, 100% right", "R")
         compose.square("12 vs 8: Rescue, 0% right", "R")
-        compose.onNode(hasContentDescription("16 vs 6: Stand, no rescue, no answers")).assertExists()
+        compose.onNode(hasContentDescription("16 vs 6: Stand, no rescue, no answers") and isPlaced).assertExists()
         assertEquals(figures(R.string.move_rescue, "50.0%", correct = 1, incorrect = 1), accuracyCard(R.string.move_rescue))
 
         tap(R.string.all_hands)
