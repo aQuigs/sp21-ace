@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Smaller than the foreground, so the themed spade matches the weight of the system's themed glyphs -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.75"
+        android:scaleY="0.75">
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M54,24 C39.76,37.22 28.58,46.37 28.58,57.56 C28.58,66.71 35.69,72.31 42.81,72.31 C47.9,72.31 51.46,69.76 52.98,66.71 C52.47,73.83 49.93,79.93 45.36,84 L62.64,84 C58.07,79.93 55.53,73.83 55.02,66.71 C56.54,69.76 60.1,72.31 65.19,72.31 C72.31,72.31 79.42,66.71 79.42,57.56 C79.42,46.37 68.24,37.22 54,24 Z M43.44 64.3L43.44 62.69Q43.44 61.07 43.92 59.83Q44.4 58.59 45.49 57.49Q46.58 56.4 48.49 55.21Q49.05 54.86 49.29 54.6Q49.52 54.35 49.52 53.99Q49.52 53.22 48.41 53.22Q47.59 53.22 46.52 53.66Q45.45 54.09 44.59 54.74L43.48 50.75Q44.68 50.14 46.24 49.72Q47.8 49.3 49.37 49.3Q51.96 49.3 53.39 50.45Q54.82 51.59 54.82 53.69Q54.82 54.82 54.32 55.67Q53.82 56.53 53.12 57.11Q52.41 57.69 51.29 58.44Q50.03 59.27 49.44 59.86Q48.85 60.45 48.85 61.22L51.12 61.22L51.12 60.15L54.97 60.15L54.97 64.3L43.44 64.3M64.56 64.3L56.22 64.3L56.22 61.22L58.03 61.22L58.03 52.77L55.66 52.77L55.66 50.65L59.83 49.69L62.98 49.69L62.98 61.22L64.56 61.22" />
+    </group>
+</vector>
