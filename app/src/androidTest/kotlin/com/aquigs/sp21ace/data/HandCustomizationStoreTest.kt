@@ -37,10 +37,11 @@ class HandCustomizationStoreTest {
     @Test
     fun loadsTheModeAndEverySwitchAsSaved() {
         // Everything away from its default first, then each switch off on its own, so no field can pass by matching its default
-        val customizations = listOf(HandCustomization(HandsDealt.PRIORITIZE_WORSE, switchedOff = HAND_TYPES.toSet(), multiCardHands = false, cardCountHands = false)) +
+        val customizations = listOf(HandCustomization(HandsDealt.PRIORITIZE_WORSE, switchedOff = HAND_TYPES.toSet(), multiCardHands = false, cardCountHands = false, bonusHands = false)) +
             HAND_TYPES.map { HandCustomization(switchedOff = setOf(it)) } +
             HandCustomization(multiCardHands = false) +
             HandCustomization(cardCountHands = false) +
+            HandCustomization(bonusHands = false) +
             HandCustomization()
 
         for (customization in customizations) {
