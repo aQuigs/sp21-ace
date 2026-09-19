@@ -14,9 +14,11 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.correctMove
+import com.aquigs.sp21ace.domain.strategy.doubledRow
 import com.aquigs.sp21ace.domain.strategy.totalRow
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.domain.trainer.correctMove
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,6 +30,8 @@ class DealableHandsTest {
     private fun twoCardHands(rules: RuleSet) = dealableHands(rules).hands.values.flatten().filterIsInstance<DealableHand>()
 
     private fun multiCardHands(rules: RuleSet) = dealableHands(rules).hands.filterKeys { it is MultiCardHand }
+
+    private fun doubledHands(rules: RuleSet) = dealableHands(rules).hands.filterKeys { it is DoubledHand }
 
     private fun waysToDeal(player: String, upcard: Upcard) = s17Hands.single { it.player.toSet() == cards(player).toSet() && it.upcard == upcard }.ways
 
@@ -62,16 +66,88 @@ class DealableHandsTest {
         return reached
     }
 
+    // How often a round reaches each doubled hand, walking every card a player following the chart hits, doubles and redoubles
+    // to, each drawn as from a full shoe, short of the last double
+    private fun reachedDoubled(rules: RuleSet): Map<HandKey, Double> {
+        val chart = StrategyCharts.forRules(rules)
+        val reached = HashMap<HandKey, Double>()
+        val oneOfEachValue = Rank.entries.distinctBy { it.value }
+
+        fun play(hand: TrainerHand, chance: Double) {
+            val move = chart.correctMove(hand)
+            if (hand.doubled && chart.doubledRow(hand.player.total()) != null) reached.merge(DoubledHand(hand.row, hand.upcard.upcard, move), chance, Double::plus)
+
+            val doubles = when {
+                move == Move.HIT -> 0
+                move == Move.DOUBLE || move == Move.REDOUBLE && hand.doubles < 2 -> hand.doubles + 1
+                else -> return
+            }
+            for (rank in oneOfEachValue) {
+                val grown = hand.copy(player = hand.player + Card(rank, Suit.CLUBS), doubles = doubles)
+                if (grown.player.total().value < 21) play(grown, chance * (if (rank.value == 10) 72 else 24) / 288.0)
+            }
+        }
+
+        val upcards = oneOfEachValue.map { Card(it, Suit.CLUBS) }.associateBy { it.upcard }
+        for (hands in twoCardHands(rules).groupBy { handValues(it.player, it.upcard, it.type.move) }.values) {
+            play(TrainerHand(hands.first().player, upcards.getValue(hands.first().upcard)), hands.sumOf { it.ways } / (288.0 * 287 * 286))
+        }
+
+        return reached
+    }
+
     @Test
-    fun theDealtRowsAreHard5To20SoftA2ToA9AndEveryPairJustAsTheDealReachesThem() {
+    fun doubledHandsComeUpAsOftenAsARoundReachesThemByDoublingWhereTheChartSaysDoubleAndRedoublingWhereItSaysRedouble() {
+        for (rules in RuleSet.entries) {
+            val expected = reachedDoubled(rules)
+            val dealt = doubledHands(rules).mapValues { (_, ways) -> ways.sumOf { it.chance } }
+
+            assertEquals("$rules", expected.keys, dealt.keys)
+            expected.forEach { (hand, chance) -> assertEquals("$rules $hand", chance, dealt.getValue(hand), chance * 1e-9) }
+        }
+    }
+
+    @Test
+    fun everyWayToDealADoubledHandDoublesAndRedoublesWhereTheChartSaysFromWhatTheShoeHasLeft() {
+        val random = Random(21)
+
+        for (rules in RuleSet.entries) {
+            val chart = StrategyCharts.forRules(rules)
+
+            for ((hand, ways) in doubledHands(rules)) {
+                for (way in ways) {
+                    val dealt = way.deal(random)
+                    val start = dealt.player.dropLast(dealt.doubles)
+                    val hits = (2 until start.size).map { chart.correctMove(start.take(it), dealt.upcard) }
+                    val redoubles = (1 until dealt.doubles).map { chart.correctMove(TrainerHand(dealt.player.dropLast(dealt.doubles - it), dealt.upcard, doubles = it)) }
+
+                    assertEquals("$rules $hand", hand, dealt.key(chart))
+                    assertTrue("$rules $dealt", dealt.doubles in 1..(if (rules.redoubling) 2 else 1))
+                    assertEquals("$rules $dealt", List(start.size - 2) { Move.HIT }, hits)
+                    assertEquals("$rules $dealt", Move.DOUBLE, chart.correctMove(start, dealt.upcard))
+                    assertEquals("$rules $dealt", List(dealt.doubles - 1) { Move.REDOUBLE }, redoubles)
+                    assertTrue("$rules $dealt", (dealt.player + dealt.upcard).groupingBy { it }.eachCount().values.all { it <= 6 })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theDealtRowsAreHard5To20SoftA2ToA9EveryPairAndTheDoubledRowsJustAsTheDealReachesThem() {
         val random = Random(21)
         val picker = HandPicker(RuleSet.S17, HandCustomization())
-        val reached = List(5_000) { chartRow(picker.pick(emptyList(), random).player) }.toSet()
+        val reached = List(5_000) { picker.pick(emptyList(), random).row }.toSet()
         val expected = (5..20).map { ChartRow(ChartTable.HARD, "$it") } +
             (2..9).map { ChartRow(ChartTable.SOFT, "A-$it") } +
             Upcard.entries.map { ChartRow(ChartTable.PAIRS, "${it.label}-${it.label}") }
+        // Double Down Rescue's rows are hard 12 to 17. With redoubling a double of hard 5 draws to hard 7 at the least, and one of
+        // soft 13 to soft 14.
+        val rescueRows = (12..17).map { ChartRow(ChartTable.AFTER_DOUBLE_HARD, "$it") }
+        val redoubleRows = (7..20).map { ChartRow(ChartTable.AFTER_DOUBLE_HARD, "$it") } + (3..9).map { ChartRow(ChartTable.AFTER_DOUBLE_SOFT, "A-$it") }
 
-        RuleSet.entries.forEach { assertEquals("$it", expected.toSet(), dealtRows(it)) }
+        assertEquals((expected + redoubleRows).toSet(), dealtRows(RuleSet.H17_REDOUBLE))
+        assertEquals((expected + rescueRows).toSet(), dealtRows(RuleSet.H17))
+        assertEquals((expected + rescueRows).toSet(), dealtRows(RuleSet.S17))
         assertEquals(dealtRows(RuleSet.S17), reached)
     }
 

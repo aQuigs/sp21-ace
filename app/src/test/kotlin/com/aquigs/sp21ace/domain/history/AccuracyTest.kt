@@ -1,5 +1,6 @@
 package com.aquigs.sp21ace.domain.history
 
+import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
@@ -12,8 +13,11 @@ import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
+import com.aquigs.sp21ace.domain.strategy.afterDoublingRow
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.correctMove
+import com.aquigs.sp21ace.domain.strategy.correctMoveAfterDoubling
+import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -87,6 +91,9 @@ class AccuracyTest {
             answer(right = false, hand = softSeventeenVsTen),
             answer(hand = eightsVsSix, correctMove = Move.SPLIT),
             answer(hand = eightsVsSix, correctMove = Move.SPLIT),
+            // Doubled hard 16 vs A, and soft 18 vs 4 with redoubling
+            answer(right = false, hand = TrainerHand(cards("5c 6d 5h"), card("As"), doubles = 1), correctMove = Move.RESCUE),
+            answer(hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
         )
 
         assertEquals(
@@ -94,7 +101,9 @@ class AccuracyTest {
                 HandFilter.HARD to Tally(correct = 1, incorrect = 0),
                 HandFilter.SOFT to Tally(correct = 0, incorrect = 1),
                 HandFilter.PAIRS to Tally(correct = 2, incorrect = 0),
-                HandFilter.ALL to Tally(correct = 3, incorrect = 1),
+                HandFilter.AFTER_DOUBLE_HARD to Tally(correct = 0, incorrect = 1),
+                HandFilter.AFTER_DOUBLE_SOFT to Tally(correct = 1, incorrect = 0),
+                HandFilter.ALL to Tally(correct = 4, incorrect = 2),
             ),
             HandFilter.entries.associateWith { history.figures(hands = it).overall },
         )
@@ -116,6 +125,8 @@ class AccuracyTest {
                 Move.DOUBLE to Tally(correct = 0, incorrect = 0),
                 Move.SPLIT to Tally(correct = 1, incorrect = 0),
                 Move.SURRENDER to Tally(correct = 0, incorrect = 1),
+                Move.REDOUBLE to Tally(correct = 0, incorrect = 0),
+                Move.RESCUE to Tally(correct = 0, incorrect = 0),
             ),
             figures.byMove,
         )
@@ -180,8 +191,8 @@ class AccuracyTest {
     fun aDoubledHandLandsInTheAfterDoublingSquaresRatherThanUnderItsTotal() {
         val fourteenVsNine = TrainerHand(cards("5c 6d 3h"), card("9s"))
         val history = listOf(
-            answer(right = false, hand = fourteenVsNine.copy(doubled = true), correctMove = Move.SURRENDER),
-            answer(hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), correctMove = Move.DOUBLE, rules = RuleSet.H17_REDOUBLE),
+            answer(right = false, hand = fourteenVsNine.copy(doubles = 1), correctMove = Move.RESCUE),
+            answer(hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
             answer(hand = fourteenVsNine, correctMove = Move.HIT),
         )
 
@@ -195,6 +206,27 @@ class AccuracyTest {
         )
         assertEquals(mapOf(square(ChartTable.HARD, "14", Upcard.NINE) to Tally(correct = 1, incorrect = 0)), history.figures(hands = HandFilter.HARD).bySquare)
         assertEquals(emptyMap<ChartSquare, Tally>(), history.figures(hands = HandFilter.SOFT).bySquare)
+        assertEquals(Tally(correct = 0, incorrect = 1), history.figures(hands = HandFilter.AFTER_DOUBLE_HARD).overall)
+        assertEquals(Tally(correct = 1, incorrect = 0), history.figures(hands = HandFilter.AFTER_DOUBLE_SOFT).byMove.getValue(Move.REDOUBLE))
+    }
+
+    @Test
+    fun aRedoubleAndARescueHaveCardsOfTheirOwnApartFromADoubleAndASurrender() {
+        val history = listOf(
+            answer(hand = TrainerHand(cards("5c 6d"), card("5s")), correctMove = Move.DOUBLE),
+            answer(right = false, hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
+            answer(hand = TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1), correctMove = Move.RESCUE),
+            // A stand is a stand, doubled or not
+            answer(hand = TrainerHand(cards("5c 6d 9h"), card("4s"), doubles = 1), correctMove = Move.STAND),
+            answer(hand = TrainerHand(cards("Kc 8d"), card("6h")), correctMove = Move.STAND),
+        )
+
+        val byMove = history.figures().byMove
+        assertEquals(Tally(correct = 1, incorrect = 0), byMove.getValue(Move.DOUBLE))
+        assertEquals(Tally(correct = 0, incorrect = 1), byMove.getValue(Move.REDOUBLE))
+        assertEquals(Tally(correct = 1, incorrect = 0), byMove.getValue(Move.RESCUE))
+        assertEquals(Tally(correct = 0, incorrect = 0), byMove.getValue(Move.SURRENDER))
+        assertEquals(Tally(correct = 2, incorrect = 0), byMove.getValue(Move.STAND))
     }
 
     @Test
@@ -253,13 +285,17 @@ class AccuracyTest {
         // The same card twice included, so the suited 7-7 bonus exception is there too
         val hands = deck.flatMap { first -> deck.map { listOf(first, it) } }.filterNot { it.isBlackjack() }
         val upcards = deck.filter { it.suit == Suit.SPADES }
+        // Every total a doubled hand can have, from hard 6 and soft 13 up
+        val doubled = (6..20).map { HandTotal(it, soft = false) } + (13..20).map { HandTotal(it, soft = true) }
         val called = RuleSet.entries.map(StrategyCharts::forRules).flatMap { chart ->
-            hands.flatMap { hand -> upcards.map { upcard -> chartRow(hand).table to chart.correctMove(hand, upcard) } }
+            hands.flatMap { hand -> upcards.map { upcard -> chartRow(hand).table to chart.correctMove(hand, upcard) } } +
+                doubled.flatMap { total -> upcards.map { total.afterDoublingRow.table to chart.correctMoveAfterDoubling(total, it.upcard) } }
         }.groupBy({ it.first }, { it.second })
 
         for (tab in HandFilter.entries) {
             val moves = (tab.table?.let { called.getValue(it) } ?: called.values.flatten()).toSet()
-            assertEquals(tab.name, listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER).filter { it in moves }, tab.moves)
+            val order = listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.REDOUBLE, Move.STAND, Move.SURRENDER, Move.RESCUE)
+            assertEquals(tab.name, order.filter { it in moves }, tab.moves)
         }
     }
 }

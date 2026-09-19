@@ -68,7 +68,7 @@ fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RecapColumn(stringResource(R.string.you), grade) { recap ->
-                    OverlappingCards { recap.hand.player.forEach { PlayingCard(it) } }
+                    OverlappingCards(sideways = recap.hand.doubles) { recap.hand.player.forEach { PlayingCard(it) } }
                 }
                 RecapColumn(stringResource(R.string.dealer), grade) { recap ->
                     OverlappingCards {

@@ -28,6 +28,7 @@ import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
+import com.aquigs.sp21ace.domain.strategy.printedTable
 import com.aquigs.sp21ace.ui.components.ChartGrid
 import com.aquigs.sp21ace.ui.components.CodeSquare
 import com.aquigs.sp21ace.ui.theme.HeatmapColors
@@ -37,23 +38,26 @@ import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 private val SCALE = listOf("0", "", "", "", "", "", "", "100")
 
 /**
- * [table] as [rules]' chart prints it, in the rows the trainer deals, each square with answers filled by how often they were
- * right, over a scale from 0 to 100.
+ * The hands filed under [table] as [rules]' chart prints them, in the rows the trainer deals, each square with answers filled by
+ * how often they were right, over a scale from 0 to 100. Without redoubling, doubled hard hands print in Double Down Rescue.
  */
 @Composable
 fun AccuracyHeatmap(rules: RuleSet, table: ChartTable, bySquare: Map<ChartSquare, Tally>, modifier: Modifier = Modifier) {
     val chart = StrategyCharts.forRules(rules)
+    val printed = requireNotNull(chart.printedTable(table)) { "$rules prints no table for $table" }
     val rows = dealtRows(rules)
     val colors = Sp21AceTheme.colors.heatmap
 
     // As in Blackjack Ace, a row no dealt hand is read from, such as hard 21, would only ever stay blank
     ChartGrid(
         chart = chart,
-        table = table,
-        hands = chart.hands(table).filter { ChartRow(table, it) in rows },
+        table = printed,
+        hands = chart.hands(printed).filter { ChartRow(table, it) in rows },
         footerCodes = SCALE,
         modifier = modifier,
-        square = { square, play, codeStyle, squareModifier -> HeatSquare(square, play, bySquare[square], colors, codeStyle, squareModifier) },
+        square = { square, play, codeStyle, squareModifier ->
+            HeatSquare(square, play, bySquare[ChartSquare(ChartRow(table, square.row.hand), square.upcard)], colors, codeStyle, squareModifier)
+        },
         footer = { swatchSize, gap, codeStyle -> Scale(colors, swatchSize, gap, codeStyle) },
     )
 }

@@ -7,6 +7,7 @@ import com.aquigs.sp21ace.domain.strategy.BonusException
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -68,12 +69,28 @@ class TrainerTest {
         val threeCards = TrainerHand(cards("9c 4d 4h"), card("As"))
         val state = TrainerState(threeCards)
 
-        assertEquals(Move.entries.toSet(), sixteenVsAce.moves)
-        assertEquals(setOf(Move.HIT, Move.STAND, Move.DOUBLE), threeCards.moves)
-        for (move in Move.entries - threeCards.moves) {
+        for (move in Move.entries - threeCards.moves(redoubling = false)) {
             assertNull("$move", state.answer(threeCards, move, s17) { error("A move the hand doesn't allow must not deal") })
         }
         assertEquals(Move.HIT, state.answer(threeCards, Move.STAND, s17) { sixteenVsAce }?.grade?.correctMove)
+    }
+
+    @Test
+    fun gradesADoubledHandFromTheTablesForDoubledHandsWhateverItsCardCount() {
+        val h17 = StrategyCharts.forRules(RuleSet.H17)
+        val redouble = StrategyCharts.forRules(RuleSet.H17_REDOUBLE)
+        // Doubled hard 16 vs 10 is R, and doubled hard 10 vs 5 D with redoubling
+        val sixteenVsTen = TrainerHand(cards("2c 3d 4h 2s 5d"), card("Ks"), doubles = 1)
+        val tenVsFive = TrainerHand(cards("3c 2d 5h"), card("5s"), doubles = 1)
+
+        fun grade(hand: TrainerHand, move: Move, chart: StrategyChart) = TrainerState(hand).answer(hand, move, chart) { sixteenVsAce }?.grade
+
+        assertEquals(Grade(sixteenVsTen, Play(Action.SURRENDER), Move.STAND, Move.RESCUE), grade(sixteenVsTen, Move.STAND, h17))
+        assertEquals(Grade(tenVsFive, Play(Action.DOUBLE), Move.REDOUBLE, Move.REDOUBLE), grade(tenVsFive, Move.REDOUBLE, redouble))
+        // Without redoubling Double Down Rescue prints no row for hard 10, which stands, and no redouble is taken
+        assertEquals(Grade(tenVsFive, Play(Action.STAND), Move.STAND, Move.STAND), grade(tenVsFive, Move.STAND, h17))
+        assertNull(grade(tenVsFive, Move.REDOUBLE, h17))
+        for (move in listOf(Move.HIT, Move.DOUBLE, Move.SPLIT, Move.SURRENDER)) assertNull("$move", grade(tenVsFive, move, redouble))
     }
 
     @Test
@@ -121,7 +138,7 @@ class TrainerTest {
     fun comesBackEqualFromSerialization() {
         // Android serializes the saved state once the app is in the background, which recreating the activity in a device test doesn't.
         // A right answer from a streak and a doubled hand dealt next, so neither field lost in transit can hide behind its default.
-        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true) }
+        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1) }
 
         val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(state) } }.toByteArray()
 

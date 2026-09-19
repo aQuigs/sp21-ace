@@ -3,8 +3,6 @@ package com.aquigs.sp21ace.domain.trainer
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
-import com.aquigs.sp21ace.domain.strategy.correctMove
-import com.aquigs.sp21ace.domain.strategy.play
 import java.io.Serializable
 
 /** [correctMove] can differ from the square's [play], because a card count or a bonus exception turns the play into a hit. */
@@ -27,9 +25,9 @@ data class Answered(val state: TrainerState, val grade: Grade)
  * second tap before the screen redraws, or a move the hand doesn't allow, grades nothing: null.
  */
 fun TrainerState.answer(asked: TrainerHand, move: Move, chart: StrategyChart, deal: (Grade) -> TrainerHand): Answered? {
-    if (asked != hand || move !in hand.moves) return null
+    if (asked != hand || move !in hand.moves(chart.redoubling)) return null
 
-    val grade = Grade(hand, chart.play(hand.player, hand.upcard), move, chart.correctMove(hand.player, hand.upcard))
+    val grade = Grade(hand, chart.play(hand), move, chart.correctMove(hand))
     return Answered(copy(hand = deal(grade), lastGrade = grade, streak = nextStreak(streak, grade.isCorrect)), grade)
 }
 

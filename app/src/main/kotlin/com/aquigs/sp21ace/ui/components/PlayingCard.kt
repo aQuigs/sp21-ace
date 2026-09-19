@@ -41,6 +41,9 @@ private const val ASPECT_RATIO = 2.5f / 3.5f
 // How much of the card underneath stays uncovered: enough to read its corner index
 private const val OVERLAP_STEP = 0.2f
 
+// A sideways card's index runs along the fan rather than down it, so the card over it has to stop further on
+private const val SIDEWAYS_STEP = 0.4f
+
 private val CardShape = RoundedCornerShape(percent = 5)
 private val Edge = Color(0xFFD9D9D9)
 private val Red = Color(0xFFC8102E)
@@ -94,20 +97,33 @@ fun CardBack(modifier: Modifier = Modifier) {
     Spacer(modifier.cardSurface().semantics { contentDescription = description }.drawBehind { drawBack() })
 }
 
-/** Deals cards left to right, each over most of the one before, as large as the space allows up to [maxCardHeight]. */
+/**
+ * Deals cards left to right, each over most of the one before, as large as the space allows up to [maxCardHeight]. The last
+ * [sideways] cards lie turned a quarter across the middle of the fan, as a dealer lays a double's card.
+ */
 @Composable
-fun OverlappingCards(modifier: Modifier = Modifier, maxCardHeight: Dp = 256.dp, content: @Composable () -> Unit) {
+fun OverlappingCards(modifier: Modifier = Modifier, maxCardHeight: Dp = 256.dp, sideways: Int = 0, content: @Composable () -> Unit) {
     Layout(content, modifier) { measurables, constraints ->
-        val steps = (measurables.size - 1).coerceAtLeast(0)
-        val widthPerHeight = ASPECT_RATIO * (1 + OVERLAP_STEP * steps)
+        val upright = measurables.size - sideways
+        val turned = List(measurables.size) { it >= upright }
+        // In card widths, how far each card sits from the first, and how wide the fan is, a sideways card as wide as a card is high
+        val offsets = turned.dropLast(1).runningFold(0f) { offset, sideways -> offset + if (sideways) SIDEWAYS_STEP else OVERLAP_STEP }
+        val widthPerHeight = ASPECT_RATIO * offsets.last() + if (turned.lastOrNull() == true) 1f else ASPECT_RATIO
         // Rounded down, so a fan that fills its space never spills past it onto what sits beside it
         val cardHeight = minOf(maxCardHeight.toPx(), constraints.maxHeight.toFloat(), constraints.maxWidth / widthPerHeight).toInt()
         val cardWidth = (cardHeight * ASPECT_RATIO).toInt()
-        val step = (cardWidth * OVERLAP_STEP).toInt()
         val cards = measurables.map { it.measure(Constraints.fixed(cardWidth, cardHeight)) }
+        val lefts = offsets.map { (it * cardWidth).toInt() }
 
-        layout(cardWidth + step * steps, cardHeight) {
-            cards.forEachIndexed { index, card -> card.place(index * step, 0) }
+        layout((cardHeight * widthPerHeight).toInt(), cardHeight) {
+            cards.forEachIndexed { index, card ->
+                if (turned[index]) {
+                    // Turned about its centre, which sits half its length in from where it starts and halfway down the fan
+                    card.placeWithLayer(lefts[index] + (cardHeight - cardWidth) / 2, 0) { rotationZ = 90f }
+                } else {
+                    card.place(lefts[index], 0)
+                }
+            }
         }
     }
 }

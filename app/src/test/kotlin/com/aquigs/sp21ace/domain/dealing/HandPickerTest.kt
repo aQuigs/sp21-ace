@@ -19,9 +19,11 @@ import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.correctMove
 import com.aquigs.sp21ace.domain.strategy.countsCards
+import com.aquigs.sp21ace.domain.strategy.doubledRow
 import com.aquigs.sp21ace.domain.strategy.play
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.domain.trainer.correctMove
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -53,16 +55,21 @@ class HandPickerTest {
 
     private fun List<TrainerHand>.shares(of: (TrainerHand) -> Any): Map<Any, Double> = groupingBy(of).eachCount().mapValues { it.value.toDouble() / size }
 
-    // Every hand a round asks about, from the first two cards on for as long as the chart says hit
+    // Every hand a round asks about, from the first two cards on for as long as the chart says hit, and once it says double the
+    // doubled hand, wherever the chart prints a square for it
     private fun decisions(shuffled: List<Card>, chart: StrategyChart): List<TrainerHand> {
         val (first, upcard, second) = shuffled
         val asked = mutableListOf<TrainerHand>()
-        var player = listOf(first, second)
+        var hand = TrainerHand(listOf(first, second), upcard)
 
-        while (player.total().value < 21) {
-            asked += TrainerHand(player, upcard)
-            if (chart.correctMove(player, upcard) != Move.HIT) break
-            player = player + shuffled[player.size + 1]
+        while (hand.player.total().value < 21) {
+            if (!hand.doubled || chart.doubledRow(hand.player.total()) != null) asked += hand
+            val drawn = hand.player + shuffled[hand.player.size + 1]
+            hand = when (chart.correctMove(hand)) {
+                Move.HIT -> hand.copy(player = drawn)
+                Move.DOUBLE -> hand.copy(player = drawn, doubles = 1)
+                else -> break
+            }
         }
 
         return asked
@@ -114,12 +121,13 @@ class HandPickerTest {
         val picked = HandPicker(RuleSet.S17, HandCustomization(cardCountHands = false, bonusHands = false)).deal(20_000)
 
         val measures = listOf<(TrainerHand) -> Any>(
-            { chartRow(it.player).table },
+            { it.row.table },
             { it.upcard.upcard },
             { it.upcard.rank },
             { hand -> hand.player.map { it.suit }.toSet().size },
             { minOf(it.player.size, 5) },
-            { s17.correctMove(it.player, it.upcard) },
+            { it.doubles },
+            { s17.correctMove(it) },
         )
         for (measure in measures) {
             val expected = shuffled.shares(measure)
@@ -131,12 +139,13 @@ class HandPickerTest {
     }
 
     @Test
-    fun handsOf3OrMoreCardsNeverComeUpWithTheirSwitchOff() {
+    fun handsOf3OrMoreCardsNeverComeUpWithTheirSwitchOffWhileDoubledHandsKeepSwitchesOfTheirOwn() {
         // The card-count switch, on by default, has none left to deal either
         val picker = HandPicker(RuleSet.S17, HandCustomization(multiCardHands = false))
 
-        assertTrue(picker.deal(5_000).all { it.player.size == 2 })
-        assertTrue(picker.hands.all { it is HandValues })
+        assertTrue(picker.deal(5_000).all { it.player.size == 2 || it.doubled })
+        assertTrue(picker.hands.all { it is HandValues || it is DoubledHand })
+        assertTrue(picker.hands.any { it is DoubledHand })
     }
 
     @Test
@@ -200,14 +209,18 @@ class HandPickerTest {
         val dealt = picker.deal(20_000)
         val all = picker.hands.size.toDouble()
         val multiCard = picker.hands.count { it is MultiCardHand }
+        val doubled = picker.hands.count { it is DoubledHand }
 
         // 54 two-card hands, 10 of them pairs and 8 soft, against 10 upcard values, then the suited 7-7 vs 7 and spaded 7-8 vs 4 and
-        // vs 6, whose bonuses make them hands of their own, and every hand of 3 or more cards
-        assertEquals(543, picker.hands.size - multiCard)
-        val kinds = dealt.shares { if (it.player.size > 2) "3 or more cards" else chartRow(it.player).table }
+        // vs 6, whose bonuses make them hands of their own, and every hand of 3 or more cards and every doubled hand
+        assertEquals(543, picker.hands.count { it is HandValues })
+        // Doubled hard 12 to 17, the rows of Double Down Rescue, against 10 upcard values
+        assertEquals(60, doubled)
+        val kinds = dealt.shares { if (it.doubled) "doubled" else if (it.player.size > 2) "3 or more cards" else chartRow(it.player).table }
         assertEquals(101 / all, kinds.getValue(ChartTable.PAIRS), 0.015)
         assertEquals(80 / all, kinds.getValue(ChartTable.SOFT), 0.015)
         assertEquals(multiCard / all, kinds.getValue("3 or more cards"), 0.015)
+        assertEquals(doubled / all, kinds.getValue("doubled"), 0.015)
         assertEquals(picker.hands.count { it.upcard == Upcard.TEN } / all, dealt.shares { it.upcard.upcard }.getValue(Upcard.TEN), 0.015)
     }
 
@@ -251,16 +264,24 @@ class HandPickerTest {
         for (rules in RuleSet.entries) {
             val chart = StrategyCharts.forRules(rules)
             val calling = everyHand.groupBy { it.type(chart) }
+            val doubledTypes = dealableHands(rules).hands.keys.filterIsInstance<DoubledHand>().mapTo(HashSet()) { it.type }
 
-            // The only pair to surrender is 8-8 against an ace, which splits when the dealer stands on soft 17
-            val impossible = if (rules == RuleSet.S17) setOf(pairsSurrender) else emptySet()
-            assertEquals("$rules", HAND_TYPES.toSet() - impossible, calling.keys)
+            // The only pair to surrender is 8-8 against an ace, which splits when the dealer stands on soft 17, and without
+            // redoubling no doubled hand redoubles and none is soft, since Double Down Rescue prints only hard rows
+            val withoutRedoubling = setOf(Move.REDOUBLE to ChartTable.AFTER_DOUBLE_HARD, Move.REDOUBLE to ChartTable.AFTER_DOUBLE_SOFT, Move.STAND to ChartTable.AFTER_DOUBLE_SOFT)
+                .mapTo(HashSet()) { (move, table) -> HandType(table, move) }
+            val impossible = when (rules) {
+                RuleSet.H17_REDOUBLE -> emptySet()
+                RuleSet.H17 -> withoutRedoubling
+                RuleSet.S17 -> withoutRedoubling + pairsSurrender
+            }
+            assertEquals("$rules", HAND_TYPES.toSet() - impossible, calling.keys + doubledTypes)
 
-            for ((type, hands) in calling) {
+            for (type in calling.keys + doubledTypes) {
                 val picker = HandPicker(rules, onlyOn(type))
 
-                assertEquals("$rules $type", hands.mapTo(HashSet()) { it.key(chart) }, picker.hands.filterIsInstance<HandValues>().toSet())
-                assertTrue("$rules $type", picker.hands.filterIsInstance<MultiCardHand>().all { it.type == type })
+                assertEquals("$rules $type", calling[type].orEmpty().mapTo(HashSet()) { it.key(chart) }, picker.hands.filterIsInstance<HandValues>().toSet())
+                assertTrue("$rules $type", picker.hands.filterIsInstance<TotalHand>().all { it.type == type })
                 assertEquals("$rules $type", List(200) { type }, picker.deal(200).map { it.type(chart) })
             }
         }

@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.domain.strategy
 
 import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.Rank
 import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.card
@@ -9,6 +10,7 @@ import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.spanishShoe
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +36,41 @@ class CorrectMoveTest {
         assertEquals(ChartRow(ChartTable.AFTER_DOUBLE_SOFT, "A-7"), afterDoublingRow(cards("As 5d 2c")))
         // An ace isn't enough: soft 17 doubled and drawing a 9 makes hard 16
         assertEquals(ChartRow(ChartTable.AFTER_DOUBLE_HARD, "16"), afterDoublingRow(cards("As 6d 9c")))
+    }
+
+    @Test
+    fun rulesWithoutRedoublingPrintDoubledHardHandsInDoubleDownRescueAndNoSoftOnes() {
+        val redouble = StrategyCharts.forRules(RuleSet.H17_REDOUBLE)
+
+        RuleSet.entries.forEach { assertEquals("$it", it.redoubling, StrategyCharts.forRules(it).redoubling) }
+        assertEquals(ChartTable.RESCUE, h17.printedTable(ChartTable.AFTER_DOUBLE_HARD))
+        assertNull(s17.printedTable(ChartTable.AFTER_DOUBLE_SOFT))
+        assertEquals(ChartTable.AFTER_DOUBLE_HARD, redouble.printedTable(ChartTable.AFTER_DOUBLE_HARD))
+        assertEquals(ChartTable.HARD, h17.printedTable(ChartTable.HARD))
+
+        // Double Down Rescue's rows are hard 12 to 17
+        assertEquals(ChartRow(ChartTable.RESCUE, "12"), h17.doubledRow(HandTotal(12, soft = false)))
+        assertNull(h17.doubledRow(HandTotal(18, soft = false)))
+        assertNull(s17.doubledRow(HandTotal(18, soft = true)))
+        assertEquals(ChartRow(ChartTable.AFTER_DOUBLE_SOFT, "A-7"), redouble.doubledRow(HandTotal(18, soft = true)))
+    }
+
+    @Test
+    fun aDoubledHandRedoublesOnlyWithRedoublingAndStandsWhereDoubleDownRescuePrintsNoRescue() {
+        val redouble = StrategyCharts.forRules(RuleSet.H17_REDOUBLE)
+        val hard16 = HandTotal(16, soft = false)
+        val soft18 = HandTotal(18, soft = true)
+
+        // Doubled hard 16 vs 10 is a rescue under every rule set
+        RuleSet.entries.forEach { assertEquals("$it", Move.RESCUE, StrategyCharts.forRules(it).correctMoveAfterDoubling(hard16, Upcard.TEN)) }
+        // Hard 10 vs 5 and soft 18 vs 4 redouble with redoubling, and stand without, where no row prints them
+        assertEquals(Move.REDOUBLE, redouble.correctMoveAfterDoubling(HandTotal(10, soft = false), Upcard.FIVE))
+        assertEquals(Move.REDOUBLE, redouble.correctMoveAfterDoubling(soft18, Upcard.FOUR))
+        assertEquals(Move.STAND, h17.correctMoveAfterDoubling(HandTotal(10, soft = false), Upcard.FIVE))
+        assertEquals(Move.STAND, h17.correctMoveAfterDoubling(soft18, Upcard.FOUR))
+        // Hard 16 vs 6 is S with the dealer hitting soft 17 and blank with it standing, both a stand
+        assertEquals(Play(Action.STAND), h17.afterDoublingPlay(hard16, Upcard.SIX))
+        assertEquals(Play(Action.STAND), s17.afterDoublingPlay(hard16, Upcard.SIX))
     }
 
     @Test
@@ -124,6 +161,36 @@ class CorrectMoveTest {
                     val expected = legendMove(codes.getValue(printedTotalSquare(hand, upcard)), cards = hand.size)
                     val actual = chart.correctMove(hand, upcard)
                     if (expected == actual) null else "$ruleSet $hand vs $upcard: legend $expected, correctMove $actual"
+                }
+            }
+        }
+
+        assertEquals(emptyList<String>(), mismatches)
+    }
+
+    @Test
+    fun everyAnswerToADoubledHandFollowsItsFixtureSquareReadByTheChartLegend() {
+        // Hard 6 and soft 13 are the lowest a double reaches
+        val totals = (6..20).map { HandTotal(it, soft = false) } + (13..20).map { HandTotal(it, soft = true) }
+
+        val mismatches = RuleSet.entries.flatMap { ruleSet ->
+            val chart = StrategyCharts.forRules(ruleSet)
+            val codes = fixtureCodes(ruleSet)
+
+            totals.flatMap { total ->
+                val hand = if (total.soft) "A-${total.value - 11}" else "${total.value}"
+                upcards.mapNotNull { upcard ->
+                    val square = listOf(if (!ruleSet.redoubling) "RESCUE" else if (total.soft) "AFTER_DOUBLE_SOFT" else "AFTER_DOUBLE_HARD", hand, label(upcard.rank.value))
+                    // Double Down Rescue leaves a square blank, and prints no row, where the doubled hand stands
+                    val code = if (ruleSet.redoubling) codes.getValue(square) else codes[square] ?: "S"
+                    val expected = when (code.first()) {
+                        'S' -> Move.STAND
+                        'D' -> Move.REDOUBLE
+                        'R' -> Move.RESCUE
+                        else -> error("No move after doubling for $code")
+                    }
+                    val actual = chart.correctMoveAfterDoubling(total, upcard.upcard)
+                    if (expected == actual) null else "$ruleSet doubled $total vs $upcard: legend $expected, correctMoveAfterDoubling $actual"
                 }
             }
         }

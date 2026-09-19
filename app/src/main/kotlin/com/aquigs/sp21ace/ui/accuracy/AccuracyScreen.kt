@@ -38,6 +38,8 @@ import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
+import com.aquigs.sp21ace.domain.strategy.printedTable
 import com.aquigs.sp21ace.ui.chart.title
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.PageTabRow
@@ -63,7 +65,12 @@ fun AccuracyScreen(
     modifier: Modifier = Modifier,
     now: () -> Instant = Instant::now,
 ) {
-    var hands by rememberSaveable { mutableStateOf(HandFilter.HARD) }
+    val chart = StrategyCharts.forRules(rules)
+    // A tab for every table the chart prints, as the chart has, and All
+    val tabs = HandFilter.entries.filter { filter -> filter.table?.let { chart.printedTable(it) != null } ?: true }
+    var chosen by rememberSaveable { mutableStateOf(HandFilter.HARD) }
+    // A tab chosen under rules that printed its table, such as After doubling: soft with redoubling, is gone once they change
+    val hands = chosen.takeIf { it in tabs } ?: HandFilter.HARD
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
     val currentNow by rememberUpdatedState(now)
     var asOf by remember { mutableStateOf(now()) }
@@ -82,7 +89,13 @@ fun AccuracyScreen(
 
     SubPage(title = stringResource(R.string.accuracy), onBack = onBack, modifier = modifier) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            PageTabRow(tabs = HandFilter.entries, selected = hands, onSelect = { hands = it }, title = { it.table?.title ?: R.string.all_hands })
+            PageTabRow(
+                tabs = tabs,
+                selected = hands,
+                onSelect = { chosen = it },
+                title = { filter -> filter.table?.let { chart.printedTable(it)?.title } ?: R.string.all_hands },
+                scrollable = true,
+            )
 
             // The grid spreads wider than the chips and cards, as in Blackjack Ace, so its squares stay as large as the chart's
             Column(
