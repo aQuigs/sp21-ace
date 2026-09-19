@@ -11,20 +11,18 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollTo
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.ui.isPlaced
 import com.aquigs.sp21ace.ui.texts
 
-/** The texts of the open page's card holding every one of [holding], in order: the title, then each figure before its label. */
-fun SemanticsNodeInteractionsProvider.cardTexts(vararg holding: String): List<String> =
-    onNode(holding.map(::hasText).reduce(SemanticsMatcher::and) and isPlaced).texts()
+/** The texts of the card holding every one of [holding], in order: the title, then each figure before its label. */
+fun SemanticsNodeInteractionsProvider.cardTexts(vararg holding: String): List<String> = onNode(holding.map(::hasText).reduce(SemanticsMatcher::and)).texts()
 
 /** The texts an accuracy card titled [title] reads when it shows [accuracy], [correct] and [incorrect]. */
 fun Context.accuracyCardTexts(title: Int, accuracy: String, correct: Int, incorrect: Int): List<String> =
     listOf(getString(title), accuracy, getString(R.string.accuracy), "$correct", getString(R.string.correct), "$incorrect", getString(R.string.incorrect))
 
-/** The open page's heatmap square that reads [description] and prints [code], scrolled into view. Many squares print the same code, so the words find it. */
+/** The heatmap square that reads [description] and prints [code], scrolled into view. Many squares print the same code, so the words find it. */
 fun SemanticsNodeInteractionsProvider.square(description: String, code: String): SemanticsNodeInteraction =
-    onNode(hasContentDescription(description) and hasText(code) and isPlaced).performScrollTo()
+    onNode(hasContentDescription(description) and hasText(code)).performScrollTo()
 
 /** The colour a square is filled with, read near a corner, clear of the code in the middle and the outline at the edge. */
 fun SemanticsNodeInteraction.fill(): Color = captureToImage().toPixelMap().let { it[it.width / 8, it.height / 8] }

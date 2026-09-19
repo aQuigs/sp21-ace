@@ -114,7 +114,7 @@ class AppShellTest {
         compose.onNodeWithText(string(R.string.dealer_hits)).performClick()
     }
 
-    private fun overallCard() = compose.cardTexts(string(R.string.overall), string(R.string.correct))
+    private fun overallCard() = compose.onScreen.cardTexts(string(R.string.overall), string(R.string.correct))
 
     private fun overallFigures(percentage: Double, correct: Int, incorrect: Int) =
         compose.activity.accuracyCardTexts(R.string.overall, compose.activity.getString(R.string.percentage, percentage), correct, incorrect)
@@ -164,7 +164,7 @@ class AppShellTest {
         openFromDrawer(R.string.accuracy)
 
         assertEquals(compose.activity.accuracyCardTexts(R.string.overall, string(R.string.no_data), correct = 0, incorrect = 0), overallCard())
-        compose.square("16 vs A: Hit, no answers", "H")
+        compose.onScreen.square("16 vs A: Hit, no answers", "H")
     }
 
     @Test

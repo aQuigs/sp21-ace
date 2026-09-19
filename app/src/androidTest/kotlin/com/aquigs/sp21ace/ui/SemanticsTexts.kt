@@ -3,10 +3,26 @@ package com.aquigs.sp21ace.ui
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.text.TextLayoutResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+
+/** Nodes laid out on screen, which a node composed but never placed, or inside a layout that isn't, is not. */
+val isPlaced = SemanticsMatcher("is placed") { node -> generateSequence(node.layoutInfo) { it.parentInfo }.all { it.isPlaced } }
+
+/**
+ * Finds only nodes on screen. After a page change a pager composes the page beyond the open one, ready for the next swipe, without
+ * placing it, so a plain lookup would find that page's copy of a text too.
+ */
+val SemanticsNodeInteractionsProvider.onScreen: SemanticsNodeInteractionsProvider
+    get() = object : SemanticsNodeInteractionsProvider {
+        override fun onNode(matcher: SemanticsMatcher, useUnmergedTree: Boolean) = this@onScreen.onNode(matcher and isPlaced, useUnmergedTree)
+
+        override fun onAllNodes(matcher: SemanticsMatcher, useUnmergedTree: Boolean) = this@onScreen.onAllNodes(matcher and isPlaced, useUnmergedTree)
+    }
 
 /** A node's texts in reading order. A merged row or card is one item for a screen reader, so they come title first. */
 fun SemanticsNodeInteraction.texts(): List<String> = fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }

@@ -66,8 +66,7 @@ fun AccuracyScreen(
 ) {
     val chart = StrategyCharts.forRules(rules)
     // A tab for every table the chart prints, as the chart has, and All
-    val tabs = HandFilter.entries.filter { it.table == null || it.table in chart.tables }
-    var chosen by rememberSaveable { mutableStateOf(HandFilter.HARD) }
+    val tabs = remember(chart) { HandFilter.entries.filter { it.table == null || it.table in chart.tables } }
     // One period for every tab, as in Blackjack Ace, though each page has its own chips to slide in with it
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
     val currentNow by rememberUpdatedState(now)
@@ -85,15 +84,10 @@ fun AccuracyScreen(
     }
 
     SubPage(title = stringResource(R.string.accuracy), onBack = onBack, modifier = modifier) { padding ->
-        // A tab chosen under rules that printed its table, such as After doubling: soft with redoubling, falls back to Hard once
-        // they change
         TabbedPages(
             tabs = tabs,
-            selected = chosen,
-            onSelect = { chosen = it },
             title = { filter -> filter.table?.let(chart::title) ?: R.string.all_hands },
             modifier = Modifier.fillMaxSize().padding(padding),
-            scrollable = true,
         ) { hands ->
             val accuracy = remember(history, asOf, period, hands) { history.accuracy(period, hands, asOf) }
 

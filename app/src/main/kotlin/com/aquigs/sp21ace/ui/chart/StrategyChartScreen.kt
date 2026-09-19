@@ -14,11 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -49,20 +45,11 @@ import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 @Composable
 fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val chart = StrategyCharts.forRules(rules)
-    var chosen by rememberSaveable { mutableStateOf(ChartTable.HARD) }
     val legends = remember(chart) { chart.tables.associateWith(chart::legend) }
+    val footerCodes = remember(legends) { legends.values.flatten().map { it.symbol } }
 
     SubPage(title = stringResource(R.string.strategy_chart), onBack = onBack, modifier = modifier) { padding ->
-        // Scrollable, because the tables after Hard, Soft and Pairs have long names. A tab the rules have since dropped, such as
-        // After doubling: soft once redoubling isn't allowed, falls back to the first.
-        TabbedPages(
-            tabs = chart.tables,
-            selected = chosen,
-            onSelect = { chosen = it },
-            title = chart::title,
-            modifier = Modifier.fillMaxSize().padding(padding),
-            scrollable = true,
-        ) { table ->
+        TabbedPages(tabs = chart.tables, title = chart::title, modifier = Modifier.fillMaxSize().padding(padding)) { table ->
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -81,7 +68,7 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
                     chart = chart,
                     table = table,
                     hands = chart.hands(table),
-                    footerCodes = legends.values.flatten().map { it.symbol },
+                    footerCodes = footerCodes,
                     modifier = Modifier.widthIn(max = MaxContentWidth),
                     square = { square, play, codeStyle, squareModifier -> Square(square, play, codeStyle, squareModifier) },
                     footer = { swatchSize, _, codeStyle -> Legend(legends.getValue(table), swatchSize, codeStyle) },
