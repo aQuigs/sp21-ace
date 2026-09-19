@@ -20,6 +20,7 @@ import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.accuracy.cardTexts
+import com.aquigs.sp21ace.ui.onScreen
 import com.aquigs.sp21ace.ui.settings.pageIsDark
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -126,7 +127,7 @@ class MainActivityTest {
 
         val correct = compose.activity.getString(R.string.correct)
         val incorrect = compose.activity.getString(R.string.incorrect)
-        val overall = compose.cardTexts(compose.activity.getString(R.string.overall), correct)
+        val overall = compose.onScreen.cardTexts(compose.activity.getString(R.string.overall), correct)
         compose.onNodeWithContentDescription(compose.activity.getString(R.string.back)).performClick()
 
         // Each count sits before its label

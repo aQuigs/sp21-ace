@@ -33,6 +33,7 @@ import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.legend
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
+import com.aquigs.sp21ace.ui.onScreen
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
@@ -44,6 +45,7 @@ import org.junit.runner.RunWith
 class StrategyChartScreenTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
+    private val screen = compose.onScreen
 
     private var rules by mutableStateOf(RuleSet.S17)
 
@@ -54,11 +56,11 @@ class StrategyChartScreenTest {
     }
 
     private fun openTab(title: Int) {
-        compose.onNodeWithText(string(title)).performScrollTo().performClick()
+        screen.onNodeWithText(string(title)).performScrollTo().performClick()
     }
 
     // Many squares print the same code, so a square is found by the hand and upcard its description opens with
-    private fun square(hand: String, upcard: String, code: String) = compose.onNode(
+    private fun square(hand: String, upcard: String, code: String) = screen.onNode(
         SemanticsMatcher("describes $hand vs $upcard") { node ->
             node.config.getOrElse(SemanticsProperties.ContentDescription) { emptyList() }.any { it.startsWith("$hand vs $upcard: ") }
         } and hasText(code),
@@ -72,7 +74,7 @@ class StrategyChartScreenTest {
 
         square("14", "4", "S4*").performScrollTo().assertIsDisplayed()
         square("15", "6", "S6\"†").performScrollTo().assertIsDisplayed()
-        assertEquals(compose.onNodeWithText("A").centreX(), square("17", "A", "RH").centreX(), 1f)
+        assertEquals(screen.onNodeWithText("A").centreX(), square("17", "A", "RH").centreX(), 1f)
     }
 
     @Test
@@ -87,7 +89,7 @@ class StrategyChartScreenTest {
     fun aSquareReadsOutAsWords() {
         showChart()
 
-        compose.onNodeWithContentDescription("14 vs 4: Stand, but hit with 4 or more cards or while any 6-7-8 is possible").assertExists()
+        screen.onNodeWithContentDescription("14 vs 4: Stand, but hit with 4 or more cards or while any 6-7-8 is possible").assertExists()
     }
 
     @Test
@@ -103,13 +105,13 @@ class StrategyChartScreenTest {
     fun theLegendFollowsTheTab() {
         showChart()
 
-        compose.onNodeWithText("Sources still debate this square").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Split").assertDoesNotExist()
+        screen.onNodeWithText("Sources still debate this square").performScrollTo().assertIsDisplayed()
+        screen.onNodeWithText("Split").assertDoesNotExist()
 
         openTab(R.string.table_pairs)
 
-        compose.onNodeWithText("Split").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Sources still debate this square").assertDoesNotExist()
+        screen.onNodeWithText("Split").performScrollTo().assertIsDisplayed()
+        screen.onNodeWithText("Sources still debate this square").assertDoesNotExist()
     }
 
     @Test
@@ -119,10 +121,10 @@ class StrategyChartScreenTest {
         openTab(R.string.table_rescue)
 
         square("16", "10", "R").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithContentDescription("16 vs 10: Rescue").assertExists()
-        compose.onNodeWithContentDescription("12 vs 2: Stand, no rescue").assertExists()
-        compose.onNodeWithText("Stand, no rescue").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(string(R.string.table_after_double_hard)).assertDoesNotExist()
+        screen.onNodeWithContentDescription("16 vs 10: Rescue").assertExists()
+        screen.onNodeWithContentDescription("12 vs 2: Stand, no rescue").assertExists()
+        screen.onNodeWithText("Stand, no rescue").performScrollTo().assertIsDisplayed()
+        screen.onNodeWithText(string(R.string.table_after_double_hard)).assertDoesNotExist()
     }
 
     @Test
@@ -130,20 +132,20 @@ class StrategyChartScreenTest {
         rules = RuleSet.H17_REDOUBLE
         showChart()
 
-        compose.onNodeWithText(string(R.string.table_after_double_hard)).assertExists()
-        compose.onNodeWithText(string(R.string.table_after_double_soft)).assertExists()
-        compose.onNodeWithText(string(R.string.table_rescue)).assertDoesNotExist()
+        screen.onNodeWithText(string(R.string.table_after_double_hard)).assertExists()
+        screen.onNodeWithText(string(R.string.table_after_double_soft)).assertExists()
+        screen.onNodeWithText(string(R.string.table_rescue)).assertDoesNotExist()
     }
 
     @Test
     fun theCaptionNamesTheRules() {
         showChart()
 
-        compose.onNodeWithText("Dealer stands on soft 17 · 6 decks").assertIsDisplayed()
+        screen.onNodeWithText("Dealer stands on soft 17 · 6 decks").assertIsDisplayed()
 
         rules = RuleSet.H17_REDOUBLE
 
-        compose.onNodeWithText("Dealer hits soft 17 · Redoubling allowed · 6 decks").assertIsDisplayed()
+        screen.onNodeWithText("Dealer hits soft 17 · Redoubling allowed · 6 decks").assertIsDisplayed()
     }
 
     @Test
@@ -154,7 +156,7 @@ class StrategyChartScreenTest {
 
         rules = RuleSet.S17
 
-        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
     }
 
     @Test
@@ -165,7 +167,7 @@ class StrategyChartScreenTest {
 
         rules = RuleSet.H17_REDOUBLE
 
-        compose.onNodeWithText(string(R.string.table_after_double_hard)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_after_double_hard)).assertIsSelected()
     }
 
     @Test
@@ -180,7 +182,7 @@ class StrategyChartScreenTest {
         val gridText = Upcard.entries.map { it.label } + hands + chart.legend(ChartTable.HARD).map { it.symbol } +
             hands.flatMap { hand -> Upcard.entries.mapNotNull { chart.play(ChartTable.HARD, hand, it)?.code } }
 
-        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)
+        screen.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)
             .fetchSemanticsNodes()
             .map { it.textLayout() }
             .filter { it.layoutInput.text.text in gridText }
@@ -192,7 +194,7 @@ class StrategyChartScreenTest {
         var backs = 0
         showChart(onBack = { backs++ })
 
-        compose.onNodeWithContentDescription(string(R.string.back)).performClick()
+        screen.onNodeWithContentDescription(string(R.string.back)).performClick()
 
         assertEquals(1, backs)
     }

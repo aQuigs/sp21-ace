@@ -22,6 +22,9 @@ import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.ui.onScreen
+import com.aquigs.sp21ace.ui.swipeToNextTab
+import com.aquigs.sp21ace.ui.swipeToPreviousTab
 import com.aquigs.sp21ace.ui.theme.HeatmapColors
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
@@ -37,6 +40,7 @@ import kotlin.math.abs
 class AccuracyScreenTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
+    private val screen = compose.onScreen
 
     private val now = Instant.parse("2026-09-17T12:00:00Z")
 
@@ -83,15 +87,15 @@ class AccuracyScreenTest {
     }
 
     // The tabs scroll, so one may start out of view
-    private fun tap(title: Int) = compose.onNodeWithText(string(title)).performScrollTo().performClick()
+    private fun tap(title: Int) = screen.onNodeWithText(string(title)).performScrollTo().performClick()
 
-    private fun accuracyCard(title: Int) = compose.cardTexts(string(title), string(R.string.correct))
+    private fun accuracyCard(title: Int) = screen.cardTexts(string(title), string(R.string.correct))
 
     private fun figures(title: Int, accuracy: String, correct: Int, incorrect: Int) = compose.activity.accuracyCardTexts(title, accuracy, correct, incorrect)
 
     private fun noData(title: Int) = figures(title, "--", correct = 0, incorrect = 0)
 
-    private fun streakCard() = compose.cardTexts(string(R.string.longest_streak))
+    private fun streakCard() = screen.cardTexts(string(R.string.longest_streak))
 
     private fun streak(longest: Int) = listOf(string(R.string.streak), "$longest", string(R.string.longest_streak))
 
@@ -105,7 +109,7 @@ class AccuracyScreenTest {
     fun todayIsTheDefaultAndTheChipsSwitchThePeriod() {
         showAccuracy(listOf(answer(right = true), answer(right = false, daysAgo = 3), answer(right = false, daysAgo = 20), answer(right = true, daysAgo = 60)))
 
-        compose.onNodeWithText(string(R.string.today)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.today)).assertIsSelected()
         assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
 
         tap(R.string.week).assertIsSelected()
@@ -148,7 +152,7 @@ class AccuracyScreenTest {
     fun theTabsSwitchTheKindOfHand() {
         showAccuracy(listOf(answer(right = true), answer(right = false, hand = softSeventeenVsKing)))
 
-        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
         assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
         assertEquals(figures(R.string.move_hit, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.move_hit))
 
@@ -160,6 +164,24 @@ class AccuracyScreenTest {
     }
 
     @Test
+    fun aSwipeMovesBetweenTheTabsAndKeepsThePeriod() {
+        showAccuracy(listOf(answer(right = true), answer(right = false, daysAgo = 3, hand = softSeventeenVsKing)))
+        tap(R.string.week)
+
+        screen.swipeToNextTab()
+
+        screen.onNodeWithText(string(R.string.table_soft)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.week)).assertIsSelected()
+        assertEquals(figures(R.string.overall, "0.0%", correct = 0, incorrect = 1), accuracyCard(R.string.overall))
+
+        screen.swipeToPreviousTab()
+
+        screen.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.week)).assertIsSelected()
+        assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
+    }
+
+    @Test
     fun withNoAnswersEveryAccuracyIsNoDataAndTheStreakIsNought() {
         showAccuracy(emptyList())
 
@@ -167,7 +189,7 @@ class AccuracyScreenTest {
             assertEquals(noData(title), accuracyCard(title))
         }
         // No hard hand calls for a split
-        compose.onNodeWithText(string(R.string.move_split)).assertDoesNotExist()
+        screen.onNodeWithText(string(R.string.move_split)).assertDoesNotExist()
 
         tap(R.string.all_hands)
 
@@ -195,7 +217,7 @@ class AccuracyScreenTest {
                 listOf(answer(right = false), answer(right = true), answer(right = true, hand = softSeventeenVsKing)),
         )
 
-        compose.onNodeWithText(string(R.string.longest_streak)).assertDoesNotExist()
+        screen.onNodeWithText(string(R.string.longest_streak)).assertDoesNotExist()
 
         tap(R.string.all_hands)
 
@@ -213,15 +235,15 @@ class AccuracyScreenTest {
             ),
         )
 
-        assertColour(heatmap.at(0.75f), compose.square("16 vs A: Hit, 75% right", "H").fill())
+        assertColour(heatmap.at(0.75f), screen.square("16 vs A: Hit, 75% right", "H").fill())
     }
 
     @Test
     fun aSquareWithoutAnswersReadsNoAnswersAndStaysPlain() {
         showAccuracy(listOf(answer(right = false)))
 
-        assertColour(page, compose.square("16 vs 10: Hit, no answers", "H").fill())
-        assertColour(heatmap.at(0f), compose.square("16 vs A: Hit, 0% right", "H").fill())
+        assertColour(page, screen.square("16 vs 10: Hit, no answers", "H").fill())
+        assertColour(heatmap.at(0f), screen.square("16 vs A: Hit, 0% right", "H").fill())
     }
 
     @Test
@@ -236,7 +258,7 @@ class AccuracyScreenTest {
             ),
         )
 
-        compose.square("14 vs 4: Stand, but hit with 4 or more cards or while any 6-7-8 is possible, 75% right", "S4*")
+        screen.square("14 vs 4: Stand, but hit with 4 or more cards or while any 6-7-8 is possible, 75% right", "S4*")
     }
 
     @Test
@@ -244,8 +266,8 @@ class AccuracyScreenTest {
         showAccuracy(emptyList())
 
         // Two ten-value cards are a pair, so only 3 or more cards make hard 20, and 21 leaves nothing to decide
-        compose.square("20 vs 2: Stand, no answers", "S")
-        compose.onNode(hasContentDescription("21 vs ", substring = true)).assertDoesNotExist()
+        screen.square("20 vs 2: Stand, no answers", "S")
+        screen.onNode(hasContentDescription("21 vs ", substring = true)).assertDoesNotExist()
     }
 
     @Test
@@ -258,19 +280,19 @@ class AccuracyScreenTest {
             ),
         )
 
-        compose.square("16 vs A: Hit, 100% right", "H")
+        screen.square("16 vs A: Hit, 100% right", "H")
 
         tap(R.string.table_soft)
 
-        compose.square("A-6 vs 10: Hit, 100% right", "H")
+        screen.square("A-6 vs 10: Hit, 100% right", "H")
 
         tap(R.string.table_pairs)
 
-        compose.square("8-8 vs 6: Split, 100% right", "P")
+        screen.square("8-8 vs 6: Split, 100% right", "P")
 
         tap(R.string.all_hands)
 
-        compose.onNode(hasContentDescription(" vs ", substring = true)).assertDoesNotExist()
+        screen.onNode(hasContentDescription(" vs ", substring = true)).assertDoesNotExist()
     }
 
     @Test
@@ -283,14 +305,14 @@ class AccuracyScreenTest {
             ),
         )
 
-        compose.onNodeWithText(string(R.string.table_after_double_hard)).assertDoesNotExist()
-        compose.onNodeWithText(string(R.string.table_after_double_soft)).assertDoesNotExist()
+        screen.onNodeWithText(string(R.string.table_after_double_hard)).assertDoesNotExist()
+        screen.onNodeWithText(string(R.string.table_after_double_soft)).assertDoesNotExist()
 
         tap(R.string.table_rescue).assertIsSelected()
 
-        compose.square("16 vs A: Rescue, 100% right", "R")
-        compose.square("12 vs 8: Rescue, 0% right", "R")
-        compose.onNode(hasContentDescription("16 vs 6: Stand, no rescue, no answers")).assertExists()
+        screen.square("16 vs A: Rescue, 100% right", "R")
+        screen.square("12 vs 8: Rescue, 0% right", "R")
+        screen.onNode(hasContentDescription("16 vs 6: Stand, no rescue, no answers")).assertExists()
         assertEquals(figures(R.string.move_rescue, "50.0%", correct = 1, incorrect = 1), accuracyCard(R.string.move_rescue))
 
         tap(R.string.all_hands)
@@ -309,30 +331,30 @@ class AccuracyScreenTest {
             ),
         )
 
-        compose.onNodeWithText(string(R.string.table_rescue)).assertDoesNotExist()
+        screen.onNodeWithText(string(R.string.table_rescue)).assertDoesNotExist()
 
         tap(R.string.table_after_double_hard)
 
-        compose.square("16 vs A: Rescue, 100% right", "R")
+        screen.square("16 vs A: Rescue, 100% right", "R")
 
         tap(R.string.table_after_double_soft)
 
-        compose.square("A-7 vs 4: Redouble, 0% right", "D")
+        screen.square("A-7 vs 4: Redouble, 0% right", "D")
         assertEquals(figures(R.string.move_redouble, "0.0%", correct = 0, incorrect = 1), accuracyCard(R.string.move_redouble))
 
         rules = RuleSet.S17
 
-        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
     }
 
     @Test
     fun theGridFollowsTheRulesAndKeepsEachAnswerAsItWasGraded() {
         showAccuracy(listOf(answer(right = true)))
 
-        compose.square("16 vs A: Hit, 100% right", "H")
+        screen.square("16 vs A: Hit, 100% right", "H")
 
         rules = RuleSet.H17
 
-        compose.square("16 vs A: Surrender, otherwise hit, 100% right", "RH")
+        screen.square("16 vs A: Surrender, otherwise hit, 100% right", "RH")
     }
 }
