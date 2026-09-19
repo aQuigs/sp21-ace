@@ -26,6 +26,15 @@ fun totalRow(hand: List<Card>): ChartRow {
     return if (total.soft) ChartRow(ChartTable.SOFT, "A-${total.value - 11}") else ChartRow(ChartTable.HARD, "${total.value}")
 }
 
+/**
+ * The row a doubled hand is read from by its total: "16" from After doubling: hard and "A-7" from After doubling: soft, whatever
+ * the rules. Rules without redoubling print Double Down Rescue instead, which reads its rows, hard 12 to 17, by total too.
+ */
+fun afterDoublingRow(hand: List<Card>): ChartRow {
+    val row = totalRow(hand)
+    return ChartRow(if (row.table == ChartTable.SOFT) ChartTable.AFTER_DOUBLE_SOFT else ChartTable.AFTER_DOUBLE_HARD, row.hand)
+}
+
 fun StrategyChart.play(hand: List<Card>, upcard: Card): Play {
     val row = chartRow(hand)
     return requireNotNull(play(row.table, row.hand, upcard.upcard)) { "No chart square for ${row.hand} vs ${upcard.upcard.label}" }

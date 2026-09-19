@@ -177,6 +177,27 @@ class AccuracyTest {
     }
 
     @Test
+    fun aDoubledHandLandsInTheAfterDoublingSquaresRatherThanUnderItsTotal() {
+        val fourteenVsNine = TrainerHand(cards("5c 6d 3h"), card("9s"))
+        val history = listOf(
+            answer(right = false, hand = fourteenVsNine.copy(doubled = true), correctMove = Move.SURRENDER),
+            answer(hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), correctMove = Move.DOUBLE, rules = RuleSet.H17_REDOUBLE),
+            answer(hand = fourteenVsNine, correctMove = Move.HIT),
+        )
+
+        assertEquals(
+            mapOf(
+                square(ChartTable.AFTER_DOUBLE_HARD, "14", Upcard.NINE) to Tally(correct = 0, incorrect = 1),
+                square(ChartTable.AFTER_DOUBLE_SOFT, "A-7", Upcard.FOUR) to Tally(correct = 1, incorrect = 0),
+                square(ChartTable.HARD, "14", Upcard.NINE) to Tally(correct = 1, incorrect = 0),
+            ),
+            history.figures().bySquare,
+        )
+        assertEquals(mapOf(square(ChartTable.HARD, "14", Upcard.NINE) to Tally(correct = 1, incorrect = 0)), history.figures(hands = HandFilter.HARD).bySquare)
+        assertEquals(emptyMap<ChartSquare, Tally>(), history.figures(hands = HandFilter.SOFT).bySquare)
+    }
+
+    @Test
     fun anAnswerCountsInItsSquareWhateverRulesGradedIt() {
         // Hard 16 vs A is a hit when the dealer stands on soft 17, and a surrender when the dealer hits
         val history = listOf(answer(), answer(rules = RuleSet.H17, correctMove = Move.SURRENDER))

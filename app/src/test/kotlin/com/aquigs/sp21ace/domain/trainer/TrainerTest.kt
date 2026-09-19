@@ -95,8 +95,8 @@ class TrainerTest {
     @Test
     fun comesBackEqualFromSerialization() {
         // Android serializes the saved state once the app is in the background, which recreating the activity in a device test doesn't.
-        // A right answer from a streak, so a streak field lost in transit can't hide behind its default of 0.
-        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { sixteenVsAce }
+        // A right answer from a streak and a doubled hand dealt next, so neither field lost in transit can hide behind its default.
+        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true) }
 
         val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(state) } }.toByteArray()
 

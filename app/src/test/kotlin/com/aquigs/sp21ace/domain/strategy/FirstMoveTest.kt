@@ -26,6 +26,14 @@ class FirstMoveTest {
     }
 
     @Test
+    fun readsADoubledHandFromTheAfterDoublingTablesByItsTotal() {
+        assertEquals(ChartRow(ChartTable.AFTER_DOUBLE_HARD, "14"), afterDoublingRow(cards("5c 6d 3h")))
+        assertEquals(ChartRow(ChartTable.AFTER_DOUBLE_SOFT, "A-7"), afterDoublingRow(cards("As 5d 2c")))
+        // An ace isn't enough: soft 17 doubled and drawing a 9 makes hard 16
+        assertEquals(ChartRow(ChartTable.AFTER_DOUBLE_HARD, "16"), afterDoublingRow(cards("As 6d 9c")))
+    }
+
+    @Test
     fun hitsWhileTheSquaresBonusHandCanStillBeMade() {
         // Hard 14 with the dealer hitting soft 17 is S4* vs 4, S5' vs 5 and S6" vs 6
         assertEquals(Move.HIT, h17.firstMove(cards("6c 8d"), card("4s")))
