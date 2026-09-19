@@ -48,15 +48,8 @@ class AccuracyScreenTest {
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
 
-    private val allMoves = listOf(
-        R.string.move_split,
-        R.string.move_hit,
-        R.string.move_double,
-        R.string.move_redouble,
-        R.string.move_stand,
-        R.string.move_surrender,
-        R.string.move_rescue,
-    )
+    private val notDoubledMoves = listOf(R.string.move_split, R.string.move_hit, R.string.move_double, R.string.move_stand, R.string.move_surrender)
+    private val doubledMoves = listOf(R.string.move_redouble, R.string.move_stand, R.string.move_rescue)
 
     // Doubled hard 16 vs A is a rescue whatever the rules, and doubled soft 18 vs 4 a redouble with redoubling
     private val doubledSixteenVsAce = TrainerHand(cards("5c 6d 5h"), card("As"), doubled = true)
@@ -86,8 +79,10 @@ class AccuracyScreenTest {
         }
     }
 
-    // The tabs scroll, so one may start out of view
+    // The tabs and chips scroll, so one may start out of view
     private fun tap(title: Int) = compose.onPlacedNodeWithText(string(title)).performScrollTo().performClick()
+
+    private fun chooseDoubled() = compose.onNodeWithText(string(R.string.already_doubled)).performClick()
 
     private fun accuracyCard(title: Int) = compose.cardTexts(string(title), string(R.string.correct))
 
@@ -189,7 +184,7 @@ class AccuracyScreenTest {
             assertEquals(noData(title), accuracyCard(title))
         }
         // No hard hand calls for a split
-        compose.onNodeWithText(string(R.string.move_split)).assertDoesNotExist()
+        compose.onPlacedNodeWithText(string(R.string.move_split)).assertDoesNotExist()
 
         tap(R.string.all_hands)
 
@@ -203,7 +198,15 @@ class AccuracyScreenTest {
 
         tap(R.string.all_hands)
 
-        for (title in listOf(R.string.overall) + allMoves) {
+        for (title in listOf(R.string.overall) + notDoubledMoves) {
+            assertEquals(noData(title), accuracyCard(title))
+        }
+        assertEquals(streak(longest = 2), streakCard())
+
+        chooseDoubled()
+        tap(R.string.all_hands)
+
+        for (title in listOf(R.string.overall) + doubledMoves) {
             assertEquals(noData(title), accuracyCard(title))
         }
         assertEquals(streak(longest = 2), streakCard())
@@ -219,6 +222,13 @@ class AccuracyScreenTest {
 
         compose.onPlacedNodeWithText(string(R.string.longest_streak)).assertDoesNotExist()
 
+        tap(R.string.all_hands)
+
+        assertEquals(streak(longest = 3), streakCard())
+
+        // The doubled hands' All tab too, since the streak runs over every answer, doubled or not
+        chooseDoubled()
+        compose.onPlacedNodeWithText(string(R.string.longest_streak)).assertDoesNotExist()
         tap(R.string.all_hands)
 
         assertEquals(streak(longest = 3), streakCard())
@@ -296,8 +306,30 @@ class AccuracyScreenTest {
     }
 
     @Test
-    fun withoutRedoublingDoubledHandsHaveADoubleDownRescueTabOverTheirAnswers() {
-        // Doubled hard 12 vs 8 is a rescue when the dealer stands on soft 17, and 16 vs 6 prints no rescue
+    fun theChoiceSplitsTheAnswersIntoHandsNotYetDoubledAndThoseAlreadyDoubled() {
+        showAccuracy(listOf(answer(right = true), answer(right = false, hand = doubledSixteenVsAce, correctMove = Move.RESCUE)))
+
+        compose.onNodeWithText(string(R.string.not_doubled)).assertIsSelected()
+        tap(R.string.all_hands)
+
+        assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
+        compose.onPlacedNodeWithText(string(R.string.move_rescue)).assertDoesNotExist()
+
+        chooseDoubled().assertIsSelected()
+
+        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        compose.onNodeWithText(string(R.string.table_pairs)).assertDoesNotExist()
+        assertEquals(figures(R.string.overall, "0.0%", correct = 0, incorrect = 1), accuracyCard(R.string.overall))
+
+        tap(R.string.all_hands)
+
+        assertEquals(figures(R.string.overall, "0.0%", correct = 0, incorrect = 1), accuracyCard(R.string.overall))
+        compose.onPlacedNodeWithText(string(R.string.move_surrender)).assertDoesNotExist()
+    }
+
+    @Test
+    fun withoutRedoublingDoubledHandsHaveOneHardTabOverTheirAnswers() {
+        // Doubled hard 12 vs 8 is a rescue when the dealer stands on soft 17, and 16 vs 6 a stand
         showAccuracy(
             listOf(
                 answer(right = true, hand = doubledSixteenVsAce, correctMove = Move.RESCUE),
@@ -305,24 +337,22 @@ class AccuracyScreenTest {
             ),
         )
 
-        compose.onNodeWithText(string(R.string.table_after_double_hard)).assertDoesNotExist()
-        compose.onNodeWithText(string(R.string.table_after_double_soft)).assertDoesNotExist()
+        chooseDoubled()
 
-        tap(R.string.table_rescue).assertIsSelected()
-
+        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        compose.onNodeWithText(string(R.string.table_soft)).assertDoesNotExist()
         compose.square("16 vs A: Rescue, 100% right", "R")
         compose.square("12 vs 8: Rescue, 0% right", "R")
-        compose.onNode(hasContentDescription("16 vs 6: Stand, no rescue, no answers") and isPlaced).assertExists()
+        compose.onNode(hasContentDescription("16 vs 6: Stand, no answers") and isPlaced).assertExists()
         assertEquals(figures(R.string.move_rescue, "50.0%", correct = 1, incorrect = 1), accuracyCard(R.string.move_rescue))
 
         tap(R.string.all_hands)
 
         assertEquals(figures(R.string.move_rescue, "50.0%", correct = 1, incorrect = 1), accuracyCard(R.string.move_rescue))
-        assertEquals(noData(R.string.move_surrender), accuracyCard(R.string.move_surrender))
     }
 
     @Test
-    fun withRedoublingEachAfterDoublingTableHasATabAndOneGoneWithTheRulesFallsBackToHard() {
+    fun withRedoublingDoubledHandsHaveAHardAndASoftTabAndOneGoneWithTheRulesFallsBackToHard() {
         rules = RuleSet.H17_REDOUBLE
         showAccuracy(
             listOf(
@@ -331,20 +361,33 @@ class AccuracyScreenTest {
             ),
         )
 
-        compose.onNodeWithText(string(R.string.table_rescue)).assertDoesNotExist()
-
-        tap(R.string.table_after_double_hard)
+        chooseDoubled()
 
         compose.square("16 vs A: Rescue, 100% right", "R")
 
-        tap(R.string.table_after_double_soft)
+        tap(R.string.table_soft)
 
         compose.square("A-7 vs 4: Redouble, 0% right", "D")
         assertEquals(figures(R.string.move_redouble, "0.0%", correct = 0, incorrect = 1), accuracyCard(R.string.move_redouble))
 
         rules = RuleSet.S17
 
+        compose.onNodeWithText(string(R.string.already_doubled)).assertIsSelected()
         compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+    }
+
+    @Test
+    fun theDoubledHandsAllTabStaysOpenWhenRedoublingAddsASoftTabBeforeIt() {
+        rules = RuleSet.H17
+        showAccuracy(listOf(answer(right = true, hand = doubledSixteenVsAce, correctMove = Move.RESCUE)))
+        chooseDoubled()
+        tap(R.string.all_hands)
+
+        rules = RuleSet.H17_REDOUBLE
+
+        compose.onNodeWithText(string(R.string.table_soft)).assertExists()
+        compose.onNodeWithText(string(R.string.all_hands)).assertIsSelected()
+        assertEquals(streak(longest = 1), streakCard())
     }
 
     @Test

@@ -35,7 +35,7 @@ class AccuracyTest {
     private fun answer(right: Boolean = true, at: Instant = now, hand: TrainerHand = sixteenVsAce, correctMove: Move = Move.HIT, rules: RuleSet = RuleSet.S17) =
         PracticeAnswer(at, rules, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
 
-    private fun List<PracticeAnswer>.figures(period: Period = Period.ALL_TIME, hands: HandFilter = HandFilter.ALL, at: Instant = now) =
+    private fun List<PracticeAnswer>.figures(period: Period = Period.ALL_TIME, hands: HandFilter = HandFilter.NOT_DOUBLED, at: Instant = now) =
         accuracy(period, hands, at)
 
     private fun streaks(rights: String) = rights.map { answer(right = it == 'R') }
@@ -101,9 +101,10 @@ class AccuracyTest {
                 HandFilter.HARD to Tally(correct = 1, incorrect = 0),
                 HandFilter.SOFT to Tally(correct = 0, incorrect = 1),
                 HandFilter.PAIRS to Tally(correct = 2, incorrect = 0),
+                HandFilter.NOT_DOUBLED to Tally(correct = 3, incorrect = 1),
                 HandFilter.AFTER_DOUBLE_HARD to Tally(correct = 0, incorrect = 1),
                 HandFilter.AFTER_DOUBLE_SOFT to Tally(correct = 1, incorrect = 0),
-                HandFilter.ALL to Tally(correct = 4, incorrect = 2),
+                HandFilter.DOUBLED to Tally(correct = 1, incorrect = 1),
             ),
             HandFilter.entries.associateWith { history.figures(hands = it).overall },
         )
@@ -200,10 +201,10 @@ class AccuracyTest {
             mapOf(
                 square(ChartTable.AFTER_DOUBLE_HARD, "14", Upcard.NINE) to Tally(correct = 0, incorrect = 1),
                 square(ChartTable.AFTER_DOUBLE_SOFT, "A-7", Upcard.FOUR) to Tally(correct = 1, incorrect = 0),
-                square(ChartTable.HARD, "14", Upcard.NINE) to Tally(correct = 1, incorrect = 0),
             ),
-            history.figures().bySquare,
+            history.figures(hands = HandFilter.DOUBLED).bySquare,
         )
+        assertEquals(mapOf(square(ChartTable.HARD, "14", Upcard.NINE) to Tally(correct = 1, incorrect = 0)), history.figures().bySquare)
         assertEquals(mapOf(square(ChartTable.HARD, "14", Upcard.NINE) to Tally(correct = 1, incorrect = 0)), history.figures(hands = HandFilter.HARD).bySquare)
         assertEquals(emptyMap<ChartSquare, Tally>(), history.figures(hands = HandFilter.SOFT).bySquare)
         assertEquals(Tally(correct = 0, incorrect = 1), history.figures(hands = HandFilter.AFTER_DOUBLE_HARD).overall)
@@ -211,22 +212,27 @@ class AccuracyTest {
     }
 
     @Test
-    fun aRedoubleAndARescueHaveCardsOfTheirOwnApartFromADoubleAndASurrender() {
+    fun aRedoubleAndARescueHaveCardsOfTheirOwnUnderTheDoubledHandsApartFromADoubleAndASurrender() {
         val history = listOf(
             answer(hand = TrainerHand(cards("5c 6d"), card("5s")), correctMove = Move.DOUBLE),
             answer(right = false, hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
             answer(hand = TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), correctMove = Move.RESCUE),
-            // A stand is a stand, doubled or not
-            answer(hand = TrainerHand(cards("5c 6d 9h"), card("4s"), doubled = true), correctMove = Move.STAND),
+            // A stand on a doubled hand counts under the doubled hands, and one on a hand not doubled under those
+            answer(right = false, hand = TrainerHand(cards("5c 6d 9h"), card("4s"), doubled = true), correctMove = Move.STAND),
             answer(hand = TrainerHand(cards("Kc 8d"), card("6h")), correctMove = Move.STAND),
         )
 
-        val byMove = history.figures().byMove
-        assertEquals(Tally(correct = 1, incorrect = 0), byMove.getValue(Move.DOUBLE))
-        assertEquals(Tally(correct = 0, incorrect = 1), byMove.getValue(Move.REDOUBLE))
-        assertEquals(Tally(correct = 1, incorrect = 0), byMove.getValue(Move.RESCUE))
-        assertEquals(Tally(correct = 0, incorrect = 0), byMove.getValue(Move.SURRENDER))
-        assertEquals(Tally(correct = 2, incorrect = 0), byMove.getValue(Move.STAND))
+        val notDoubled = history.figures(hands = HandFilter.NOT_DOUBLED).byMove
+        assertEquals(Tally(correct = 1, incorrect = 0), notDoubled.getValue(Move.DOUBLE))
+        assertEquals(Tally(correct = 0, incorrect = 0), notDoubled.getValue(Move.SURRENDER))
+        assertEquals(Tally(correct = 1, incorrect = 0), notDoubled.getValue(Move.STAND))
+        assertEquals(Tally(correct = 0, incorrect = 0), notDoubled.getValue(Move.REDOUBLE))
+
+        val doubled = history.figures(hands = HandFilter.DOUBLED).byMove
+        assertEquals(Tally(correct = 0, incorrect = 1), doubled.getValue(Move.REDOUBLE))
+        assertEquals(Tally(correct = 1, incorrect = 0), doubled.getValue(Move.RESCUE))
+        assertEquals(Tally(correct = 0, incorrect = 1), doubled.getValue(Move.STAND))
+        assertEquals(Tally(correct = 0, incorrect = 0), doubled.getValue(Move.DOUBLE))
     }
 
     @Test
@@ -291,7 +297,7 @@ class AccuracyTest {
         }.groupBy({ it.first }, { it.second })
 
         for (tab in HandFilter.entries) {
-            val moves = (tab.table?.let { called.getValue(it) } ?: called.values.flatten()).toSet()
+            val moves = called.filterKeys(tab::counts).values.flatten().toSet()
             val order = listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.REDOUBLE, Move.STAND, Move.SURRENDER, Move.RESCUE)
             assertEquals(tab.name, order.filter { it in moves }, tab.moves)
         }

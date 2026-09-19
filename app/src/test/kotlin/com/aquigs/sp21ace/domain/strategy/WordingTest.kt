@@ -75,11 +75,11 @@ class WordingTest {
     }
 
     @Test
-    fun wordsTheSquaresOfAHandAlreadyDoubledBlankOnesIncluded() {
+    fun wordsTheSquaresOfAHandAlreadyDoubled() {
         assertEquals("Redouble", squareWords(H17_REDOUBLE, AFTER_DOUBLE_HARD, "11", Upcard.TWO))
         assertEquals("Rescue", squareWords(H17_REDOUBLE, AFTER_DOUBLE_HARD, "16", Upcard.EIGHT))
         assertEquals("Rescue", squareWords(S17, AFTER_DOUBLE_HARD, "16", Upcard.TEN))
-        assertEquals("Stand, no rescue", squareWords(S17, AFTER_DOUBLE_HARD, "12", Upcard.TWO))
+        assertEquals("Stand", squareWords(S17, AFTER_DOUBLE_HARD, "12", Upcard.TWO))
     }
 
     @Test
@@ -101,7 +101,7 @@ class WordingTest {
     }
 
     @Test
-    fun aDoubledHandsLegendNamesRedoublesRescuesAndBlankSquares() {
+    fun aDoubledHandsLegendNamesRedoublesAndRescues() {
         assertEquals(
             listOf(
                 LegendEntry("S", "Stand", Action.STAND),
@@ -112,15 +112,15 @@ class WordingTest {
             StrategyCharts.forRules(H17_REDOUBLE).legend(AFTER_DOUBLE_HARD),
         )
         assertEquals(
-            listOf(LegendEntry("R", "Rescue", Action.SURRENDER), LegendEntry("", "Stand, no rescue")),
+            listOf(LegendEntry("S", "Stand", Action.STAND), LegendEntry("R", "Rescue", Action.SURRENDER)),
             StrategyCharts.forRules(S17).legend(AFTER_DOUBLE_HARD),
         )
     }
 
     // Read from the shipped charts, which ChartCellsTest pins to the fixtures, so every code worded here is a real square
     private fun words(ruleSet: RuleSet, table: ChartTable, hand: String, upcard: Upcard, correctMove: Move, cards: Int = 2): String =
-        requireNotNull(StrategyCharts.forRules(ruleSet).play(table, hand, upcard)).inPlainWords(correctMove, cards)
+        StrategyCharts.forRules(ruleSet).play(ChartRow(table, hand), upcard).inPlainWords(correctMove, cards)
 
     private fun squareWords(ruleSet: RuleSet, table: ChartTable, hand: String, upcard: Upcard): String =
-        ChartSquare(ChartRow(table, hand), upcard).inPlainWords(StrategyCharts.forRules(ruleSet).play(table, hand, upcard))
+        ChartRow(table, hand).let { ChartSquare(it, upcard).inPlainWords(StrategyCharts.forRules(ruleSet).play(it, upcard)) }
 }

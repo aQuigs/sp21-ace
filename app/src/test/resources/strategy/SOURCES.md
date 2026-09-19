@@ -9,7 +9,7 @@
 - **Bonus marks:** `*` means hit if any 6-7-8 bonus is possible, `'` if a suited 6-7-8 is possible (spades included), and `"` if a spaded 6-7-8 is possible. `$` means hit suited 7-7 against a dealer 7, for the Super Bonus.
 - **Super Bonus:** `$` exists for the Super Bonus, a fixed $1,000 or $5,000 for a suited 7-7-7 against a dealer 7, so it assumes the table pays one on the bet. Nevada's rules of play have no Super Bonus, the New Jersey, Pennsylvania and Maryland tiers start at a $5 bet, and Wizard of Odds says the benefit shrinks as the bet grows past $5 or $25.
 - **Debated squares:** `†` marks a square the sources still debate. They're listed below.
-- **Double Down Rescue:** without redoubling, the charts print their table for a hard hand already doubled as Double Down Rescue, rows 12 to 17 only, and the fixtures file it under `AFTER_DOUBLE_HARD`. `.` means no rescue: stand on the doubled hand. When redoubling is allowed, the rescues are the R squares of the after-doubling tables.
+- **Double Down Rescue:** without redoubling, the charts print their table for a hard hand already doubled as Double Down Rescue, rows 12 to 17 only, and the fixtures file it under `AFTER_DOUBLE_HARD`. Wizard of Odds prints it as the line "Double down surrender: 12-16 vs 8-A; 17 vs A" and HitOrSplit.com as codes on its hard chart, so both list only the rescues. A doubled hand can then only stand or rescue, so every other square of those rows is a stand by the same sources, marked "(no rescue listed)" in the fixtures, and the app prints it S as Wizard of Odds' table for a hand already doubled does. When redoubling is allowed, the rescues are the R squares of the after-doubling tables.
 
 ## Rule sets
 

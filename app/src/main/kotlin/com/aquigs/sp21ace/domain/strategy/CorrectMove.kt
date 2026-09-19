@@ -33,7 +33,7 @@ val HandTotal.row: ChartRow
     }
 
 /**
- * The row a doubled hand is read from by its total: "16" from After doubling: hard and "A-7" from After doubling: soft, whatever
+ * The row a doubled hand is read from by its total: "16" from Already doubled: hard and "A-7" from Already doubled: soft, whatever
  * the rules print.
  */
 fun afterDoublingRow(hand: List<Card>): ChartRow = hand.total().afterDoublingRow
@@ -44,11 +44,11 @@ val HandTotal.afterDoublingRow: ChartRow
 /** The row the chart prints a doubled [total] in, or null where it prints none, as Double Down Rescue prints no soft or hard 18. */
 fun StrategyChart.doubledRow(total: HandTotal): ChartRow? = total.afterDoublingRow.takeIf { printsRow(it.table, it.hand) }
 
-// A blank Double Down Rescue square, or a total it prints no row for, means no rescue: stand on the doubled hand
+// A total Double Down Rescue prints no row for means no rescue: stand on the doubled hand
 private val NO_RESCUE_PLAY = Play(Action.STAND)
 
 /** The square a doubled [total] is read from, where D is a redouble and R a rescue. */
-fun StrategyChart.afterDoublingPlay(total: HandTotal, upcard: Upcard): Play = total.afterDoublingRow.let { play(it.table, it.hand, upcard) } ?: NO_RESCUE_PLAY
+fun StrategyChart.afterDoublingPlay(total: HandTotal, upcard: Upcard): Play = doubledRow(total)?.let { play(it, upcard) } ?: NO_RESCUE_PLAY
 
 /** The chart's answer to a doubled hand by its [total] alone, since no card count or bonus applies once it's doubled. */
 fun StrategyChart.correctMoveAfterDoubling(total: HandTotal, upcard: Upcard): Move = afterDoublingPlay(total, upcard).afterDoublingMove

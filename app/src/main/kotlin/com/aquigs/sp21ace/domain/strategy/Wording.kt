@@ -3,9 +3,6 @@ package com.aquigs.sp21ace.domain.strategy
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.total
 
-/** What a square Double Down Rescue leaves blank means. */
-private const val NO_RESCUE = "Stand, no rescue"
-
 /** "Hard 14", "Soft 17", "Pair of 8s", "Pair of aces", or "Pair of 10s" for any two ten-value cards. */
 fun handClass(hand: List<Card>): String = when (chartRow(hand).table) {
     ChartTable.PAIRS -> hand[0].upcard.let { if (it == Upcard.ACE) "Pair of aces" else "Pair of ${it.label}s" }
@@ -37,21 +34,19 @@ fun Play.inPlainWords(correctMove: Move? = null, cards: Int = 2, afterDoubling: 
     }
 }
 
-/** The square in words from the [play] its chart prints there, blank ones included. */
-fun ChartSquare.inPlainWords(play: Play?): String = play?.inPlainWords(afterDoubling = row.table.afterDoubling) ?: NO_RESCUE
+/** The square in words from the [play] its chart prints there. */
+fun ChartSquare.inPlainWords(play: Play): String = play.inPlainWords(afterDoubling = row.table.afterDoubling)
 
 /** A line of a table's legend: a symbol as the table prints it, what it means, and the action whose colour it sits on. */
 data class LegendEntry(val symbol: String, val meaning: String, val fill: Action? = null)
 
 /** As in Blackjack Ace, the legend lists only what [table] uses. */
 fun StrategyChart.legend(table: ChartTable): List<LegendEntry> {
-    val squares = hands(table).flatMap { hand -> Upcard.entries.map { play(table, hand, it) } }
-    val plays = squares.filterNotNull()
+    val plays = plays(table)
     val cardCounts = plays.mapNotNull { it.hitWithCards }
 
     return buildList {
         plays.map { it.action }.distinct().sorted().forEach { add(LegendEntry(it.code, it.inPlainWords(table.afterDoubling), fill = it)) }
-        if (null in squares) add(LegendEntry("", NO_RESCUE))
         if (cardCounts.isNotEmpty()) add(LegendEntry(setOf(cardCounts.min(), cardCounts.max()).joinToString("-"), "Hit with that many cards or more"))
         plays.mapNotNull { it.bonusException }.distinct().sorted().forEach { add(LegendEntry(it.mark, "Hit ${it.inPlainWords}")) }
         if (plays.any { it.debated }) add(LegendEntry(DEBATED_MARK, "Sources still debate this square"))

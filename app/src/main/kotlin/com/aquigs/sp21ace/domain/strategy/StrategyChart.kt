@@ -15,7 +15,7 @@ enum class ChartTable(val afterDoubling: Boolean = false) {
 
     /**
      * Plays for a hard hand already doubled. Without redoubling the charts print it as Double Down Rescue, hard 12 to 17 only,
-     * where a blank square or a hand with no row means no rescue: stand on the doubled hand.
+     * where a hand with no row means no rescue: stand on the doubled hand.
      */
     AFTER_DOUBLE_HARD(afterDoubling = true),
     AFTER_DOUBLE_SOFT(afterDoubling = true),
@@ -32,7 +32,7 @@ enum class Upcard(val label: String) {
 
 /**
  * Hands are keyed as the charts print them: "16" for hard totals, "A-7" for soft totals, "8-8" for pairs.
- * [play] is null wherever the chart prints nothing: a table this rule set doesn't have, a hand without a row, or a blank square.
+ * [play] is null wherever the chart prints nothing: a table this rule set doesn't have, or a hand without a row.
  */
 class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard, Play>>>, val redoubling: Boolean) {
     /** The tables this rule set prints, in chart order. */
@@ -44,9 +44,10 @@ class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard,
 
     fun play(table: ChartTable, hand: String, upcard: Upcard): Play? = squares[table]?.get(hand)?.get(upcard)
 
+    /** Every square [table] prints, row by row, which is every upcard of every row. */
+    fun plays(table: ChartTable): List<Play> = squares[table].orEmpty().values.flatMap { it.values }
+
     companion object {
-        // Sparse tables such as Double Down Rescue only print the squares where their play applies
-        private const val NO_PLAY = "."
         private val WHITESPACE = Regex("\\s+")
 
         fun parse(grids: Map<ChartTable, String>, redoubling: Boolean): StrategyChart =
@@ -60,9 +61,7 @@ class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard,
 
             return body.associate { row ->
                 require(row.size == Upcard.entries.size + 1) { "$table ${row.first()} has ${row.size - 1} squares, expected ${Upcard.entries.size}" }
-                row.first() to Upcard.entries.zip(row.drop(1))
-                    .filter { (_, code) -> code != NO_PLAY }
-                    .associate { (upcard, code) -> upcard to Play.parse(code) }
+                row.first() to Upcard.entries.zip(row.drop(1)).associate { (upcard, code) -> upcard to Play.parse(code) }
             }.also { require(it.size == body.size) { "$table repeats a hand" } }
         }
     }
