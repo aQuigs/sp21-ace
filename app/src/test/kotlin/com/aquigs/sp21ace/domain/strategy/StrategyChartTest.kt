@@ -7,20 +7,24 @@ import org.junit.Test
 
 class StrategyChartTest {
     @Test
-    fun readsSquaresAndLeavesEmptyOnesOut() {
+    fun readsEverySquareAndNothingForARowOrTableItDoesntPrint() {
         val chart = StrategyChart.parse(
             mapOf(
                 ChartTable.AFTER_DOUBLE_HARD to """
                     hand  2     3     4     5     6     7     8     9     10    A
-                    16    .     .     .     .     .     .     R     R     R     R†
+                    16    S     S     S     S     S     S     R     R     R     R†
                 """,
             ),
             redoubling = false,
         )
 
         assertEquals(listOf("16"), chart.hands(ChartTable.AFTER_DOUBLE_HARD))
-        assertNull(chart.play(ChartTable.AFTER_DOUBLE_HARD, "16", Upcard.TWO))
+        assertEquals(Play(Action.STAND), chart.play(ChartTable.AFTER_DOUBLE_HARD, "16", Upcard.TWO))
         assertEquals(Play(Action.SURRENDER, debated = true), chart.play(ChartTable.AFTER_DOUBLE_HARD, "16", Upcard.ACE))
+        assertNull(chart.play(ChartTable.AFTER_DOUBLE_HARD, "18", Upcard.ACE))
+        assertNull(chart.play(ChartTable.AFTER_DOUBLE_SOFT, "A-7", Upcard.ACE))
+        assertEquals(List(6) { Play(Action.STAND) } + List(3) { Play(Action.SURRENDER) } + Play(Action.SURRENDER, debated = true), chart.plays(ChartTable.AFTER_DOUBLE_HARD))
+        assertEquals(emptyList<Play>(), chart.plays(ChartTable.AFTER_DOUBLE_SOFT))
     }
 
     @Test
@@ -28,7 +32,7 @@ class StrategyChartTest {
         val header = "hand 2 3 4 5 6 7 8 9 10 A"
         val row = "16" + " S".repeat(10)
 
-        for (grid in listOf("", "hand 2 A\n16 S S", "$header\n9 D", "$header\n$row\n$row")) {
+        for (grid in listOf("", "hand 2 A\n16 S S", "$header\n9 D", "$header\n$row\n$row", "$header\n16" + " .".repeat(10))) {
             assertThrows(grid, IllegalArgumentException::class.java) { StrategyChart.parse(mapOf(ChartTable.HARD to grid), redoubling = false) }
         }
     }

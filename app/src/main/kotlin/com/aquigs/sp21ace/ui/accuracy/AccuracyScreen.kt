@@ -39,10 +39,10 @@ import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
-import com.aquigs.sp21ace.ui.chart.title
+import com.aquigs.sp21ace.ui.chart.tabTitle
+import com.aquigs.sp21ace.ui.components.DoubledTabbedPages
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.SubPage
-import com.aquigs.sp21ace.ui.components.TabbedPages
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.components.percentText
 import kotlinx.coroutines.delay
@@ -52,9 +52,9 @@ import kotlin.time.Duration.Companion.minutes
 private val TextInset = 32.dp
 
 /**
- * How often the trainer's answers were right over a period, for one kind of hand or all, by the move each hand called for,
- * and for one kind of hand square by square over [rules]' chart. [now] is read again when the screen resumes and every
- * minute, so answers age out of a period while it's open.
+ * How often the trainer's answers were right over a period, for one kind of hand or all those not yet doubled or all those
+ * already doubled, by the move each hand called for, and for one kind of hand square by square over [rules]' chart. [now] is
+ * read again when the screen resumes and every minute, so answers age out of a period while it's open.
  */
 @Composable
 fun AccuracyScreen(
@@ -65,7 +65,7 @@ fun AccuracyScreen(
     now: () -> Instant = Instant::now,
 ) {
     val chart = StrategyCharts.forRules(rules)
-    // A tab for every table the chart prints, as the chart has, and All
+    // A tab for every table the chart prints, as the chart has, and an All for each group
     val tabs = remember(chart) { HandFilter.entries.filter { it.table == null || it.table in chart.tables } }
     // One period for every tab, as in Blackjack Ace, though each page has its own chips to slide in with it
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
@@ -84,9 +84,10 @@ fun AccuracyScreen(
     }
 
     SubPage(title = stringResource(R.string.accuracy), onBack = onBack, modifier = modifier) { padding ->
-        TabbedPages(
+        DoubledTabbedPages(
             tabs = tabs,
-            title = { filter -> filter.table?.let(chart::title) ?: R.string.all_hands },
+            doubled = HandFilter::doubled,
+            title = { filter -> filter.table?.tabTitle ?: R.string.all_hands },
             modifier = Modifier.fillMaxSize().padding(padding),
         ) { hands ->
             val accuracy = remember(history, asOf, period, hands) { history.accuracy(period, hands, asOf) }
@@ -132,7 +133,7 @@ private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit, modifier: 
 private fun Cards(accuracy: Accuracy, hands: HandFilter, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(48.dp)) {
         // Only All has the Streak card, as in Blackjack Ace, since the streak runs over every answer whatever the tab or period
-        if (hands == HandFilter.ALL) StreakCard(longest = accuracy.longestStreak)
+        if (hands.table == null) StreakCard(longest = accuracy.longestStreak)
         AccuracyCard(title = stringResource(R.string.overall), tally = accuracy.overall)
         hands.moves.forEach { AccuracyCard(title = stringResource(it.displayName), tally = accuracy.byMove.getValue(it)) }
     }

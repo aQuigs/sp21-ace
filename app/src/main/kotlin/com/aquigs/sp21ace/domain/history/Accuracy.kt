@@ -22,16 +22,21 @@ fun Period.start(now: Instant): Instant? = when (this) {
 }
 
 /**
- * The hands a tab counts: the ones filed under one chart table, or every hand. [moves] are the correct moves those hands call
- * for under any rule set, in Blackjack Ace's order, a redouble after a double and a rescue after a surrender.
+ * The hands a tab counts: the ones filed under one chart table, or every hand [doubled] or every one not, as the chart splits
+ * its tables. [moves] are the correct moves those hands call for under any rule set, in Blackjack Ace's order.
  */
-enum class HandFilter(val table: ChartTable?, val moves: List<Move>) {
+enum class HandFilter(val table: ChartTable?, val moves: List<Move>, val doubled: Boolean = table?.afterDoubling == true) {
     HARD(ChartTable.HARD, listOf(Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER)),
     SOFT(ChartTable.SOFT, listOf(Move.HIT, Move.DOUBLE, Move.STAND)),
     PAIRS(ChartTable.PAIRS, listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER)),
+    NOT_DOUBLED(null, listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.STAND, Move.SURRENDER)),
     AFTER_DOUBLE_HARD(ChartTable.AFTER_DOUBLE_HARD, listOf(Move.REDOUBLE, Move.STAND, Move.RESCUE)),
     AFTER_DOUBLE_SOFT(ChartTable.AFTER_DOUBLE_SOFT, listOf(Move.REDOUBLE, Move.STAND)),
-    ALL(null, listOf(Move.SPLIT, Move.HIT, Move.DOUBLE, Move.REDOUBLE, Move.STAND, Move.SURRENDER, Move.RESCUE)),
+    DOUBLED(null, listOf(Move.REDOUBLE, Move.STAND, Move.RESCUE), doubled = true),
+    ;
+
+    /** Whether the tab counts the hands read from [table]: those of its group, and of its own table if it has one. */
+    fun counts(table: ChartTable): Boolean = table.afterDoubling == doubled && (this.table == null || this.table == table)
 }
 
 data class Tally(val correct: Int, val incorrect: Int) {
@@ -80,7 +85,7 @@ fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, now: Instan
         longestStreak = maxOf(longestStreak, streak)
 
         if (start != null && (answer.answeredAt <= start || answer.answeredAt > now)) continue
-        if (hands.table != null && answer.square.row.table != hands.table) continue
+        if (!hands.counts(answer.square.row.table)) continue
 
         byMove.add(answer.correctMove, answer.isCorrect)
         bySquare.add(answer.square, answer.isCorrect)

@@ -137,7 +137,7 @@ internal val CHART_GRIDS: Map<RuleSet, Map<ChartTable, String>> = mapOf(
             14    S     S     S     S     S     S     R     R     R     R
             15    S     S     S     S     S     S     R     R     R     R
             16    S     S     S     S     S     S     R     R     R     R
-            17    .     .     .     .     .     .     .     .     .     R
+            17    S     S     S     S     S     S     S     S     S     R
         """,
     ),
     RuleSet.S17 to mapOf(
@@ -190,12 +190,12 @@ internal val CHART_GRIDS: Map<RuleSet, Map<ChartTable, String>> = mapOf(
         """,
         ChartTable.AFTER_DOUBLE_HARD to """
             hand  2     3     4     5     6     7     8     9     10    A
-            12    .     .     .     .     .     .     R     R     R     R
-            13    .     .     .     .     .     .     R     R     R     R
-            14    .     .     .     .     .     .     R     R     R     R
-            15    .     .     .     .     .     .     R     R     R     R
-            16    .     .     .     .     .     .     R     R     R     R
-            17    .     .     .     .     .     .     .     .     .     R
+            12    S     S     S     S     S     S     R     R     R     R
+            13    S     S     S     S     S     S     R     R     R     R
+            14    S     S     S     S     S     S     R     R     R     R
+            15    S     S     S     S     S     S     R     R     R     R
+            16    S     S     S     S     S     S     R     R     R     R
+            17    S     S     S     S     S     S     S     S     S     R
         """,
     ),
 )

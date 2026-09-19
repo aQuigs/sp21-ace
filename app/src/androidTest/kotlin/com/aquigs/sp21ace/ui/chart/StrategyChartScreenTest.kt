@@ -16,7 +16,9 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -34,6 +36,7 @@ import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.legend
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
 import com.aquigs.sp21ace.ui.onScreen
+import com.aquigs.sp21ace.ui.swipeToNextTab
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
@@ -59,12 +62,16 @@ class StrategyChartScreenTest {
         screen.onNodeWithText(string(title)).performScrollTo().performClick()
     }
 
+    private fun chooseDoubled() = screen.onNodeWithText(string(R.string.already_doubled)).performClick()
+
+    private fun describes(hand: String, upcard: String) = SemanticsMatcher("describes $hand vs $upcard") { node ->
+        node.config.getOrElse(SemanticsProperties.ContentDescription) { emptyList() }.any { it.startsWith("$hand vs $upcard: ") }
+    }
+
+    private fun described(description: String) = screen.onNode(hasContentDescription(description))
+
     // Many squares print the same code, so a square is found by the hand and upcard its description opens with
-    private fun square(hand: String, upcard: String, code: String) = screen.onNode(
-        SemanticsMatcher("describes $hand vs $upcard") { node ->
-            node.config.getOrElse(SemanticsProperties.ContentDescription) { emptyList() }.any { it.startsWith("$hand vs $upcard: ") }
-        } and hasText(code),
-    )
+    private fun square(hand: String, upcard: String, code: String) = screen.onNode(describes(hand, upcard) and hasText(code))
 
     private fun SemanticsNodeInteraction.centreX(): Float = getBoundsInRoot().let { (it.left + it.right).value / 2 }
 
@@ -89,7 +96,7 @@ class StrategyChartScreenTest {
     fun aSquareReadsOutAsWords() {
         showChart()
 
-        screen.onNodeWithContentDescription("14 vs 4: Stand, but hit with 4 or more cards or while any 6-7-8 is possible").assertExists()
+        described("14 vs 4: Stand, but hit with 4 or more cards or while any 6-7-8 is possible").assertExists()
     }
 
     @Test
@@ -99,6 +106,19 @@ class StrategyChartScreenTest {
         openTab(R.string.table_pairs)
 
         square("7-7", "7", "P$").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun aSwipeMovesOnlyAmongTheTablesOfTheChosenGroup() {
+        rules = RuleSet.H17_REDOUBLE
+        showChart()
+
+        // Hard, Soft and Pairs are the hands not yet doubled; a swipe past Pairs would stretch rather than open a doubled table
+        repeat(2) { screen.swipeToNextTab() }
+
+        screen.onNodeWithText(string(R.string.table_pairs)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.not_doubled)).assertIsSelected()
+        screen.onNode(describes("A-7", "4")).assertDoesNotExist()
     }
 
     @Test
@@ -115,26 +135,59 @@ class StrategyChartScreenTest {
     }
 
     @Test
-    fun theRulesWithoutRedoublingHaveADoubleDownRescueTabThatExplainsItsBlankSquares() {
+    fun theChoiceSwitchesBetweenTheTablesForHandsNotYetDoubledAndThoseAlreadyDoubled() {
         showChart()
 
-        openTab(R.string.table_rescue)
+        screen.onNodeWithText(string(R.string.not_doubled)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_pairs)).assertExists()
 
-        square("16", "10", "R").performScrollTo().assertIsDisplayed()
-        screen.onNodeWithContentDescription("16 vs 10: Rescue").assertExists()
-        screen.onNodeWithContentDescription("12 vs 2: Stand, no rescue").assertExists()
-        screen.onNodeWithText("Stand, no rescue").performScrollTo().assertIsDisplayed()
-        screen.onNodeWithText(string(R.string.table_after_double_hard)).assertDoesNotExist()
+        chooseDoubled()
+        screen.onNodeWithText(string(R.string.already_doubled)).assertIsSelected()
+
+        screen.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_pairs)).assertDoesNotExist()
+        described("16 vs 10: Rescue").assertExists()
+
+        screen.onNodeWithText(string(R.string.not_doubled)).performClick()
+
+        screen.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        described("16 vs 10: Hit").assertExists()
     }
 
     @Test
-    fun withRedoublingTheRescueTabIsAfterDoublingHardBesideAfterDoublingSoft() {
+    fun choosingTheGroupAlreadyChosenKeepsItsTab() {
+        showChart()
+        openTab(R.string.table_pairs)
+
+        screen.onNodeWithText(string(R.string.not_doubled)).performClick()
+
+        screen.onNodeWithText(string(R.string.table_pairs)).assertIsSelected()
+    }
+
+    @Test
+    fun withoutRedoublingADoubledHandStandsOrRescuesOnAHardTableOnly() {
+        showChart()
+
+        chooseDoubled()
+
+        screen.onNodeWithText(string(R.string.doubled_moves)).assertIsDisplayed()
+        square("16", "10", "R").performScrollTo().assertIsDisplayed()
+        square("12", "2", "S").performScrollTo().assertIsDisplayed()
+        described("12 vs 2: Stand").assertExists()
+        screen.onNodeWithText(string(R.string.table_soft)).assertDoesNotExist()
+    }
+
+    @Test
+    fun withRedoublingADoubledHandCanAlsoRedoubleAndHasASoftTable() {
         rules = RuleSet.H17_REDOUBLE
         showChart()
 
-        screen.onNodeWithText(string(R.string.table_after_double_hard)).assertExists()
-        screen.onNodeWithText(string(R.string.table_after_double_soft)).assertExists()
-        screen.onNodeWithText(string(R.string.table_rescue)).assertDoesNotExist()
+        chooseDoubled()
+
+        screen.onNodeWithText(string(R.string.doubled_moves_redoubling)).assertIsDisplayed()
+        described("11 vs 2: Redouble").assertExists()
+        openTab(R.string.table_soft)
+        described("A-7 vs 4: Redouble").assertExists()
     }
 
     @Test
@@ -149,25 +202,44 @@ class StrategyChartScreenTest {
     }
 
     @Test
-    fun aTabTheNewRulesDontHaveFallsBackToHard() {
+    fun aTabTheNewRulesDontHaveFallsBackToTheFirstOfItsGroup() {
         rules = RuleSet.H17_REDOUBLE
         showChart()
-        openTab(R.string.table_after_double_soft)
+        chooseDoubled()
+        openTab(R.string.table_soft)
 
         rules = RuleSet.S17
 
+        screen.onNodeWithText(string(R.string.already_doubled)).assertIsSelected()
         screen.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
     }
 
     @Test
-    fun doubleDownRescueStaysOpenOnceRedoublingIsAllowedAsTheSameHandsAfterDoublingHard() {
+    fun theDoubledHandsStayChosenOnceRedoublingIsAllowed() {
         rules = RuleSet.H17
         showChart()
-        openTab(R.string.table_rescue)
+        chooseDoubled()
 
         rules = RuleSet.H17_REDOUBLE
 
-        screen.onNodeWithText(string(R.string.table_after_double_hard)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.already_doubled)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_soft)).assertExists()
+    }
+
+    @Test
+    fun theChosenGroupAndTableOutliveRecreation() {
+        rules = RuleSet.H17_REDOUBLE
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent { Sp21AceTheme { StrategyChartScreen(rules, onBack = {}) } }
+        chooseDoubled()
+        openTab(R.string.table_soft)
+
+        restoration.emulateSavedInstanceStateRestore()
+
+        screen.onNodeWithText(string(R.string.already_doubled)).assertIsSelected()
+        screen.onNodeWithText(string(R.string.table_soft)).assertIsSelected()
+        described("A-7 vs 4: Redouble").assertExists()
     }
 
     @Test
@@ -180,7 +252,9 @@ class StrategyChartScreenTest {
         val chart = StrategyCharts.forRules(RuleSet.S17)
         val hands = chart.hands(ChartTable.HARD)
         val gridText = Upcard.entries.map { it.label } + hands + chart.legend(ChartTable.HARD).map { it.symbol } +
-            hands.flatMap { hand -> Upcard.entries.mapNotNull { chart.play(ChartTable.HARD, hand, it)?.code } }
+            chart.plays(ChartTable.HARD).map { it.code } +
+            // The tabs scroll rather than cut a name short, but the group choice has a fixed width
+            listOf(R.string.not_doubled, R.string.already_doubled).map(::string)
 
         screen.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)
             .fetchSemanticsNodes()
