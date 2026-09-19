@@ -204,8 +204,8 @@ class CustomizeHandsScreenTest {
         // Doubled hard 16 vs A is a rescue, and doubled soft 18 vs 4 a redouble with redoubling
         showScreen(
             listOf(
-                PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("5c 6d 5h"), card("As"), doubles = 1), Move.RESCUE, Move.RESCUE),
-                PracticeAnswer(now, RuleSet.H17_REDOUBLE, TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1), Move.STAND, Move.REDOUBLE),
+                PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("5c 6d 5h"), card("As"), doubled = true), Move.RESCUE, Move.RESCUE),
+                PracticeAnswer(now, RuleSet.H17_REDOUBLE, TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), Move.STAND, Move.REDOUBLE),
             ),
         )
         val rescue = HandType(ChartTable.AFTER_DOUBLE_HARD, Move.RESCUE)

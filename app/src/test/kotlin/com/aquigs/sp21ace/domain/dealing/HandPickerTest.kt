@@ -67,7 +67,7 @@ class HandPickerTest {
             val drawn = hand.player + shuffled[hand.player.size + 1]
             hand = when (chart.correctMove(hand)) {
                 Move.HIT -> hand.copy(player = drawn)
-                Move.DOUBLE -> hand.copy(player = drawn, doubles = 1)
+                Move.DOUBLE -> hand.copy(player = drawn, doubled = true)
                 else -> break
             }
         }
@@ -126,7 +126,7 @@ class HandPickerTest {
             { it.upcard.rank },
             { hand -> hand.player.map { it.suit }.toSet().size },
             { minOf(it.player.size, 5) },
-            { it.doubles },
+            { it.doubled },
             { s17.correctMove(it) },
         )
         for (measure in measures) {
@@ -139,13 +139,14 @@ class HandPickerTest {
     }
 
     @Test
-    fun handsOf3OrMoreCardsNeverComeUpWithTheirSwitchOffWhileDoubledHandsKeepSwitchesOfTheirOwn() {
+    fun handsOf3OrMoreCardsNeverComeUpWithTheirSwitchOffButForDoublesFromTwoCards() {
         // The card-count switch, on by default, has none left to deal either
-        val picker = HandPicker(RuleSet.S17, HandCustomization(multiCardHands = false))
+        val picker = HandPicker(RuleSet.H17_REDOUBLE, HandCustomization(multiCardHands = false))
+        val dealt = picker.deal(5_000)
 
-        assertTrue(picker.deal(5_000).all { it.player.size == 2 || it.doubled })
+        assertTrue(dealt.all { it.player.size == 2 || it.doubled && it.player.size == 3 })
+        assertTrue(dealt.any { it.doubled })
         assertTrue(picker.hands.all { it is HandValues || it is DoubledHand })
-        assertTrue(picker.hands.any { it is DoubledHand })
     }
 
     @Test

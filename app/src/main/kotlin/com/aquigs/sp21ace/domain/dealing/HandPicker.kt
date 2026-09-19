@@ -18,7 +18,8 @@ private const val BONUS_SHARE = 0.1
 
 /**
  * Deals the trainer's hands under [rules]: only the types still switched on, and hands of 3 or more cards only while their switch
- * is on, or every type when none of those can come up. Built once per change of settings, so a deal only weighs and picks.
+ * is on, or every type when none of those can come up. A doubled hand has 3 or more cards whatever the switch, but with it off
+ * only doubles from two cards. Built once per change of settings, so a deal only weighs and picks.
  */
 class HandPicker(rules: RuleSet, private val customization: HandCustomization) {
     private class Group(val hand: HandKey, val ways: List<Dealable>) {
@@ -31,7 +32,7 @@ class HandPicker(rules: RuleSet, private val customization: HandCustomization) {
 
     private val chart = StrategyCharts.forRules(rules)
 
-    private val groups: List<Group> = dealableHands(rules).hands.filterKeys { customization.multiCardHands || it !is MultiCardHand }.let { all ->
+    private val groups: List<Group> = dealableHands(rules, customization.multiCardHands).hands.let { all ->
         // A hand carries the move it's graded with, so every way to deal it is graded alike
         val possible = all.values.mapTo(HashSet()) { it.first().type }
         val dealt = (possible - customization.switchedOff).ifEmpty { possible }

@@ -80,8 +80,8 @@ class TrainerTest {
         val h17 = StrategyCharts.forRules(RuleSet.H17)
         val redouble = StrategyCharts.forRules(RuleSet.H17_REDOUBLE)
         // Doubled hard 16 vs 10 is R, and doubled hard 10 vs 5 D with redoubling
-        val sixteenVsTen = TrainerHand(cards("2c 3d 4h 2s 5d"), card("Ks"), doubles = 1)
-        val tenVsFive = TrainerHand(cards("3c 2d 5h"), card("5s"), doubles = 1)
+        val sixteenVsTen = TrainerHand(cards("2c 3d 4h 2s 5d"), card("Ks"), doubled = true)
+        val tenVsFive = TrainerHand(cards("3c 2d 5h"), card("5s"), doubled = true)
 
         fun grade(hand: TrainerHand, move: Move, chart: StrategyChart) = TrainerState(hand).answer(hand, move, chart) { sixteenVsAce }?.grade
 
@@ -138,7 +138,7 @@ class TrainerTest {
     fun comesBackEqualFromSerialization() {
         // Android serializes the saved state once the app is in the background, which recreating the activity in a device test doesn't.
         // A right answer from a streak and a doubled hand dealt next, so neither field lost in transit can hide behind its default.
-        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1) }
+        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true) }
 
         val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(state) } }.toByteArray()
 

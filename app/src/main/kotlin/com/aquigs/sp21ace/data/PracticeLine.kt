@@ -10,11 +10,10 @@ import java.time.Instant
 
 /**
  * One practice history line: named fields, such as
- * `at=1789000000000 rules=H17 player=5c,6d,5h upcard=Ks doubles=1 answer=STAND correctMove=RESCUE`.
- * Every card keeps its rank and suit, however many the hand holds, for card-count and bonus exceptions, and `doubles` counts
- * the last cards as doubles' draws. Fields are found by name, so a later one can join without breaking the lines already saved.
- * `doubles` joined that way, and a line without it predates doubled hands, so it was no doubled hand. The one build before it
- * wrote `doubled=false` instead and dealt no doubled hand, so that field is never read.
+ * `at=1789000000000 rules=S17 player=9c,7d upcard=As doubled=false answer=HIT correctMove=HIT`.
+ * Every card keeps its rank and suit, however many the hand holds, for card-count and bonus exceptions. Fields are found by
+ * name, so a later one can join without breaking the lines already saved. `doubled` joined that way, and a line without it
+ * predates doubled hands, so it was no doubled hand.
  */
 internal object PracticeLine {
     fun print(answer: PracticeAnswer): String = listOf(
@@ -22,7 +21,7 @@ internal object PracticeLine {
         "rules" to answer.ruleSet.name,
         "player" to answer.hand.player.joinToString(",") { it.code },
         "upcard" to answer.hand.upcard.code,
-        "doubles" to answer.hand.doubles,
+        "doubled" to answer.hand.doubled,
         "answer" to answer.answer.name,
         "correctMove" to answer.correctMove.name,
     ).joinToString(" ") { (key, value) -> "$key=$value" }
@@ -40,7 +39,7 @@ internal object PracticeLine {
             hand = TrainerHand(
                 field("player").split(',').map(::card),
                 card(field("upcard")),
-                doubles = fieldIfSaved("doubles")?.toInt() ?: 0,
+                doubled = fieldIfSaved("doubled")?.toBooleanStrict() ?: false,
             ),
             answer = Move.valueOf(field("answer")),
             correctMove = Move.valueOf(field("correctMove")),

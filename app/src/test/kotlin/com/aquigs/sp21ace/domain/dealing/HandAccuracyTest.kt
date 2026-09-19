@@ -44,16 +44,15 @@ class HandAccuracyTest {
     }
 
     @Test
-    fun aDoubledHandIsItsTotalAfterDoublingAgainstTheUpcardAndTheMoveTheChartCallsForHoweverManyCardsOrDoubles() {
+    fun aDoubledHandIsItsTotalAfterDoublingAgainstTheUpcardAndTheMoveTheChartCallsForHoweverManyCards() {
         // Hard 14 vs 9 once doubled is a rescue whatever the rules, filed under After doubling: hard even where Double Down
         // Rescue prints it
         val rescue = DoubledHand(ChartRow(ChartTable.AFTER_DOUBLE_HARD, "14"), Upcard.NINE, Move.RESCUE)
 
-        assertEquals(rescue, TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1).key(s17))
-        assertEquals(rescue, TrainerHand(cards("2c 3d 4h 5s"), card("9d"), doubles = 1).key(s17))
-        assertEquals(rescue, TrainerHand(cards("2c 3d 2h 7s"), card("9d"), doubles = 2).key(StrategyCharts.forRules(RuleSet.H17_REDOUBLE)))
+        assertEquals(rescue, TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true).key(s17))
+        assertEquals(rescue, TrainerHand(cards("2c 3d 4h 5s"), card("9d"), doubled = true).key(s17))
         // Soft 18 once doubled stands, and without redoubling Double Down Rescue prints no row for it
-        assertEquals(DoubledHand(ChartRow(ChartTable.AFTER_DOUBLE_SOFT, "A-7"), Upcard.NINE, Move.STAND), TrainerHand(cards("As 5d 2c"), card("9s"), doubles = 1).key(s17))
+        assertEquals(DoubledHand(ChartRow(ChartTable.AFTER_DOUBLE_SOFT, "A-7"), Upcard.NINE, Move.STAND), TrainerHand(cards("As 5d 2c"), card("9s"), doubled = true).key(s17))
     }
 
     @Test
@@ -94,7 +93,7 @@ class HandAccuracyTest {
             answer(tenSixVsAce, right = false),
             // Hard 16 vs A hits when the dealer stands on soft 17, whatever the rules that graded it
             answer(TrainerHand(cards("9c 4d 3s"), card("Ad")), right = true, Move.HIT),
-            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1), right = true, Move.RESCUE),
+            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), right = true, Move.RESCUE),
         )
 
         val expected = mapOf(
@@ -112,7 +111,7 @@ class HandAccuracyTest {
             answer(TrainerHand(cards("9c 4d 3s"), card("Ad")), right = true, Move.HIT),
             answer(TrainerHand(cards("2c 3d 4h 5s"), card("4s")), right = false, Move.HIT),
             answer(nineSevenVsAce, right = true),
-            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1), right = true, Move.RESCUE),
+            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), right = true, Move.RESCUE),
         )
 
         assertEquals(Tally(correct = 1, incorrect = 1), history.multiCardTally())
@@ -131,7 +130,7 @@ class HandAccuracyTest {
             answer(TrainerHand(cards("9h 4c 3d"), card("Ac")), right = false, Move.HIT, rules = RuleSet.H17),
             // Hard 11 vs 5 is D5, but two cards make no card-count hand, and a doubled hand is read from the after-doubling tables
             answer(TrainerHand(cards("6c 5d"), card("5s")), right = false, Move.DOUBLE, rules = RuleSet.S17),
-            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1), right = false, Move.RESCUE, rules = RuleSet.S17),
+            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), right = false, Move.RESCUE, rules = RuleSet.S17),
         )
 
         assertEquals(Tally(correct = 3, incorrect = 2), history.cardCountTally())
@@ -164,8 +163,8 @@ class HandAccuracyTest {
     fun aDoubledHandCountsForTheSwitchOfItsAfterDoublingTableRatherThanTheHardOrSoftOne() {
         // Hard 14 vs 9 once doubled is a rescue, and soft 18 vs 4 a redouble with redoubling
         val history = listOf(
-            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1), right = true, Move.RESCUE),
-            answer(TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1), right = false, Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
+            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), right = true, Move.RESCUE),
+            answer(TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), right = false, Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
         )
 
         val counted = mapOf(

@@ -21,7 +21,6 @@ import com.aquigs.sp21ace.domain.strategy.move
 import com.aquigs.sp21ace.domain.strategy.play
 import com.aquigs.sp21ace.domain.strategy.row
 import com.aquigs.sp21ace.domain.strategy.upcard
-import com.aquigs.sp21ace.domain.trainer.MAX_DOUBLES
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.correctMove
 import kotlin.random.Random
@@ -46,9 +45,6 @@ private val PLAYER_CARDS: List<List<Card>> = spanishShoe(decks = 1).let { deck -
     deck.indices.flatMap { i -> (i until deck.size).map { j -> listOf(deck[i], deck[j]) } }.filterNot { it.isBlackjack() }
 }
 
-// After the last double a redouble square has no answer, so no hand past it is dealt
-private const val DEALT_DOUBLES = MAX_DOUBLES - 1
-
 /** A way the trainer deals a hand: the type it's graded as, its total, how often a round deals it this way, and a deal of it. */
 internal interface Dealable {
     val type: HandType
@@ -72,15 +68,20 @@ internal class DealableHands(val hands: Map<HandKey, List<Dealable>>) {
     val rows: Set<ChartRow> = PLAYER_CARDS.mapTo(HashSet(), ::chartRow) + hands.keys.filterIsInstance<TotalHand>().map { it.row }
 }
 
-private val DEALABLE: Map<RuleSet, Lazy<DealableHands>> = RuleSet.entries.associateWith { rules -> lazy { StrategyCharts.forRules(rules).dealableHands() } }
+private val DEALABLE: Map<Pair<RuleSet, Boolean>, Lazy<DealableHands>> = RuleSet.entries.flatMap { rules ->
+    listOf(true, false).map { multiCardHands -> (rules to multiCardHands) to lazy { StrategyCharts.forRules(rules).dealableHands(multiCardHands) } }
+}.toMap()
 
-/** Every hand the trainer can deal under [rules]. Built on first use, and only for the rules in play. */
-internal fun dealableHands(rules: RuleSet): DealableHands = DEALABLE.getValue(rules).value
+/**
+ * Every hand the trainer can deal under [rules], or without [multiCardHands] only the ones a player reaches without hitting, so
+ * a doubled hand only from two cards. Built on first use, and only for the rules and switch in play.
+ */
+internal fun dealableHands(rules: RuleSet, multiCardHands: Boolean = true): DealableHands = DEALABLE.getValue(rules to multiCardHands).value
 
 /** The chart rows of every hand the trainer deals under [rules], read from the hands it deals, so the heatmap and the deal can't disagree. */
 fun dealtRows(rules: RuleSet): Set<ChartRow> = dealableHands(rules).rows
 
-private fun StrategyChart.dealableHands(): DealableHands {
+private fun StrategyChart.dealableHands(multiCardHands: Boolean): DealableHands {
     val twoCard = LinkedHashMap<HandValues, MutableList<DealableHand>>()
 
     // The table once per two cards, since the upcard doesn't change it
@@ -98,7 +99,7 @@ private fun StrategyChart.dealableHands(): DealableHands {
         buildMap {
             putAll(twoCard)
             twoCard.values.flatten().groupBy { it.upcard }.forEach { (upcard, twoCards) ->
-                val multiCard = hitting(upcard, twoCards.filter { it.type.move == Move.HIT })
+                val multiCard = if (multiCardHands) hitting(upcard, twoCards.filter { it.type.move == Move.HIT }) else emptyMap()
                 putAll(multiCard)
                 putAll(doubling(upcard, (twoCards + multiCard.values.flatten()).filter { it.type.move == Move.DOUBLE }))
             }
@@ -115,15 +116,14 @@ private fun StrategyChart.hitting(upcard: Upcard, starts: List<Dealable>): Map<H
 
 /**
  * The doubled hands a player reaches against [upcard] by doubling where the chart says double, from the hands in [starts] it
- * doubles, and with redoubling by redoubling where it says redouble. Only a doubled hand the chart prints a square for is dealt,
- * so without redoubling one on a row of Double Down Rescue.
+ * doubles. Only a doubled hand the chart prints a square for is dealt, so without redoubling one on a row of Double Down Rescue.
+ * None is redoubled: a rescue gives up the original bet however many doubles are on the hand, so the after-doubling tables,
+ * worked out for one double, can't answer a hand with more at stake.
  */
-private fun StrategyChart.doubling(upcard: Upcard, starts: List<Dealable>): Map<HandKey, List<Dealable>> {
-    fun move(end: Reached) = correctMoveAfterDoubling(end.total, upcard)
-
-    return Drawing(starts, doubles = true) { it.draws < DEALT_DOUBLES && move(it) == Move.REDOUBLE }
-        .hands { end -> doubledRow(end.total)?.let { DoubledHand(end.total.afterDoublingRow, upcard, move(end)) } }
-}
+private fun StrategyChart.doubling(upcard: Upcard, starts: List<Dealable>): Map<HandKey, List<Dealable>> =
+    Drawing(starts, doubles = true) { false }.hands { end ->
+        doubledRow(end.total)?.let { DoubledHand(end.total.afterDoublingRow, upcard, correctMoveAfterDoubling(end.total, upcard)) }
+    }
 
 /** A total a hand reaches, and how many cards were drawn to it after the hand it started from. */
 private data class Reached(val total: HandTotal, val draws: Int)
@@ -189,7 +189,7 @@ private class Drawing(starts: List<Dealable>, private val doubles: Boolean, draw
 
             val start = startsByTotal.getValue(at.total).pick(random).deal(random)
             val hand = drawn.fold(start) { hand, value -> hand.copy(player = hand.player + drawCard(value, hand.player + hand.upcard, random)) }
-            return if (doubles) hand.copy(doubles = end.draws) else hand
+            return if (doubles) hand.copy(doubled = true) else hand
         }
     }
 }

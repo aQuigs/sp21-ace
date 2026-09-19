@@ -23,23 +23,20 @@ class TrainerHandTest {
     }
 
     @Test
-    fun namesADoubledHandByItsDoublesRatherThanItsCardsSinceTheyNoLongerChangeThePlay() {
-        assertEquals("Doubled hard 16 vs 10", TrainerHand(cards("5c 6d 5h"), card("Ks"), doubles = 1).matchup)
-        assertEquals("Doubled soft 18 vs 4", TrainerHand(cards("2c 5d As"), card("4h"), doubles = 1).matchup)
-        assertEquals("Redoubled hard 14 vs 9", TrainerHand(cards("2c 3d 2h 7s"), card("9d"), doubles = 2).matchup)
+    fun namesADoubledHandAsDoubledRatherThanByItsCardsSinceTheyNoLongerChangeThePlay() {
+        assertEquals("Doubled hard 16 vs 10", TrainerHand(cards("5c 6d 5h"), card("Ks"), doubled = true).matchup)
+        assertEquals("Doubled soft 18 vs 4", TrainerHand(cards("2c 5d As"), card("4h"), doubled = true).matchup)
     }
 
     @Test
-    fun aDoubledHandCanOnlyStandRescueOrRedoubleWhereTheRulesAllowAnotherDouble() {
+    fun aDoubledHandCanOnlyStandRescueOrRedoubleWhereTheRulesAllowRedoubling() {
         val twoCards = TrainerHand(cards("9c 7d"), card("As"))
         val threeCards = TrainerHand(cards("9c 4d 3h"), card("As"))
-        val doubled = TrainerHand(cards("5c 6d 5h"), card("Ks"), doubles = 1)
-        val atTheLastDouble = TrainerHand(cards("2c 2d Ah 2s As"), card("Ks"), doubles = 3)
+        val doubled = TrainerHand(cards("5c 6d 5h"), card("Ks"), doubled = true)
 
         for (redoubling in listOf(false, true)) {
             assertEquals(setOf(Move.HIT, Move.STAND, Move.DOUBLE, Move.SPLIT, Move.SURRENDER), twoCards.moves(redoubling))
             assertEquals(setOf(Move.HIT, Move.STAND, Move.DOUBLE), threeCards.moves(redoubling))
-            assertEquals(setOf(Move.STAND, Move.RESCUE), atTheLastDouble.moves(redoubling))
         }
         assertEquals(setOf(Move.STAND, Move.RESCUE), doubled.moves(redoubling = false))
         assertEquals(setOf(Move.STAND, Move.REDOUBLE, Move.RESCUE), doubled.moves(redoubling = true))

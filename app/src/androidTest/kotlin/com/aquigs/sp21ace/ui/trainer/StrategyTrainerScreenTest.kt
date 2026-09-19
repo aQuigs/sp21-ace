@@ -80,7 +80,7 @@ class StrategyTrainerScreenTest {
     private val nineCardNames = listOf("Ace of clubs", "Ace of diamonds", "Ace of hearts", "Ace of spades", "2 of clubs", "2 of diamonds", "2 of hearts", "2 of spades", "3 of clubs")
 
     // Doubled hard 16 vs 10 is a rescue whatever the rules, doubled from hard 11 with a 5
-    private val doubledSixteenVsKing = TrainerHand(cards("5c 6d 5h"), card("Ks"), doubles = 1)
+    private val doubledSixteenVsKing = TrainerHand(cards("5c 6d 5h"), card("Ks"), doubled = true)
 
     // A button in every place, first-decision moves on a hand not yet doubled
     private val buttons = listOf(Move.HIT, Move.STAND, Move.DOUBLE, Move.SPLIT, Move.SURRENDER)
@@ -488,21 +488,16 @@ class StrategyTrainerScreenTest {
 
     @Test
     fun aDoublesCardLiesSidewaysAcrossTheMiddleOfTheHandAfterTheCardsBeforeItLeavingEachIndexShowing() {
-        // Doubled from hard 7 with a 2, then redoubled with a 5
-        showTrainer(first = TrainerHand(cards("4c 3d 2h 5s"), card("6s"), doubles = 2), rules = RuleSet.H17_REDOUBLE)
-        val (four, three) = listOf("4 of clubs", "3 of diamonds").map(::bounds)
-        val (two, five) = listOf("2 of hearts", "5 of spades").map(::bounds)
+        // Hit from hard 7 with a 2, then doubled with a 5
+        showTrainer(first = TrainerHand(cards("4c 3d 2h 5s"), card("6s"), doubled = true), rules = RuleSet.H17_REDOUBLE)
+        val (four, three, two) = listOf("4 of clubs", "3 of diamonds", "2 of hearts").map(::bounds)
+        val five = bounds("5 of spades")
 
-        for (upright in listOf(four, three)) assertTrue("$upright", upright.height > upright.width)
-        for (sideways in listOf(two, five)) {
-            assertEquals("$sideways", three.height.value, sideways.width.value, 1f)
-            assertEquals("$sideways", three.width.value, sideways.height.value, 1f)
-            assertEquals("$sideways", (three.top + three.bottom).value / 2, (sideways.top + sideways.bottom).value / 2, 1f)
-        }
-        assertTrue(three.left - four.left >= four.width * 0.19f)
-        assertTrue(two.left - three.left >= three.width * 0.19f)
-        // Its index runs along the fan, so a sideways card leaves more of itself showing
-        assertTrue(five.left - two.left >= three.width * 0.39f)
+        for (upright in listOf(four, three, two)) assertTrue("$upright", upright.height > upright.width)
+        assertEquals("$five", two.height.value, five.width.value, 1f)
+        assertEquals("$five", two.width.value, five.height.value, 1f)
+        assertEquals("$five", (two.top + two.bottom).value / 2, (five.top + five.bottom).value / 2, 1f)
+        for ((under, over) in listOf(four to three, three to two, two to five)) assertTrue("$over", over.left - under.left >= under.width * 0.19f)
     }
 
     @Test

@@ -55,8 +55,8 @@ class AccuracyScreenTest {
     )
 
     // Doubled hard 16 vs A is a rescue whatever the rules, and doubled soft 18 vs 4 a redouble with redoubling
-    private val doubledSixteenVsAce = TrainerHand(cards("5c 6d 5h"), card("As"), doubles = 1)
-    private val doubledSoftEighteenVsFour = TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1)
+    private val doubledSixteenVsAce = TrainerHand(cards("5c 6d 5h"), card("As"), doubled = true)
+    private val doubledSoftEighteenVsFour = TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true)
 
     private var rules by mutableStateOf(RuleSet.S17)
     private lateinit var heatmap: HeatmapColors
@@ -279,7 +279,7 @@ class AccuracyScreenTest {
         showAccuracy(
             listOf(
                 answer(right = true, hand = doubledSixteenVsAce, correctMove = Move.RESCUE),
-                answer(right = false, hand = TrainerHand(cards("5c 6d As"), card("8s"), doubles = 1), correctMove = Move.RESCUE),
+                answer(right = false, hand = TrainerHand(cards("5c 6d As"), card("8s"), doubled = true), correctMove = Move.RESCUE),
             ),
         )
 

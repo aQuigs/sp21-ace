@@ -66,24 +66,23 @@ class DealableHandsTest {
         return reached
     }
 
-    // How often a round reaches each doubled hand, walking every card a player following the chart hits, doubles and redoubles
-    // to, each drawn as from a full shoe, short of the last double
-    private fun reachedDoubled(rules: RuleSet): Map<HandKey, Double> {
+    // How often a round reaches each doubled hand, walking every card a player following the chart hits, while [hits], and
+    // doubles to, each drawn as from a full shoe
+    private fun reachedDoubled(rules: RuleSet, hits: Boolean): Map<HandKey, Double> {
         val chart = StrategyCharts.forRules(rules)
         val reached = HashMap<HandKey, Double>()
         val oneOfEachValue = Rank.entries.distinctBy { it.value }
 
         fun play(hand: TrainerHand, chance: Double) {
-            val move = chart.correctMove(hand)
-            if (hand.doubled && chart.doubledRow(hand.player.total()) != null) reached.merge(DoubledHand(hand.row, hand.upcard.upcard, move), chance, Double::plus)
-
-            val doubles = when {
-                move == Move.HIT -> 0
-                move == Move.DOUBLE || move == Move.REDOUBLE && hand.doubles < 2 -> hand.doubles + 1
-                else -> return
+            if (hand.doubled) {
+                if (chart.doubledRow(hand.player.total()) != null) reached.merge(DoubledHand(hand.row, hand.upcard.upcard, chart.correctMove(hand)), chance, Double::plus)
+                return
             }
+
+            val move = chart.correctMove(hand)
+            if (move != Move.DOUBLE && !(hits && move == Move.HIT)) return
             for (rank in oneOfEachValue) {
-                val grown = hand.copy(player = hand.player + Card(rank, Suit.CLUBS), doubles = doubles)
+                val grown = hand.copy(player = hand.player + Card(rank, Suit.CLUBS), doubled = move == Move.DOUBLE)
                 if (grown.player.total().value < 21) play(grown, chance * (if (rank.value == 10) 72 else 24) / 288.0)
             }
         }
@@ -97,18 +96,20 @@ class DealableHandsTest {
     }
 
     @Test
-    fun doubledHandsComeUpAsOftenAsARoundReachesThemByDoublingWhereTheChartSaysDoubleAndRedoublingWhereItSaysRedouble() {
+    fun doubledHandsComeUpAsOftenAsARoundReachesThemByDoublingWhereTheChartSaysDoubleAndWithoutHandsOf3OrMoreCardsOnlyFromTwo() {
         for (rules in RuleSet.entries) {
-            val expected = reachedDoubled(rules)
-            val dealt = doubledHands(rules).mapValues { (_, ways) -> ways.sumOf { it.chance } }
+            for (hits in listOf(true, false)) {
+                val expected = reachedDoubled(rules, hits)
+                val dealt = dealableHands(rules, multiCardHands = hits).hands.filterKeys { it is DoubledHand }.mapValues { (_, ways) -> ways.sumOf { it.chance } }
 
-            assertEquals("$rules", expected.keys, dealt.keys)
-            expected.forEach { (hand, chance) -> assertEquals("$rules $hand", chance, dealt.getValue(hand), chance * 1e-9) }
+                assertEquals("$rules $hits", expected.keys, dealt.keys)
+                expected.forEach { (hand, chance) -> assertEquals("$rules $hits $hand", chance, dealt.getValue(hand), chance * 1e-9) }
+            }
         }
     }
 
     @Test
-    fun everyWayToDealADoubledHandDoublesAndRedoublesWhereTheChartSaysFromWhatTheShoeHasLeft() {
+    fun everyWayToDealADoubledHandDoublesOnceWhereTheChartSaysFromWhatTheShoeHasLeft() {
         val random = Random(21)
 
         for (rules in RuleSet.entries) {
@@ -117,15 +118,13 @@ class DealableHandsTest {
             for ((hand, ways) in doubledHands(rules)) {
                 for (way in ways) {
                     val dealt = way.deal(random)
-                    val start = dealt.player.dropLast(dealt.doubles)
+                    val start = dealt.player.dropLast(1)
                     val hits = (2 until start.size).map { chart.correctMove(start.take(it), dealt.upcard) }
-                    val redoubles = (1 until dealt.doubles).map { chart.correctMove(TrainerHand(dealt.player.dropLast(dealt.doubles - it), dealt.upcard, doubles = it)) }
 
                     assertEquals("$rules $hand", hand, dealt.key(chart))
-                    assertTrue("$rules $dealt", dealt.doubles in 1..(if (rules.redoubling) 2 else 1))
+                    assertTrue("$rules $dealt", dealt.doubled)
                     assertEquals("$rules $dealt", List(start.size - 2) { Move.HIT }, hits)
                     assertEquals("$rules $dealt", Move.DOUBLE, chart.correctMove(start, dealt.upcard))
-                    assertEquals("$rules $dealt", List(dealt.doubles - 1) { Move.REDOUBLE }, redoubles)
                     assertTrue("$rules $dealt", (dealt.player + dealt.upcard).groupingBy { it }.eachCount().values.all { it <= 6 })
                 }
             }

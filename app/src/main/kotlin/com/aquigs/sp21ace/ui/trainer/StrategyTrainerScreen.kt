@@ -117,7 +117,7 @@ fun StrategyTrainerScreen(
                     label = stringResource(R.string.you),
                     total = state.hand.playerTotal.takeIf { settings.handTotals },
                     modifier = Modifier.weight(1f),
-                    sideways = state.hand.doubles,
+                    sideways = state.hand.doubled,
                 ) {
                     state.hand.player.forEach { PlayingCard(it) }
                 }
@@ -206,10 +206,10 @@ private fun FeedbackText(grade: Grade) {
 
 /**
  * A hand's label over its cards, with its [total], when given, on the label's line at the cards' right edge, as in Blackjack Ace.
- * The last [sideways] cards are doubles' cards, turned sideways.
+ * A [sideways] last card is a double's card, turned sideways.
  */
 @Composable
-private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, sideways: Int = 0, cards: @Composable () -> Unit) {
+private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, sideways: Boolean = false, cards: @Composable () -> Unit) {
     val color = MaterialTheme.colorScheme.primary
 
     BoxWithConstraints(modifier) {
@@ -299,6 +299,9 @@ private fun AnswerButtons(buttons: List<Move>, moves: Set<Move>, onAnswer: (Move
                     // The capitals and SURR. are for the eye; a screen reader says the move's name
                     Text(
                         text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
+                        // The longest label, whose end letters would touch the curve of a full-size ring, so it stops short there as
+                        // though padded 8dp. The smallest circles have no room to spare for that.
+                        modifier = if (move == Move.REDOUBLE) Modifier.widthIn(max = ButtonSize - 16.dp) else Modifier,
                         fontWeight = FontWeight.Bold,
                         // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen, or REDOUBLE, needs less
                         autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = 13.sp),

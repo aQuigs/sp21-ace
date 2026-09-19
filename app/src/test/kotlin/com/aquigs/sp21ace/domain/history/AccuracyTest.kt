@@ -92,8 +92,8 @@ class AccuracyTest {
             answer(hand = eightsVsSix, correctMove = Move.SPLIT),
             answer(hand = eightsVsSix, correctMove = Move.SPLIT),
             // Doubled hard 16 vs A, and soft 18 vs 4 with redoubling
-            answer(right = false, hand = TrainerHand(cards("5c 6d 5h"), card("As"), doubles = 1), correctMove = Move.RESCUE),
-            answer(hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
+            answer(right = false, hand = TrainerHand(cards("5c 6d 5h"), card("As"), doubled = true), correctMove = Move.RESCUE),
+            answer(hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
         )
 
         assertEquals(
@@ -191,8 +191,8 @@ class AccuracyTest {
     fun aDoubledHandLandsInTheAfterDoublingSquaresRatherThanUnderItsTotal() {
         val fourteenVsNine = TrainerHand(cards("5c 6d 3h"), card("9s"))
         val history = listOf(
-            answer(right = false, hand = fourteenVsNine.copy(doubles = 1), correctMove = Move.RESCUE),
-            answer(hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
+            answer(right = false, hand = fourteenVsNine.copy(doubled = true), correctMove = Move.RESCUE),
+            answer(hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
             answer(hand = fourteenVsNine, correctMove = Move.HIT),
         )
 
@@ -214,10 +214,10 @@ class AccuracyTest {
     fun aRedoubleAndARescueHaveCardsOfTheirOwnApartFromADoubleAndASurrender() {
         val history = listOf(
             answer(hand = TrainerHand(cards("5c 6d"), card("5s")), correctMove = Move.DOUBLE),
-            answer(right = false, hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubles = 1), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
-            answer(hand = TrainerHand(cards("5c 6d 3h"), card("9s"), doubles = 1), correctMove = Move.RESCUE),
+            answer(right = false, hand = TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), correctMove = Move.REDOUBLE, rules = RuleSet.H17_REDOUBLE),
+            answer(hand = TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), correctMove = Move.RESCUE),
             // A stand is a stand, doubled or not
-            answer(hand = TrainerHand(cards("5c 6d 9h"), card("4s"), doubles = 1), correctMove = Move.STAND),
+            answer(hand = TrainerHand(cards("5c 6d 9h"), card("4s"), doubled = true), correctMove = Move.STAND),
             answer(hand = TrainerHand(cards("Kc 8d"), card("6h")), correctMove = Move.STAND),
         )
 
