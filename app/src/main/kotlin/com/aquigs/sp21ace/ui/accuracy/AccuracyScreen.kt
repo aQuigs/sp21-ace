@@ -66,7 +66,7 @@ fun AccuracyScreen(
 ) {
     val chart = StrategyCharts.forRules(rules)
     // A tab for every table the chart prints, as the chart has, and All
-    val tabs = HandFilter.entries.filter { filter -> filter.table?.let { it in chart.tables } ?: true }
+    val tabs = HandFilter.entries.filter { it.table == null || it.table in chart.tables }
     var chosen by rememberSaveable { mutableStateOf(HandFilter.HARD) }
     // A tab chosen under rules that printed its table, such as After doubling: soft with redoubling, is gone once they change
     val hands = chosen.takeIf { it in tabs } ?: HandFilter.HARD

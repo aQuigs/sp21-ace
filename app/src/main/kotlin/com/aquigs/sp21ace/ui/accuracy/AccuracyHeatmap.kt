@@ -37,7 +37,7 @@ import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 private val SCALE = listOf("0", "", "", "", "", "", "", "100")
 
 /**
- * The hands filed under [table] as [rules]' chart prints them, in the rows the trainer deals, each square with answers filled by
+ * [table] as [rules]' chart prints it, in the rows the trainer deals, each square with answers filled by
  * how often they were right, over a scale from 0 to 100.
  */
 @Composable

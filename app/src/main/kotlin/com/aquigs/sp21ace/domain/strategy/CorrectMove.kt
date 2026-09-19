@@ -34,7 +34,7 @@ val HandTotal.row: ChartRow
 
 /**
  * The row a doubled hand is read from by its total: "16" from After doubling: hard and "A-7" from After doubling: soft, whatever
- * the rules. Without redoubling, After doubling: hard is Double Down Rescue, which prints rows for hard 12 to 17 only.
+ * the rules print.
  */
 fun afterDoublingRow(hand: List<Card>): ChartRow = hand.total().afterDoublingRow
 

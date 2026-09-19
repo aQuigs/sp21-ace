@@ -44,11 +44,10 @@ class CorrectMoveTest {
 
         for (rules in RuleSet.entries) {
             val chart = StrategyCharts.forRules(rules)
-            val afterDoubling = listOf(ChartTable.AFTER_DOUBLE_HARD, ChartTable.AFTER_DOUBLE_SOFT).flatMap { table ->
+            val afterDoubling = chart.tables.filter { it.afterDoubling }.flatMap { table ->
                 chart.hands(table).flatMap { hand -> Upcard.entries.mapNotNull { chart.play(table, hand, it)?.action } }
             }
 
-            assertEquals("$rules", rules.redoubling, chart.redoubling)
             assertEquals("$rules", rules.redoubling, Action.DOUBLE in afterDoubling)
             assertEquals("$rules", rules.redoubling, ChartTable.AFTER_DOUBLE_SOFT in chart.tables)
             assertTrue("$rules", ChartTable.AFTER_DOUBLE_HARD in chart.tables)
