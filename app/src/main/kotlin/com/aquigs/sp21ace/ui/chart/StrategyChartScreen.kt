@@ -137,6 +137,7 @@ private fun Legend(entries: List<LegendEntry>, swatchSize: Dp, codeStyle: TextSt
     }
 }
 
+/** A table's name whatever the rules, as Customize Hands' switches are. A chart's own tabs use [StrategyChart.title]. */
 internal val ChartTable.title: Int
     get() = when (this) {
         ChartTable.HARD -> R.string.table_hard
