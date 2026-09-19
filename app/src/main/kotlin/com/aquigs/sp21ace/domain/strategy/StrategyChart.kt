@@ -13,10 +13,10 @@ enum class ChartTable(val afterDoubling: Boolean = false) {
     SOFT,
     PAIRS,
 
-    /** Double Down Rescue when redoubling isn't allowed. A blank square means no rescue: stand on the doubled hand. */
-    RESCUE(afterDoubling = true),
-
-    /** Plays for a hand already doubled when redoubling is allowed. Its R squares are the rescues. */
+    /**
+     * Plays for a hard hand already doubled. Without redoubling the charts print it as Double Down Rescue, hard 12 to 17 only,
+     * where a blank square or a hand with no row means no rescue: stand on the doubled hand.
+     */
     AFTER_DOUBLE_HARD(afterDoubling = true),
     AFTER_DOUBLE_SOFT(afterDoubling = true),
 }
@@ -34,12 +34,9 @@ enum class Upcard(val label: String) {
  * Hands are keyed as the charts print them: "16" for hard totals, "A-7" for soft totals, "8-8" for pairs.
  * [play] is null wherever the chart prints nothing: a table this rule set doesn't have, a hand without a row, or a blank square.
  */
-class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard, Play>>>) {
+class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard, Play>>>, val redoubling: Boolean) {
     /** The tables this rule set prints, in chart order. */
     val tables: List<ChartTable> = ChartTable.entries.filter { squares[it].orEmpty().isNotEmpty() }
-
-    /** Rules with redoubling print the tables for a hand already doubled, and rules without print Double Down Rescue. */
-    val redoubling: Boolean get() = ChartTable.AFTER_DOUBLE_HARD in tables
 
     fun hands(table: ChartTable): List<String> = squares[table]?.keys?.toList().orEmpty()
 
@@ -52,8 +49,8 @@ class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard,
         private const val NO_PLAY = "."
         private val WHITESPACE = Regex("\\s+")
 
-        fun parse(grids: Map<ChartTable, String>): StrategyChart =
-            StrategyChart(grids.mapValues { (table, grid) -> parseGrid(table, grid) })
+        fun parse(grids: Map<ChartTable, String>, redoubling: Boolean): StrategyChart =
+            StrategyChart(grids.mapValues { (table, grid) -> parseGrid(table, grid) }, redoubling)
 
         private fun parseGrid(table: ChartTable, grid: String): Map<String, Map<Upcard, Play>> {
             val rows = grid.lines().map(String::trim).filter(String::isNotEmpty).map { it.split(WHITESPACE) }
@@ -72,7 +69,7 @@ class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard,
 }
 
 object StrategyCharts {
-    private val charts = RuleSet.entries.associateWith { StrategyChart.parse(CHART_GRIDS.getValue(it)) }
+    private val charts = RuleSet.entries.associateWith { StrategyChart.parse(CHART_GRIDS.getValue(it), it.redoubling) }
 
     fun forRules(ruleSet: RuleSet): StrategyChart = charts.getValue(ruleSet)
 }

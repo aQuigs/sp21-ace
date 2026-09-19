@@ -34,6 +34,7 @@ import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.LegendEntry
 import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
@@ -49,14 +50,14 @@ import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val chart = StrategyCharts.forRules(rules)
     var chosen by rememberSaveable { mutableStateOf(ChartTable.HARD) }
-    // A tab the rules have since dropped, such as Double Down Rescue once redoubling is allowed, falls back to the first
+    // A tab the rules have since dropped, such as After doubling: soft once redoubling isn't allowed, falls back to the first
     val selected = chosen.takeIf { it in chart.tables } ?: chart.tables.first()
     val legends = remember(chart) { chart.tables.associateWith(chart::legend) }
 
     SubPage(title = stringResource(R.string.strategy_chart), onBack = onBack, modifier = modifier) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             // Scrollable, because the tables after Hard, Soft and Pairs have long names
-            PageTabRow(tabs = chart.tables, selected = selected, onSelect = { chosen = it }, title = { it.title }, scrollable = true)
+            PageTabRow(tabs = chart.tables, selected = selected, onSelect = { chosen = it }, title = chart::title, scrollable = true)
 
             Column(
                 modifier = Modifier
@@ -141,7 +142,10 @@ internal val ChartTable.title: Int
         ChartTable.HARD -> R.string.table_hard
         ChartTable.SOFT -> R.string.table_soft
         ChartTable.PAIRS -> R.string.table_pairs
-        ChartTable.RESCUE -> R.string.table_rescue
         ChartTable.AFTER_DOUBLE_HARD -> R.string.table_after_double_hard
         ChartTable.AFTER_DOUBLE_SOFT -> R.string.table_after_double_soft
     }
+
+/** A table's name as [this] chart prints it: without redoubling, After doubling: hard is the table the charts call Double Down Rescue. */
+internal fun StrategyChart.title(table: ChartTable): Int =
+    if (table == ChartTable.AFTER_DOUBLE_HARD && !redoubling) R.string.table_rescue else table.title
