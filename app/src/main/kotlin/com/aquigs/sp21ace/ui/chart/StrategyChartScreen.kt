@@ -1,6 +1,5 @@
 package com.aquigs.sp21ace.ui.chart
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,16 +29,15 @@ import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.LegendEntry
 import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.RuleSet
-import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.domain.strategy.legend
 import com.aquigs.sp21ace.ui.components.ChartGrid
 import com.aquigs.sp21ace.ui.components.CodeSquare
+import com.aquigs.sp21ace.ui.components.DoubledTabbedPages
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.SubPage
-import com.aquigs.sp21ace.ui.components.TabbedPages
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
 @Composable
@@ -49,7 +47,12 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
     val footerCodes = remember(legends) { legends.values.flatten().map { it.symbol } }
 
     SubPage(title = stringResource(R.string.strategy_chart), onBack = onBack, modifier = modifier) { padding ->
-        TabbedPages(tabs = chart.tables, title = chart::title, modifier = Modifier.fillMaxSize().padding(padding)) { table ->
+        DoubledTabbedPages(
+            tabs = chart.tables,
+            doubled = ChartTable::afterDoubling,
+            title = { it.tabTitle },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) { table ->
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -58,12 +61,8 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text(
-                    text = rulesCaption(rules),
-                    modifier = Modifier.widthIn(max = MaxContentWidth).fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                Caption(rulesCaption(rules))
+                if (table.afterDoubling) Caption(stringResource(if (rules.redoubling) R.string.doubled_moves_redoubling else R.string.doubled_moves))
                 ChartGrid(
                     chart = chart,
                     table = table,
@@ -79,6 +78,16 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
 }
 
 @Composable
+private fun Caption(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.widthIn(max = MaxContentWidth).fillMaxWidth(),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium,
+    )
+}
+
+@Composable
 private fun rulesCaption(rules: RuleSet): String = listOfNotNull(
     if (rules.dealerHitsSoft17) R.string.rules_dealer_hits_soft_17 else R.string.rules_dealer_stands_soft_17,
     R.string.rules_redoubling.takeIf { rules.redoubling },
@@ -87,28 +96,22 @@ private fun rulesCaption(rules: RuleSet): String = listOfNotNull(
 ).map { stringResource(it) }.joinToString(" · ")
 
 @Composable
-private fun Square(square: ChartSquare, play: Play?, codeStyle: TextStyle, modifier: Modifier) {
+private fun Square(square: ChartSquare, play: Play, codeStyle: TextStyle, modifier: Modifier) {
     val description = stringResource(R.string.square_description, square.row.hand, square.upcard.label, square.inPlainWords(play))
 
     // In words, because a screen reader can't see the row and column a code sits in, or the legend that explains it
     ActionSquare(
-        code = play?.code.orEmpty(),
-        fill = play?.action,
+        code = play.code,
+        fill = play.action,
         style = codeStyle,
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = description },
     )
 }
 
-/** A code on its action's colour, a mark on its own, or an outlined empty square where a table prints nothing. */
+/** A code on its action's colour, or a mark on its own. */
 @Composable
 private fun ActionSquare(code: String, fill: Action?, style: TextStyle, modifier: Modifier = Modifier) {
-    val background = when {
-        fill != null -> Modifier.actionFill(fill, Sp21AceTheme.colors.chart)
-        code.isEmpty() -> Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        else -> Modifier
-    }
-
-    CodeSquare(code, style, modifier.then(background))
+    CodeSquare(code, style, if (fill != null) modifier.actionFill(fill, Sp21AceTheme.colors.chart) else modifier)
 }
 
 @Composable
@@ -128,7 +131,7 @@ private fun Legend(entries: List<LegendEntry>, swatchSize: Dp, codeStyle: TextSt
     }
 }
 
-/** A table's name whatever the rules, as Customize Hands' switches are. A chart's own tabs use [StrategyChart.title]. */
+/** A table's name on its own, as Customize Hands' switches name it. The chart's tabs name it within its group as [tabTitle]. */
 internal val ChartTable.title: Int
     get() = when (this) {
         ChartTable.HARD -> R.string.table_hard
@@ -138,6 +141,10 @@ internal val ChartTable.title: Int
         ChartTable.AFTER_DOUBLE_SOFT -> R.string.table_after_double_soft
     }
 
-/** A table's name as [this] chart prints it: without redoubling, After doubling: hard is the table the charts call Double Down Rescue. */
-internal fun StrategyChart.title(table: ChartTable): Int =
-    if (table == ChartTable.AFTER_DOUBLE_HARD && !redoubling) R.string.table_rescue else table.title
+/** A table's name under the choice between hands not yet doubled and hands already doubled, which says which of the two it is. */
+internal val ChartTable.tabTitle: Int
+    get() = when (this) {
+        ChartTable.HARD, ChartTable.AFTER_DOUBLE_HARD -> R.string.table_hard
+        ChartTable.SOFT, ChartTable.AFTER_DOUBLE_SOFT -> R.string.table_soft
+        ChartTable.PAIRS -> R.string.table_pairs
+    }

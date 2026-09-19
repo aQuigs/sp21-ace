@@ -108,7 +108,8 @@ class MainActivityTest {
     fun anAnswerStillCountsOnAccuracyWhenRecreated() {
         val before = answersOnAccuracy()
 
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.move_hit)).performClick()
+        // Stand, because every hand allows it, a doubled one included
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.move_stand)).performClick()
         compose.activityRule.scenario.recreate()
 
         assertEquals(before + 1, answersOnAccuracy())
@@ -119,16 +120,24 @@ class MainActivityTest {
         compose.onNode(hasText(compose.activity.getString(title)) and isSelectable()).performClick()
     }
 
-    // Counted on the All tab, since the hand dealt is random, and against a count taken first, since the app's own history may
-    // already hold answers from today
+    // Counted on the All tabs of hands not yet doubled and those already doubled, since the hand dealt is random, and against
+    // a count taken first, since the app's own history may already hold answers from today
     private fun answersOnAccuracy(): Int {
         openFromDrawer(R.string.accuracy)
-        compose.onNodeWithText(compose.activity.getString(R.string.all_hands)).performClick()
+        val answers = listOf(R.string.not_doubled, R.string.already_doubled).sumOf { group ->
+            compose.onNodeWithText(compose.activity.getString(group)).performClick()
+            compose.onNodeWithText(compose.activity.getString(R.string.all_hands)).performClick()
+            answersOnOverall()
+        }
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.back)).performClick()
 
+        return answers
+    }
+
+    private fun answersOnOverall(): Int {
         val correct = compose.activity.getString(R.string.correct)
         val incorrect = compose.activity.getString(R.string.incorrect)
         val overall = compose.onScreen.cardTexts(compose.activity.getString(R.string.overall), correct)
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.back)).performClick()
 
         // Each count sits before its label
         return listOf(correct, incorrect).sumOf { overall[overall.indexOf(it) - 1].toInt() }

@@ -61,7 +61,7 @@ fun AccuracyHeatmap(rules: RuleSet, table: ChartTable, bySquare: Map<ChartSquare
 }
 
 @Composable
-private fun HeatSquare(square: ChartSquare, play: Play?, tally: Tally?, colors: HeatmapColors, codeStyle: TextStyle, modifier: Modifier) {
+private fun HeatSquare(square: ChartSquare, play: Play, tally: Tally?, colors: HeatmapColors, codeStyle: TextStyle, modifier: Modifier) {
     val hand = square.row.hand
     val upcard = square.upcard.label
     val words = square.inPlainWords(play)
@@ -74,7 +74,7 @@ private fun HeatSquare(square: ChartSquare, play: Play?, tally: Tally?, colors: 
 
     // In words, because a screen reader can't see the row and column a square sits in, or its colour
     CodeSquare(
-        code = play?.code.orEmpty(),
+        code = play.code,
         style = codeStyle,
         modifier = modifier
             .then(if (permille == null) Modifier else Modifier.heat(colors.at(permille / 1000f), MaterialTheme.colorScheme.outlineVariant))

@@ -36,6 +36,7 @@ import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.code
+import com.aquigs.sp21ace.domain.strategy.play
 
 private val RowLabelWidth = 44.dp
 private val RowLabelPadding = 4.dp
@@ -58,7 +59,7 @@ internal fun ChartGrid(
     hands: List<String>,
     footerCodes: List<String>,
     modifier: Modifier = Modifier,
-    square: @Composable (square: ChartSquare, play: Play?, codeStyle: TextStyle, modifier: Modifier) -> Unit,
+    square: @Composable (square: ChartSquare, play: Play, codeStyle: TextStyle, modifier: Modifier) -> Unit,
     footer: @Composable (squareSize: Dp, gap: Dp, codeStyle: TextStyle) -> Unit,
 ) {
     val codeStyle = MaterialTheme.typography.labelLarge.copy(fontSize = MaxCodeSize)
@@ -94,8 +95,9 @@ internal fun ChartGrid(
                     GridRow(label = hand, labelStyle = handLabels) {
                         // Handed over from this row rather than left to what the slot captures: a changed slot re-runs in the
                         // rows already drawn, which still hold the previous table's hands, before the rows follow the new table
+                        val row = ChartRow(table, hand)
                         Upcard.entries.forEach { upcard ->
-                            square(ChartSquare(ChartRow(table, hand), upcard), chart.play(table, hand, upcard), codes, Modifier.weight(1f).aspectRatio(1f))
+                            square(ChartSquare(row, upcard), chart.play(row, upcard), codes, Modifier.weight(1f).aspectRatio(1f))
                         }
                     }
                 }
@@ -125,9 +127,7 @@ private fun rememberWidestText(
     fun widest(texts: List<String>, style: TextStyle) =
         texts.distinct().maxBy { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width }
 
-    val codes = footerCodes + chart.tables.flatMap { table ->
-        chart.hands(table).flatMap { hand -> Upcard.entries.mapNotNull { chart.play(table, hand, it)?.code } }
-    }
+    val codes = footerCodes + chart.tables.flatMap(chart::plays).map { it.code }
 
     WidestText(
         code = widest(codes, codeStyle),
