@@ -16,10 +16,10 @@ BUG=<!-- JIRA ID -->
 ## Screenshots / recording
 
 <!-- Screenshots, or a recording, for any user-visible change; write N/A otherwise.
-     Shoot every state the change touches (light and dark theme, empty and filled, before and after an answer): before shots on main, after shots on the branch.
+     Shoot every state the change touches (empty and filled, before and after an answer, and light and dark theme only for a colour or theming change): before shots on main, after shots on the branch.
      Capture with scripts/screenshot.sh or scripts/record.sh, publish with scripts/pr-media.sh <files>, and paste its <img width="300"> tags into one captioned table per state, at most about four:
 
-     **After an answer, light theme**
+     **After an answer**
 
      | Before | After |
      | --- | --- |
