@@ -14,9 +14,11 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.correctMove
+import com.aquigs.sp21ace.domain.strategy.doubledRow
 import com.aquigs.sp21ace.domain.strategy.totalRow
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.domain.trainer.correctMove
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -29,23 +31,38 @@ class DealableHandsTest {
 
     private fun multiCardHands(rules: RuleSet) = dealableHands(rules).hands.filterKeys { it is MultiCardHand }
 
+    private fun doubledHands(rules: RuleSet, multiCardHands: Boolean = true) =
+        dealableHands(rules).let { if (multiCardHands) it.hands else it.withoutHits }.filterKeys { it is DoubledHand }
+
     private fun waysToDeal(player: String, upcard: Upcard) = s17Hands.single { it.player.toSet() == cards(player).toSet() && it.upcard == upcard }.ways
 
     // A way a round reaches a hand of 3 or more cards: the hand, its first two card values and how many cards it holds
     private data class Way(val hand: MultiCardHand, val start: List<Upcard>, val cards: Int)
 
+    private val oneOfEachValue = Rank.entries.distinctBy { it.value }
+
+    // A card of each value as a six-deck shoe of 288 draws it, the tens four ranks of 24
+    private fun drawChance(rank: Rank) = (if (rank.value == 10) 72 else 24) / 288.0
+
+    // Each two-card hand the chart plays with [moves], dealt against a club of its upcard's value, with how often a round deals it
+    private fun starts(rules: RuleSet, vararg moves: Move): List<Pair<TrainerHand, Double>> {
+        val upcards = oneOfEachValue.map { Card(it, Suit.CLUBS) }.associateBy { it.upcard }
+        return twoCardHands(rules).filter { moves.isEmpty() || it.type.move in moves }.groupBy { handValues(it.player, it.upcard, it.type.move) }.values.map { hands ->
+            TrainerHand(hands.first().player, upcards.getValue(hands.first().upcard)) to hands.sumOf { it.ways } / (288.0 * 287 * 286)
+        }
+    }
+
     // How often a round reaches each way, walking every card a player following the chart hits to, each drawn as from a full shoe
     private fun reached(rules: RuleSet): Map<Way, Double> {
         val chart = StrategyCharts.forRules(rules)
         val reached = HashMap<Way, Double>()
-        val oneOfEachValue = Rank.entries.distinctBy { it.value }
 
         fun hit(player: List<Card>, upcard: Card, chance: Double) {
             for (rank in oneOfEachValue) {
                 val grown = player + Card(rank, Suit.CLUBS)
                 if (grown.total().value >= 21) continue
 
-                val grownChance = chance * (if (rank.value == 10) 72 else 24) / 288.0
+                val grownChance = chance * drawChance(rank)
                 val move = chart.correctMove(grown, upcard)
                 val way = Way(MultiCardHand(totalRow(grown), upcard.upcard, move), player.take(2).map { it.upcard }.sorted(), grown.size)
                 reached.merge(way, grownChance, Double::plus)
@@ -53,25 +70,86 @@ class DealableHandsTest {
             }
         }
 
-        val upcards = oneOfEachValue.map { Card(it, Suit.CLUBS) }.associateBy { it.upcard }
-        val hitting = twoCardHands(rules).filter { it.type.move == Move.HIT }
-        for (hands in hitting.groupBy { handValues(it.player, it.upcard, it.type.move) }.values) {
-            hit(hands.first().player, upcards.getValue(hands.first().upcard), hands.sumOf { it.ways } / (288.0 * 287 * 286))
+        for ((hand, chance) in starts(rules, Move.HIT)) hit(hand.player, hand.upcard, chance)
+        return reached
+    }
+
+    // How often a round reaches each doubled hand, walking every card a player following the chart hits, while [hits], and
+    // doubles to, each drawn as from a full shoe
+    private fun reachedDoubled(rules: RuleSet, hits: Boolean): Map<HandKey, Double> {
+        val chart = StrategyCharts.forRules(rules)
+        val reached = HashMap<HandKey, Double>()
+
+        fun play(hand: TrainerHand, chance: Double) {
+            if (hand.doubled) {
+                if (chart.doubledRow(hand.player.total()) != null) reached.merge(hand.key(chart), chance, Double::plus)
+                return
+            }
+
+            val move = chart.correctMove(hand)
+            if (move != Move.DOUBLE && !(hits && move == Move.HIT)) return
+            for (rank in oneOfEachValue) {
+                val grown = hand.copy(player = hand.player + Card(rank, Suit.CLUBS), doubled = move == Move.DOUBLE)
+                if (grown.player.total().value < 21) play(grown, chance * drawChance(rank))
+            }
         }
 
+        for ((hand, chance) in starts(rules)) play(hand, chance)
         return reached
     }
 
     @Test
-    fun theDealtRowsAreHard5To20SoftA2ToA9AndEveryPairJustAsTheDealReachesThem() {
+    fun doubledHandsComeUpAsOftenAsARoundReachesThemByDoublingWhereTheChartSaysDoubleAndWithoutHandsOf3OrMoreCardsOnlyFromTwo() {
+        for (rules in RuleSet.entries) {
+            for (hits in listOf(true, false)) {
+                val expected = reachedDoubled(rules, hits)
+                val dealt = doubledHands(rules, multiCardHands = hits).mapValues { (_, ways) -> ways.sumOf { it.chance } }
+
+                assertEquals("$rules $hits", expected.keys, dealt.keys)
+                expected.forEach { (hand, chance) -> assertEquals("$rules $hits $hand", chance, dealt.getValue(hand), chance * 1e-9) }
+            }
+        }
+    }
+
+    @Test
+    fun everyWayToDealADoubledHandDoublesOnceWhereTheChartSaysFromWhatTheShoeHasLeft() {
+        val random = Random(21)
+
+        for (rules in RuleSet.entries) {
+            val chart = StrategyCharts.forRules(rules)
+
+            for ((hand, ways) in doubledHands(rules)) {
+                for (way in ways) {
+                    val dealt = way.deal(random)
+                    val start = dealt.player.dropLast(1)
+                    val hits = (2 until start.size).map { chart.correctMove(start.take(it), dealt.upcard) }
+
+                    assertEquals("$rules $hand", hand, dealt.key(chart))
+                    assertTrue("$rules $dealt", dealt.doubled)
+                    assertEquals("$rules $dealt", List(start.size - 2) { Move.HIT }, hits)
+                    assertEquals("$rules $dealt", Move.DOUBLE, chart.correctMove(start, dealt.upcard))
+                    assertTrue("$rules $dealt", (dealt.player + dealt.upcard).groupingBy { it }.eachCount().values.all { it <= 6 })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theDealtRowsAreHard5To20SoftA2ToA9EveryPairAndTheDoubledRowsJustAsTheDealReachesThem() {
         val random = Random(21)
         val picker = HandPicker(RuleSet.S17, HandCustomization())
-        val reached = List(5_000) { chartRow(picker.pick(emptyList(), random).player) }.toSet()
+        val reached = List(5_000) { picker.pick(emptyList(), random).row }.toSet()
         val expected = (5..20).map { ChartRow(ChartTable.HARD, "$it") } +
             (2..9).map { ChartRow(ChartTable.SOFT, "A-$it") } +
             Upcard.entries.map { ChartRow(ChartTable.PAIRS, "${it.label}-${it.label}") }
+        // Double Down Rescue's rows are hard 12 to 17. With redoubling a double of hard 5 draws to hard 7 at the least, and one of
+        // soft 13 to soft 14.
+        val rescueRows = (12..17).map { ChartRow(ChartTable.AFTER_DOUBLE_HARD, "$it") }
+        val redoubleRows = (7..20).map { ChartRow(ChartTable.AFTER_DOUBLE_HARD, "$it") } + (3..9).map { ChartRow(ChartTable.AFTER_DOUBLE_SOFT, "A-$it") }
 
-        RuleSet.entries.forEach { assertEquals("$it", expected.toSet(), dealtRows(it)) }
+        assertEquals((expected + redoubleRows).toSet(), dealtRows(RuleSet.H17_REDOUBLE))
+        assertEquals((expected + rescueRows).toSet(), dealtRows(RuleSet.H17))
+        assertEquals((expected + rescueRows).toSet(), dealtRows(RuleSet.S17))
         assertEquals(dealtRows(RuleSet.S17), reached)
     }
 

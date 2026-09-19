@@ -38,7 +38,12 @@ class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard,
     /** The tables this rule set prints, in chart order. */
     val tables: List<ChartTable> = ChartTable.entries.filter { squares[it].orEmpty().isNotEmpty() }
 
+    /** Rules with redoubling print the tables for a hand already doubled, and rules without print Double Down Rescue. */
+    val redoubling: Boolean get() = ChartTable.AFTER_DOUBLE_HARD in tables
+
     fun hands(table: ChartTable): List<String> = squares[table]?.keys?.toList().orEmpty()
+
+    fun printsRow(table: ChartTable, hand: String): Boolean = squares[table]?.containsKey(hand) == true
 
     fun play(table: ChartTable, hand: String, upcard: Upcard): Play? = squares[table]?.get(hand)?.get(upcard)
 

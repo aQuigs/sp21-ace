@@ -11,6 +11,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
@@ -43,7 +44,19 @@ class AccuracyScreenTest {
     private val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
     private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
 
-    private val allMoves = listOf(R.string.move_split, R.string.move_hit, R.string.move_double, R.string.move_stand, R.string.move_surrender)
+    private val allMoves = listOf(
+        R.string.move_split,
+        R.string.move_hit,
+        R.string.move_double,
+        R.string.move_redouble,
+        R.string.move_stand,
+        R.string.move_surrender,
+        R.string.move_rescue,
+    )
+
+    // Doubled hard 16 vs A is a rescue whatever the rules, and doubled soft 18 vs 4 a redouble with redoubling
+    private val doubledSixteenVsAce = TrainerHand(cards("5c 6d 5h"), card("As"), doubled = true)
+    private val doubledSoftEighteenVsFour = TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true)
 
     private var rules by mutableStateOf(RuleSet.S17)
     private lateinit var heatmap: HeatmapColors
@@ -69,7 +82,8 @@ class AccuracyScreenTest {
         }
     }
 
-    private fun tap(title: Int) = compose.onNodeWithText(string(title)).performClick()
+    // The tabs scroll, so one may start out of view
+    private fun tap(title: Int) = compose.onNodeWithText(string(title)).performScrollTo().performClick()
 
     private fun accuracyCard(title: Int) = compose.cardTexts(string(title), string(R.string.correct))
 
@@ -257,6 +271,58 @@ class AccuracyScreenTest {
         tap(R.string.all_hands)
 
         compose.onNode(hasContentDescription(" vs ", substring = true)).assertDoesNotExist()
+    }
+
+    @Test
+    fun withoutRedoublingDoubledHandsHaveADoubleDownRescueTabOverTheirAnswers() {
+        // Doubled hard 12 vs 8 is a rescue when the dealer stands on soft 17, and 16 vs 6 prints no rescue
+        showAccuracy(
+            listOf(
+                answer(right = true, hand = doubledSixteenVsAce, correctMove = Move.RESCUE),
+                answer(right = false, hand = TrainerHand(cards("5c 6d As"), card("8s"), doubled = true), correctMove = Move.RESCUE),
+            ),
+        )
+
+        compose.onNodeWithText(string(R.string.table_after_double_hard)).assertDoesNotExist()
+        compose.onNodeWithText(string(R.string.table_after_double_soft)).assertDoesNotExist()
+
+        tap(R.string.table_rescue).assertIsSelected()
+
+        compose.square("16 vs A: Rescue, 100% right", "R")
+        compose.square("12 vs 8: Rescue, 0% right", "R")
+        compose.onNode(hasContentDescription("16 vs 6: Stand, no rescue, no answers")).assertExists()
+        assertEquals(figures(R.string.move_rescue, "50.0%", correct = 1, incorrect = 1), accuracyCard(R.string.move_rescue))
+
+        tap(R.string.all_hands)
+
+        assertEquals(figures(R.string.move_rescue, "50.0%", correct = 1, incorrect = 1), accuracyCard(R.string.move_rescue))
+        assertEquals(noData(R.string.move_surrender), accuracyCard(R.string.move_surrender))
+    }
+
+    @Test
+    fun withRedoublingEachAfterDoublingTableHasATabAndOneGoneWithTheRulesFallsBackToHard() {
+        rules = RuleSet.H17_REDOUBLE
+        showAccuracy(
+            listOf(
+                answer(right = true, hand = doubledSixteenVsAce, correctMove = Move.RESCUE),
+                answer(right = false, hand = doubledSoftEighteenVsFour, correctMove = Move.REDOUBLE),
+            ),
+        )
+
+        compose.onNodeWithText(string(R.string.table_rescue)).assertDoesNotExist()
+
+        tap(R.string.table_after_double_hard)
+
+        compose.square("16 vs A: Rescue, 100% right", "R")
+
+        tap(R.string.table_after_double_soft)
+
+        compose.square("A-7 vs 4: Redouble, 0% right", "D")
+        assertEquals(figures(R.string.move_redouble, "0.0%", correct = 0, incorrect = 1), accuracyCard(R.string.move_redouble))
+
+        rules = RuleSet.S17
+
+        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
     }
 
     @Test

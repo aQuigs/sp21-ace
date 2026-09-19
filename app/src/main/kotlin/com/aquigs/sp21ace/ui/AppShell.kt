@@ -139,6 +139,7 @@ fun AppShell(
             Destination.StrategyTrainer -> StrategyTrainerScreen(
                 state = trainer,
                 settings = settings,
+                redoubling = rules.ruleSet.redoubling,
                 onAnswer = onAnswer,
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenChart = { open(Destination.StrategyChart) },

@@ -72,11 +72,15 @@ import com.aquigs.sp21ace.ui.theme.disabledContent
 
 private val ButtonSize = 64.dp
 
-/** The cards, with the answer buttons down one edge and, as [settings] choose, the hand totals, the chart tile and the streak meter. */
+/**
+ * The cards, with the answer buttons down one edge and, as [settings] choose, the hand totals, the chart tile and the streak
+ * meter. [redoubling] is whether the table rules let a doubled hand redouble.
+ */
 @Composable
 fun StrategyTrainerScreen(
     state: TrainerState,
     settings: Settings,
+    redoubling: Boolean,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onOpenDrawer: () -> Unit,
     onOpenChart: () -> Unit,
@@ -113,6 +117,7 @@ fun StrategyTrainerScreen(
                     label = stringResource(R.string.you),
                     total = state.hand.playerTotal.takeIf { settings.handTotals },
                     modifier = Modifier.weight(1f),
+                    sideways = state.hand.doubled,
                 ) {
                     state.hand.player.forEach { PlayingCard(it) }
                 }
@@ -122,7 +127,8 @@ fun StrategyTrainerScreen(
             Controls(
                 showChartTile = settings.chartButton,
                 alignment = if (buttonsOnLeft) AbsoluteAlignment.Left else AbsoluteAlignment.Right,
-                moves = state.hand.moves,
+                buttons = if (state.hand.doubled) AFTER_DOUBLING_BUTTONS else BUTTONS,
+                moves = state.hand.moves(redoubling),
                 onOpenChart = onOpenChart,
                 // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
                 onAnswer = { move -> onAnswer(state.hand, move) },
@@ -178,7 +184,7 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
 @Composable
 private fun FeedbackText(grade: Grade) {
     val verdict = stringResource(if (grade.isCorrect) R.string.right_answer else R.string.wrong_answer)
-    val words = grade.play.inPlainWords(grade.correctMove, cards = grade.hand.player.size)
+    val words = grade.play.inPlainWords(grade.correctMove, cards = grade.hand.player.size, afterDoubling = grade.hand.doubled)
 
     Text(
         text = buildAnnotatedString {
@@ -198,9 +204,12 @@ private fun FeedbackText(grade: Grade) {
     )
 }
 
-/** A hand's label over its cards, with its [total], when given, on the label's line at the cards' right edge, as in Blackjack Ace. */
+/**
+ * A hand's label over its cards, with its [total], when given, on the label's line at the cards' right edge, as in Blackjack Ace.
+ * A [sideways] last card is a double's card, turned sideways.
+ */
 @Composable
-private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, cards: @Composable () -> Unit) {
+private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, sideways: Boolean = false, cards: @Composable () -> Unit) {
     val color = MaterialTheme.colorScheme.primary
 
     BoxWithConstraints(modifier) {
@@ -231,7 +240,7 @@ private fun HandArea(label: String, total: String?, modifier: Modifier = Modifie
                     )
                 }
             }
-            OverlappingCards(modifier = Modifier.weight(1f, fill = false).widthIn(max = cardsMaxWidth), content = cards)
+            OverlappingCards(modifier = Modifier.weight(1f, fill = false).widthIn(max = cardsMaxWidth), sideways = sideways, content = cards)
         }
     }
 }
@@ -241,6 +250,7 @@ private fun HandArea(label: String, total: String?, modifier: Modifier = Modifie
 private fun Controls(
     showChartTile: Boolean,
     alignment: Alignment.Horizontal,
+    buttons: List<Move>,
     moves: Set<Move>,
     onOpenChart: () -> Unit,
     onAnswer: (Move) -> Unit,
@@ -249,20 +259,25 @@ private fun Controls(
         if (showChartTile) ChartTile(onClick = onOpenChart, modifier = Modifier.size(ButtonSize))
         // Holds the buttons at the bottom whether or not the tile shows
         Spacer(Modifier.weight(1f))
-        AnswerButtons(moves = moves, onAnswer = onAnswer, modifier = Modifier.padding(top = 8.dp))
+        AnswerButtons(buttons = buttons, moves = moves, onAnswer = onAnswer, modifier = Modifier.padding(top = 8.dp))
     }
 }
 
-/** A button for every move, the ones the hand doesn't allow greyed out in their places, so the rest never move under the thumb. */
+private val BUTTONS = listOf(Move.HIT, Move.STAND, Move.DOUBLE, Move.SPLIT, Move.SURRENDER)
+
+// A redouble and a rescue take the places of a double and a surrender, which a doubled hand can't make
+private val AFTER_DOUBLING_BUTTONS = listOf(Move.HIT, Move.STAND, Move.REDOUBLE, Move.SPLIT, Move.RESCUE)
+
+/** A button in every place, the moves the hand doesn't allow greyed out in theirs, so the rest never move under the thumb. */
 @Composable
-private fun AnswerButtons(moves: Set<Move>, onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
+private fun AnswerButtons(buttons: List<Move>, moves: Set<Move>, onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
     // An outlined button greys out its label but not its border
     val disabledColor = MaterialTheme.colorScheme.disabledContent
 
     ProvideDefaultFontScale {
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Move.entries.forEach { move ->
+            buttons.forEach { move ->
                 val name = stringResource(move.displayName)
                 val enabled = move in moves
 
@@ -284,8 +299,11 @@ private fun AnswerButtons(moves: Set<Move>, onAnswer: (Move) -> Unit, modifier: 
                     // The capitals and SURR. are for the eye; a screen reader says the move's name
                     Text(
                         text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
+                        // A label as wide as a full-size circle allows touches the curve of its ring with its end letters, so it stops
+                        // 7dp short, as DOUBLE does at its largest. The smallest circles have no room to spare for that.
+                        modifier = Modifier.widthIn(max = ButtonSize - 14.dp),
                         fontWeight = FontWeight.Bold,
-                        // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen needs less
+                        // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen, or REDOUBLE, needs less
                         autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = 13.sp),
                         maxLines = 1,
                     )

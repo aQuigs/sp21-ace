@@ -34,7 +34,7 @@ class PracticeLineTest {
             PracticeAnswer(Instant.ofEpochMilli(1_789_000_010_000), RuleSet.S17, TrainerHand(cards("As 6d"), card("Qh")), Move.DOUBLE, Move.HIT),
             // Suited and more than two cards, as the trainer will deal for card-count and bonus exceptions
             PracticeAnswer(Instant.ofEpochMilli(1_789_000_015_000), RuleSet.S17, TrainerHand(cards("2h 4h 7h"), card("4s")), Move.STAND, Move.HIT),
-            PracticeAnswer(Instant.ofEpochMilli(1_789_000_020_000), RuleSet.H17, TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), Move.STAND, Move.SURRENDER),
+            PracticeAnswer(Instant.ofEpochMilli(1_789_000_020_000), RuleSet.H17, TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), Move.STAND, Move.RESCUE),
         )
 
         assertEquals(answers, answers.map { PracticeLine.parse(PracticeLine.print(it)) })

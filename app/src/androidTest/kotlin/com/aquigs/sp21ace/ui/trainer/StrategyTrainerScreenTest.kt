@@ -79,6 +79,12 @@ class StrategyTrainerScreenTest {
     private val nineCardFifteenVsSix = TrainerHand(cards("Ac Ad Ah As 2c 2d 2h 2s 3c"), card("6d"))
     private val nineCardNames = listOf("Ace of clubs", "Ace of diamonds", "Ace of hearts", "Ace of spades", "2 of clubs", "2 of diamonds", "2 of hearts", "2 of spades", "3 of clubs")
 
+    // Doubled hard 16 vs 10 is a rescue whatever the rules, doubled from hard 11 with a 5
+    private val doubledSixteenVsKing = TrainerHand(cards("5c 6d 5h"), card("Ks"), doubled = true)
+
+    // A button in every place, first-decision moves on a hand not yet doubled
+    private val buttons = listOf(Move.HIT, Move.STAND, Move.DOUBLE, Move.SPLIT, Move.SURRENDER)
+
     private var settings by mutableStateOf(Settings())
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
@@ -96,7 +102,7 @@ class StrategyTrainerScreenTest {
     ).fetchSemanticsNodes().also { assertEquals(description, count, it.size) }
 
     // Each answer button holds its label, and the chart tile a letter for each of its four colours
-    private fun controlTexts() = Move.entries.map { string(it.displayName) to 1 } + (string(R.string.open_strategy_chart) to 4)
+    private fun controlTexts() = buttons.map { string(it.displayName) to 1 } + (string(R.string.open_strategy_chart) to 4)
 
     private fun assertFullSize(description: String) = bounds(description).let {
         assertEquals(description, 64f, it.width.value, 0.5f)
@@ -116,8 +122,9 @@ class StrategyTrainerScreenTest {
         first: TrainerHand = sixteenVsAce,
         deals: List<TrainerHand> = listOf(eightsVsSix),
         configuration: DeviceConfigurationOverride = DeviceConfigurationOverride { content -> content() },
+        rules: RuleSet = RuleSet.S17,
     ) {
-        val chart = StrategyCharts.forRules(RuleSet.S17)
+        val chart = StrategyCharts.forRules(rules)
         // Only these hands are left to deal, so grading one answer more would throw
         val next = deals.iterator()
         var trainer by mutableStateOf(TrainerState(first))
@@ -128,6 +135,7 @@ class StrategyTrainerScreenTest {
                     StrategyTrainerScreen(
                         state = trainer,
                         settings = settings,
+                        redoubling = rules.redoubling,
                         onAnswer = { asked, move -> trainer.answer(asked, move, chart) { next.next() }?.let { trainer = it.state } },
                         onOpenDrawer = {},
                         onOpenChart = {},
@@ -220,7 +228,7 @@ class StrategyTrainerScreenTest {
         // Too short for five full-size buttons above the recap, as on a small phone at a large font size
         showTrainer(Modifier.height(480.dp))
 
-        val heights = Move.entries.map { button(it).getBoundsInRoot().height.value }
+        val heights = buttons.map { button(it).getBoundsInRoot().height.value }
 
         heights.forEach { assertEquals(heights.first(), it, 1f) }
     }
@@ -333,7 +341,7 @@ class StrategyTrainerScreenTest {
         settings = Settings(buttonLocation = ButtonLocation.LEFT, handTotals = true)
         showTrainer(Modifier.size(360.dp, 640.dp), first = softSeventeenVsKing, configuration = DeviceConfigurationOverride.FontScale(2f))
 
-        val controls = Move.entries.map { button(it).getBoundsInRoot() } + bounds(string(R.string.open_strategy_chart))
+        val controls = buttons.map { button(it).getBoundsInRoot() } + bounds(string(R.string.open_strategy_chart))
         val texts = listOf(string(R.string.dealer), "10", string(R.string.you), "A-6").map { compose.onNodeWithText(it) }
         val others = listOf(string(R.string.face_down_card), "King of hearts", "Ace of hearts", "6 of diamonds", string(R.string.streak_count, 0))
             .map(::bounds) + texts.map { it.getBoundsInRoot() }
@@ -344,27 +352,57 @@ class StrategyTrainerScreenTest {
         texts.forEach { it.fetchSemanticsNode().textLayout().assertFitsOnOneLine() }
     }
 
+    // The 3 dp ring is drawn inside the circle in the label's colour, so a label has to end a little clear of it
+    private fun assertLabelFitsInsideTheRing(move: Move, location: ButtonLocation) {
+        val ringInset = with(compose.density) { 4.dp.toPx() }
+        val name = string(move.displayName)
+        val insideRing = compose.onNodeWithContentDescription(name).fetchSemanticsNode().size.width - 2 * ringInset
+        val label = textsInside(name, 1).single().textLayout()
+
+        label.assertFitsOnOneLine()
+        assertTrue(
+            "With the buttons $location, ${label.layoutInput.text} ends at ${label.getLineRight(0)}px, past the ring's inside at ${insideRing}px",
+            label.getLineRight(0) <= insideRing,
+        )
+    }
+
     @Test
     fun onANarrowPhoneAtTheLargestFontSizeEveryButtonLabelAndTileLetterFitsInsideItsControlOnEitherSide() {
         showTrainer(Modifier.size(360.dp, 640.dp), configuration = DeviceConfigurationOverride.FontScale(2f))
-        // The 3 dp ring is drawn inside the circle in the label's colour, so a label has to end a little clear of it
-        val ringInset = with(compose.density) { 4.dp.toPx() }
 
         for (location in ButtonLocation.entries) {
             settings = Settings(buttonLocation = location)
 
             textsInside(string(R.string.open_strategy_chart), 4).forEach { it.textLayout().assertFitsOnOneLine() }
-            for (move in Move.entries) {
-                val name = string(move.displayName)
-                val insideRing = compose.onNodeWithContentDescription(name).fetchSemanticsNode().size.width - 2 * ringInset
-                val label = textsInside(name, 1).single().textLayout()
+            for (move in buttons) assertLabelFitsInsideTheRing(move, location)
+        }
+    }
 
-                label.assertFitsOnOneLine()
-                assertTrue(
-                    "With the buttons $location, ${label.layoutInput.text} ends at ${label.getLineRight(0)}px, past the ring's inside at ${insideRing}px",
-                    label.getLineRight(0) <= insideRing,
-                )
-            }
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeRedoubleAndRescueFitInsideTheirRingsOnEitherSide() {
+        showTrainer(Modifier.size(360.dp, 640.dp), first = doubledSixteenVsKing, configuration = DeviceConfigurationOverride.FontScale(2f), rules = RuleSet.H17_REDOUBLE)
+
+        for (location in ButtonLocation.entries) {
+            settings = Settings(buttonLocation = location)
+
+            for (move in listOf(Move.REDOUBLE, Move.RESCUE)) assertLabelFitsInsideTheRing(move, location)
+        }
+    }
+
+    @Test
+    fun atFullSizeEachLabelOfADoubledHandStops7dpShortOfTheCurveOfItsRingAsDoubleDoes() {
+        showTrainer(Modifier.size(411.dp, 880.dp), first = doubledSixteenVsKing, rules = RuleSet.H17_REDOUBLE)
+
+        for (move in listOf(Move.HIT, Move.STAND, Move.REDOUBLE, Move.SPLIT, Move.RESCUE)) {
+            val name = string(move.displayName)
+            assertFullSize(name)
+            val circle = bounds(name)
+            val label = textsInside(name, 1).single()
+            val line = label.textLayout()
+            val (left, right) = with(compose.density) { (label.boundsInRoot.left + line.getLineLeft(0)).toDp() to (label.boundsInRoot.left + line.getLineRight(0)).toDp() }
+
+            assertTrue("$name starts ${left - circle.left} in", left - circle.left >= 6.5.dp)
+            assertTrue("$name ends ${circle.right - right} in", circle.right - right >= 6.5.dp)
         }
     }
 
@@ -387,7 +425,7 @@ class StrategyTrainerScreenTest {
         val atDefault = drawn()
 
         // The tree reports a label's style rather than the size autoSize drew it at, so the drawn size shows in how wide its line is
-        for (move in Move.entries) {
+        for (move in buttons) {
             val label = atDefault.getValue(string(move.displayName)).single()
             val input = label.layoutInput
             val atLargest = TextMeasurer(input.fontFamilyResolver, compose.density, input.layoutDirection).measure(input.text, input.style.copy(fontSize = 13.sp), maxLines = 1)
@@ -415,7 +453,7 @@ class StrategyTrainerScreenTest {
 
         for (location in ButtonLocation.entries) {
             settings = Settings(buttonLocation = location, handTotals = true)
-            val controls = Move.entries.map { button(it).getBoundsInRoot() } + bounds(string(R.string.open_strategy_chart))
+            val controls = buttons.map { button(it).getBoundsInRoot() } + bounds(string(R.string.open_strategy_chart))
             val cards = nineCardNames.map(::bounds)
 
             for (control in controls) {
@@ -432,7 +470,7 @@ class StrategyTrainerScreenTest {
     @Test
     fun onAHandOf3OrMoreCardsSplitAndSurrenderKeepTheirPlacesButTakeNoAnswer() {
         showTrainer(first = threeCardSeventeenVsAce)
-        val places = Move.entries.map { button(it).getBoundsInRoot() }
+        val places = buttons.map { button(it).getBoundsInRoot() }
 
         button(Move.SPLIT).assertIsNotEnabled()
         button(Move.SURRENDER).assertIsNotEnabled().performClick()
@@ -443,8 +481,54 @@ class StrategyTrainerScreenTest {
 
         compose.onNodeWithText("3-card hard 17 vs A | Hit with 3 or more cards. Otherwise surrender").assertIsDisplayed()
         // The next hand has two cards, so every button takes an answer again, each where it was
-        Move.entries.forEach { button(it).assertIsEnabled() }
-        assertEquals(places, Move.entries.map { button(it).getBoundsInRoot() })
+        buttons.forEach { button(it).assertIsEnabled() }
+        assertEquals(places, buttons.map { button(it).getBoundsInRoot() })
+    }
+
+    @Test
+    fun onADoubledHandRedoubleAndRescueTakeTheDoubleAndSurrenderPlacesWhileHitAndSplitTakeNoAnswer() {
+        showTrainer(first = doubledSixteenVsKing, deals = listOf(sixteenVsAce), rules = RuleSet.H17_REDOUBLE)
+        val places = listOf(Move.HIT, Move.STAND, Move.REDOUBLE, Move.SPLIT, Move.RESCUE).map { button(it).getBoundsInRoot() }
+
+        button(Move.DOUBLE).assertDoesNotExist()
+        button(Move.SURRENDER).assertDoesNotExist()
+        button(Move.HIT).assertIsNotEnabled()
+        button(Move.SPLIT).assertIsNotEnabled()
+        button(Move.REDOUBLE).assertIsEnabled()
+        button(Move.RESCUE).assertIsEnabled().performClick()
+
+        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Doubled hard 16 vs 10. Rescue").assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.action)) and hasText(string(R.string.move_rescue))).assertIsDisplayed()
+        // The next hand isn't doubled, so a double and a surrender are back where a redouble and a rescue were
+        assertEquals(places, buttons.map { button(it).getBoundsInRoot() })
+    }
+
+    @Test
+    fun aDoublesCardLiesSidewaysAcrossTheMiddleOfTheHandAfterTheCardsBeforeItLeavingEachIndexShowing() {
+        // Hit from hard 7 with a 2, then doubled with a 5
+        showTrainer(first = TrainerHand(cards("4c 3d 2h 5s"), card("6s"), doubled = true), rules = RuleSet.H17_REDOUBLE)
+        val (four, three, two) = listOf("4 of clubs", "3 of diamonds", "2 of hearts").map(::bounds)
+        val five = bounds("5 of spades")
+
+        for (upright in listOf(four, three, two)) assertTrue("$upright", upright.height > upright.width)
+        assertEquals("$five", two.height.value, five.width.value, 1f)
+        assertEquals("$five", two.width.value, five.height.value, 1f)
+        assertEquals("$five", (two.top + two.bottom).value / 2, (five.top + five.bottom).value / 2, 1f)
+        for ((under, over) in listOf(four to three, three to two, two to five)) assertTrue("$over", over.left - under.left >= under.width * 0.19f)
+    }
+
+    @Test
+    fun withoutRedoublingADoubledHandCanOnlyStandOrRescue() {
+        showTrainer(first = doubledSixteenVsKing)
+
+        button(Move.REDOUBLE).assertIsNotEnabled().performClick()
+
+        compose.onNodeWithText(string(R.string.previous_hand)).assertDoesNotExist()
+
+        button(Move.STAND).performClick()
+
+        compose.onNodeWithText("Doubled hard 16 vs 10 | Rescue").assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.strategy)) and hasText(string(R.string.move_rescue))).assertIsDisplayed()
     }
 
     @Test

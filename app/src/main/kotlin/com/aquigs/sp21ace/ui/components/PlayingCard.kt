@@ -94,20 +94,31 @@ fun CardBack(modifier: Modifier = Modifier) {
     Spacer(modifier.cardSurface().semantics { contentDescription = description }.drawBehind { drawBack() })
 }
 
-/** Deals cards left to right, each over most of the one before, as large as the space allows up to [maxCardHeight]. */
+/**
+ * Deals cards left to right, each over most of the one before, as large as the space allows up to [maxCardHeight]. A [sideways]
+ * last card lies turned a quarter across the middle of the fan, as a dealer lays a double's card.
+ */
 @Composable
-fun OverlappingCards(modifier: Modifier = Modifier, maxCardHeight: Dp = 256.dp, content: @Composable () -> Unit) {
+fun OverlappingCards(modifier: Modifier = Modifier, maxCardHeight: Dp = 256.dp, sideways: Boolean = false, content: @Composable () -> Unit) {
     Layout(content, modifier) { measurables, constraints ->
         val steps = (measurables.size - 1).coerceAtLeast(0)
-        val widthPerHeight = ASPECT_RATIO * (1 + OVERLAP_STEP * steps)
+        // A sideways card is as wide as a card is high
+        val widthPerHeight = ASPECT_RATIO * OVERLAP_STEP * steps + if (sideways) 1f else ASPECT_RATIO
         // Rounded down, so a fan that fills its space never spills past it onto what sits beside it
         val cardHeight = minOf(maxCardHeight.toPx(), constraints.maxHeight.toFloat(), constraints.maxWidth / widthPerHeight).toInt()
         val cardWidth = (cardHeight * ASPECT_RATIO).toInt()
         val step = (cardWidth * OVERLAP_STEP).toInt()
         val cards = measurables.map { it.measure(Constraints.fixed(cardWidth, cardHeight)) }
 
-        layout(cardWidth + step * steps, cardHeight) {
-            cards.forEachIndexed { index, card -> card.place(index * step, 0) }
+        layout(step * steps + if (sideways) cardHeight else cardWidth, cardHeight) {
+            cards.forEachIndexed { index, card ->
+                if (sideways && index == steps) {
+                    // Turned about its centre, which sits half its length in from where it starts and halfway down the fan
+                    card.placeWithLayer(index * step + (cardHeight - cardWidth) / 2, 0) { rotationZ = 90f }
+                } else {
+                    card.place(index * step, 0)
+                }
+            }
         }
     }
 }

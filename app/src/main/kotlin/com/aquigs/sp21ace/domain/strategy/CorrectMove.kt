@@ -6,8 +6,11 @@ import com.aquigs.sp21ace.domain.cards.Rank
 import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.total
 
-/** The answers a player can give to a hand. */
-enum class Move { HIT, STAND, DOUBLE, SPLIT, SURRENDER }
+/**
+ * The answers a player can give to a hand. A doubled hand's redouble and rescue are moves of their own: the rules call a rescue
+ * no surrender, and a redouble's square is read from other tables than a double's.
+ */
+enum class Move { HIT, STAND, DOUBLE, SPLIT, SURRENDER, REDOUBLE, RESCUE }
 
 data class ChartRow(val table: ChartTable, val hand: String)
 
@@ -33,10 +36,41 @@ val HandTotal.row: ChartRow
  * The row a doubled hand is read from by its total: "16" from After doubling: hard and "A-7" from After doubling: soft, whatever
  * the rules. Rules without redoubling print Double Down Rescue instead, which reads its rows, hard 12 to 17, by total too.
  */
-fun afterDoublingRow(hand: List<Card>): ChartRow {
-    val row = totalRow(hand)
-    return ChartRow(if (row.table == ChartTable.SOFT) ChartTable.AFTER_DOUBLE_SOFT else ChartTable.AFTER_DOUBLE_HARD, row.hand)
+fun afterDoublingRow(hand: List<Card>): ChartRow = hand.total().afterDoublingRow
+
+val HandTotal.afterDoublingRow: ChartRow
+    get() = row.let { ChartRow(if (it.table == ChartTable.SOFT) ChartTable.AFTER_DOUBLE_SOFT else ChartTable.AFTER_DOUBLE_HARD, it.hand) }
+
+/**
+ * The table the chart prints the doubled hands filed under [filed] in, or null for none: After doubling: hard or soft with
+ * redoubling, and without it Double Down Rescue, which prints only hard ones.
+ */
+fun StrategyChart.printedTable(filed: ChartTable): ChartTable? =
+    if (filed == ChartTable.AFTER_DOUBLE_HARD && !redoubling) ChartTable.RESCUE else filed.takeIf { it in tables }
+
+/** The row the chart prints a doubled [total] in, or null where it prints none, as Double Down Rescue prints no soft or hard 18. */
+fun StrategyChart.doubledRow(total: HandTotal): ChartRow? {
+    val filed = total.afterDoublingRow
+    return printedTable(filed.table)?.let { ChartRow(it, filed.hand) }?.takeIf { printsRow(it.table, it.hand) }
 }
+
+// A blank Double Down Rescue square, or a total it prints no row for, means no rescue: stand on the doubled hand
+private val NO_RESCUE_PLAY = Play(Action.STAND)
+
+/** The square a doubled [total] is read from, where D is a redouble and R a rescue. */
+fun StrategyChart.afterDoublingPlay(total: HandTotal, upcard: Upcard): Play = doubledRow(total)?.let { play(it.table, it.hand, upcard) } ?: NO_RESCUE_PLAY
+
+/** The chart's answer to a doubled hand by its [total] alone, since no card count or bonus applies once it's doubled. */
+fun StrategyChart.correctMoveAfterDoubling(total: HandTotal, upcard: Upcard): Move = afterDoublingPlay(total, upcard).afterDoublingMove
+
+// The tables for doubled hands print no hit, split or card count
+private val Play.afterDoublingMove: Move
+    get() = when (action) {
+        Action.STAND -> Move.STAND
+        Action.DOUBLE -> Move.REDOUBLE
+        Action.SURRENDER -> Move.RESCUE
+        else -> error("No $action after doubling")
+    }
 
 fun StrategyChart.play(hand: List<Card>, upcard: Card): Play = play(chartRow(hand), upcard.upcard)
 

@@ -200,6 +200,27 @@ class CustomizeHandsScreenTest {
     }
 
     @Test
+    fun doubledHandsHaveAGroupForEachAfterDoublingTableWithRedoubleAndRescueSwitches() {
+        // Doubled hard 16 vs A is a rescue, and doubled soft 18 vs 4 a redouble with redoubling
+        showScreen(
+            listOf(
+                PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("5c 6d 5h"), card("As"), doubled = true), Move.RESCUE, Move.RESCUE),
+                PracticeAnswer(now, RuleSet.H17_REDOUBLE, TrainerHand(cards("As 5d 2c"), card("4h"), doubled = true), Move.STAND, Move.REDOUBLE),
+            ),
+        )
+        val rescue = HandType(ChartTable.AFTER_DOUBLE_HARD, Move.RESCUE)
+
+        assertEquals(listOf(string(R.string.table_after_double_hard), summary(percentage(100.0))), group(R.string.table_after_double_hard).performScrollTo().texts())
+        assertEquals(listOf(string(R.string.table_after_double_soft), summary(percentage(0.0))), group(R.string.table_after_double_soft).performScrollTo().texts())
+        switches(R.string.move_redouble).assertCountEquals(2)
+        switches(R.string.move_rescue).assertCountEquals(1)
+
+        switchFor(rescue).performScrollTo().assertIsOn().performClick().assertIsOff()
+
+        assertEquals(setOf(rescue), customization.switchedOff)
+    }
+
+    @Test
     fun eachSubtitleShowsTheAccuracyOfEveryAnswerEverGivenOrNoData() {
         // When the dealer stands on soft 17, hard 16 vs A is a hit, hard 18 vs 6 a stand and a pair of 8s vs 6 a split
         val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))
