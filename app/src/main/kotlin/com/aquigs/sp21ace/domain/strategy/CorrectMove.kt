@@ -48,8 +48,14 @@ fun StrategyChart.play(row: ChartRow, upcard: Upcard): Play = requireNotNull(pla
  */
 fun StrategyChart.correctMove(hand: List<Card>, upcard: Card): Move {
     val play = play(hand, upcard)
-    return if (play.bonusException?.canStillMake(hand, upcard) == true) Move.HIT else play.move(cards = hand.size)
+    return if (play.bonusException?.canStillMake(hand, upcard.upcard) == true) Move.HIT else play.move(cards = hand.size)
 }
+
+/**
+ * Whether [hand]'s ranks could make the bonus its square marks against [upcard] in some suits, so the suits may decide its move: a
+ * 6-7, 6-8 or 7-8 on a 6-7-8 mark, or 7-7 against a 7 on $. Three cards could only make it at 21, which leaves nothing to decide.
+ */
+internal fun StrategyChart.bonusHand(hand: List<Card>, upcard: Upcard): Boolean = play(chartRow(hand), upcard).bonusException?.ranksCanMake(hand, upcard) == true
 
 /**
  * The square as it reads for a hand of [cards] cards. Late surrender comes only with the first two, so past them RH is a surrender
@@ -76,14 +82,14 @@ internal fun Play.move(cards: Int): Move {
 
 private val SIX_SEVEN_EIGHT = setOf(Rank.SIX, Rank.SEVEN, Rank.EIGHT)
 
-private fun BonusException.canStillMake(hand: List<Card>, upcard: Card): Boolean {
-    val canMake678 = hand.all { it.rank in SIX_SEVEN_EIGHT } && hand.distinctBy { it.rank }.size == hand.size
-    val suited = hand.distinctBy { it.suit }.size == 1
+private fun BonusException.ranksCanMake(hand: List<Card>, upcard: Upcard): Boolean = when (this) {
+    BonusException.ANY_678, BonusException.SUITED_678, BonusException.SPADED_678 ->
+        hand.all { it.rank in SIX_SEVEN_EIGHT } && hand.distinctBy { it.rank }.size == hand.size
+    BonusException.SUITED_777 -> upcard == Upcard.SEVEN && hand.all { it.rank == Rank.SEVEN }
+}
 
-    return when (this) {
-        BonusException.ANY_678 -> canMake678
-        BonusException.SUITED_678 -> canMake678 && suited
-        BonusException.SPADED_678 -> canMake678 && hand.all { it.suit == Suit.SPADES }
-        BonusException.SUITED_777 -> upcard.rank == Rank.SEVEN && hand.all { it.rank == Rank.SEVEN } && suited
-    }
+private fun BonusException.canStillMake(hand: List<Card>, upcard: Upcard): Boolean = ranksCanMake(hand, upcard) && when (this) {
+    BonusException.ANY_678 -> true
+    BonusException.SUITED_678, BonusException.SUITED_777 -> hand.all { it.suit == hand[0].suit }
+    BonusException.SPADED_678 -> hand.all { it.suit == Suit.SPADES }
 }

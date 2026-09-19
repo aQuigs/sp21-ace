@@ -9,6 +9,7 @@ import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
+import com.aquigs.sp21ace.domain.strategy.bonusHand
 import com.aquigs.sp21ace.domain.strategy.correctMove
 import com.aquigs.sp21ace.domain.strategy.countsCards
 import com.aquigs.sp21ace.domain.strategy.play
@@ -26,8 +27,11 @@ internal sealed interface HandKey {
     val upcard: Upcard
 }
 
-/** Two cards: the player's two card values, lower first, against the upcard's. Suits, and J, Q and K, read alike. */
-internal data class HandValues(val low: Upcard, val high: Upcard, override val upcard: Upcard) : HandKey
+/**
+ * Two cards: the player's two card values, lower first, against the upcard's, and the move the chart calls for. Suits, and J, Q
+ * and K, read alike, but a bonus the suits can still make changes the move, so where it does, each side is a hand of its own.
+ */
+internal data class HandValues(val low: Upcard, val high: Upcard, override val upcard: Upcard, val move: Move) : HandKey
 
 /**
  * 3 or more cards: the row the total is read from against the upcard, and the move the chart calls for, so a card count that
@@ -37,24 +41,24 @@ internal data class MultiCardHand(val row: ChartRow, override val upcard: Upcard
     val type: HandType get() = HandType(row.table, move)
 }
 
-internal fun handValues(player: List<Card>, upcard: Upcard): HandValues {
+internal fun handValues(player: List<Card>, upcard: Upcard, move: Move): HandValues {
     require(player.size == 2) { "A dealt hand has two cards, not ${player.size}" }
     val (low, high) = player.map { it.upcard }.sorted()
-    return HandValues(low, high, upcard)
+    return HandValues(low, high, upcard, move)
 }
 
-internal val TrainerHand.values: HandValues get() = handValues(player, upcard.upcard)
-
 /** The hand as Prioritize worse hands tells it apart under [chart], or null for a doubled hand, which it never deals. */
-internal fun TrainerHand.key(chart: StrategyChart): HandKey? = when {
-    doubled -> null
-    player.size == 2 -> values
-    else -> MultiCardHand(totalRow(player), upcard.upcard, chart.correctMove(player, upcard))
+internal fun TrainerHand.key(chart: StrategyChart): HandKey? {
+    if (doubled) return null
+
+    val move = chart.correctMove(player, upcard)
+    return if (player.size == 2) handValues(player, upcard.upcard, move) else MultiCardHand(totalRow(player), upcard.upcard, move)
 }
 
 /**
  * Every answer ever given to each hand, however old and whatever rules graded it, as Blackjack Ace counts them. A hand of 3 or
- * more cards is told apart by the move [chart] calls for, so its answers count for the hand those rules deal.
+ * more cards, or two whose suits a bonus reads, is told apart by the move [chart] calls for, so its answers count for the hand
+ * those rules deal.
  */
 internal fun List<PracticeAnswer>.tallyByHand(chart: StrategyChart): Map<HandKey, Tally> {
     val tallies = TallyCounter<HandKey>()
@@ -77,6 +81,10 @@ fun List<PracticeAnswer>.multiCardTally(): Tally = filter { it.isMultiCard }.tal
 /** Every answer ever given to a card-count hand, told apart by the rules that graded it as the other switches' answers are, for its switch. */
 fun List<PracticeAnswer>.cardCountTally(): Tally =
     filter { it.isMultiCard && StrategyCharts.forRules(it.ruleSet).play(it.square.row, it.square.upcard).countsCards }.tally()
+
+/** Every answer ever given to a bonus hand, on either side of the suits that make the bonus, by the rules that graded it, for its switch. */
+fun List<PracticeAnswer>.bonusTally(): Tally =
+    filter { StrategyCharts.forRules(it.ruleSet).bonusHand(it.hand.player, it.hand.upcard.upcard) }.tally()
 
 private val PracticeAnswer.isMultiCard: Boolean get() = hand.player.size > 2 && !hand.doubled
 

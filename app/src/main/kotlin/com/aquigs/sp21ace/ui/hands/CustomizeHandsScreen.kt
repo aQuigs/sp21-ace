@@ -9,6 +9,7 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
 import com.aquigs.sp21ace.domain.dealing.HandsDealt
+import com.aquigs.sp21ace.domain.dealing.bonusTally
 import com.aquigs.sp21ace.domain.dealing.cardCountTally
 import com.aquigs.sp21ace.domain.dealing.multiCardTally
 import com.aquigs.sp21ace.domain.dealing.tallyByHandType
@@ -25,7 +26,7 @@ import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.components.percentText
 
 /**
- * How the trainer deals, and which types of hand it deals: switches for hands of 3 or more cards and for card-count hands, and one
+ * How the trainer deals, and which types of hand it deals: switches for hands of 3 or more cards, card-count hands and bonus hands, and one
  * for every move each kind of hand calls for, each with the accuracy of every answer ever given, as Blackjack Ace counts it
  * whatever the period on Accuracy.
  */
@@ -41,15 +42,17 @@ fun CustomizeHandsScreen(
     val tallies = remember(history) { history.tallyByHandType() }
     val multiCardTally = remember(history) { history.multiCardTally() }
     val cardCountTally = remember(history) { history.cardCountTally() }
+    val bonusTally = remember(history) { history.bonusTally() }
     val cardCountTitle = stringResource(R.string.card_count_hands)
+    val bonusTitle = stringResource(R.string.bonus_hands)
 
     SettingsPage(title = stringResource(R.string.customize_hands), onBack = onBack, modifier = modifier) {
         SettingsIntro(
-            stringResource(R.string.hands_dealt_intro, stringResource(HandsDealt.RANDOM.title), stringResource(HandsDealt.PRIORITIZE_WORSE.title), cardCountTitle),
+            stringResource(R.string.hands_dealt_intro, stringResource(HandsDealt.RANDOM.title), stringResource(HandsDealt.PRIORITIZE_WORSE.title), cardCountTitle, bonusTitle),
         )
         ChoiceRow(title = stringResource(R.string.hands_dealt), value = stringResource(customization.handsDealt.title), onClick = onOpenHandsDealt)
         HorizontalDivider()
-        SettingsIntro(stringResource(R.string.hand_types_intro, cardCountTitle))
+        SettingsIntro(stringResource(R.string.hand_types_intro, cardCountTitle, bonusTitle))
         SwitchRow(
             title = stringResource(R.string.multi_card_hands),
             summary = accuracySummary(multiCardTally),
@@ -63,6 +66,12 @@ fun CustomizeHandsScreen(
             onCheckedChange = { onChange(customization.copy(cardCountHands = it)) },
             // Every card-count hand has 3 or more cards
             enabled = customization.multiCardHands,
+        )
+        SwitchRow(
+            title = bonusTitle,
+            summary = accuracySummary(bonusTally),
+            checked = customization.bonusHands,
+            onCheckedChange = { onChange(customization.copy(bonusHands = it)) },
         )
 
         HAND_TYPES.groupBy { it.table }.forEach { (table, types) ->

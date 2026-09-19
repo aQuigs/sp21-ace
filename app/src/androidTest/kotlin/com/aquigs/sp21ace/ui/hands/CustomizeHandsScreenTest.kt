@@ -154,6 +154,28 @@ class CustomizeHandsScreenTest {
     }
 
     @Test
+    fun theBonusSwitchShowsItsAccuracyAndTurnsOffAndOnAgain() {
+        // When the dealer stands on soft 17, hard 14 vs 4 is S4*, so any 6-8 hits for a 6-7-8 bonus, while a 5-9 stands
+        val history = listOf(
+            PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("6c 8d"), card("4s")), Move.HIT, Move.HIT),
+            PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("6h 8h"), card("4d")), Move.STAND, Move.HIT),
+            PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("5c 9d"), card("4s")), Move.STAND, Move.STAND),
+        )
+        showScreen(history)
+        val switch = compose.onNode(hasText(string(R.string.bonus_hands)) and isToggleable())
+
+        assertEquals(listOf(string(R.string.bonus_hands), summary(percentage(50.0))), switch.texts())
+
+        switch.performScrollTo().assertIsOn().performClick().assertIsOff()
+
+        assertEquals(HandCustomization(bonusHands = false), customization)
+
+        switch.performClick().assertIsOn()
+
+        assertEquals(HandCustomization(), customization)
+    }
+
+    @Test
     fun theHandsDealtRowShowsRandomAndOpensItsPage() {
         var opened = 0
         showScreen(onOpenHandsDealt = { opened++ })

@@ -6,6 +6,7 @@ import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import org.junit.Assert.assertEquals
@@ -16,6 +17,7 @@ import kotlin.random.Random
 
 class AnsweringTest {
     private val now = Instant.parse("2026-09-17T12:00:00Z")
+    private val h17 = StrategyCharts.forRules(RuleSet.H17)
 
     // Hard 16 and 17 against an ace are the only hard hands to surrender when the dealer hits soft 17
     private val nineEightVsAce = TrainerHand(cards("9d 8c"), card("Ac"))
@@ -46,6 +48,6 @@ class AnsweringTest {
         }
 
         // Missed once, it weighs 20 against the other three unanswered hands' 2 apiece
-        assertEquals(20.0 / 26, next.count { it.values == nineEightVsAce.values }.toDouble() / next.size, 0.03)
+        assertEquals(20.0 / 26, next.count { it.key(h17) == nineEightVsAce.key(h17) }.toDouble() / next.size, 0.03)
     }
 }

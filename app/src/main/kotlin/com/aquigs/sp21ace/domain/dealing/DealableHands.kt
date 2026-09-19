@@ -73,15 +73,14 @@ fun dealtRows(rules: RuleSet): Set<ChartRow> = dealableHands(rules).rows
 private fun StrategyChart.dealableHands(): DealableHands {
     val twoCard = LinkedHashMap<HandValues, MutableList<DealableHand>>()
 
-    // The row and values once per two cards, since the upcard changes neither
+    // The table once per two cards, since the upcard doesn't change it
     for (player in PLAYER_CARDS) {
         val table = chartRow(player).table
-        val (low, high) = player.map { it.upcard }.sorted()
 
         for (upcard in Upcard.entries) {
             // Grading reads an upcard by its value, so any card of it stands for the rest
             val type = HandType(table, correctMove(player, SHOE_BY_VALUE.getValue(upcard).first()))
-            twoCard.getOrPut(HandValues(low, high, upcard)) { mutableListOf() } += DealableHand(player, upcard, type, waysToDeal(player, upcard))
+            twoCard.getOrPut(handValues(player, upcard, type.move)) { mutableListOf() } += DealableHand(player, upcard, type, waysToDeal(player, upcard))
         }
     }
 

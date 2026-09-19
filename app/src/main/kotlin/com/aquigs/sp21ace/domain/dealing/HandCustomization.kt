@@ -17,11 +17,12 @@ val HAND_TYPES: List<HandType> = HandFilter.entries.flatMap { it.types }
 
 /**
  * How the trainer deals. A type is dealt unless switched off, so every switch starts on, as do the ones for hands of 3 or more
- * cards and for card-count hands.
+ * cards, for card-count hands and for bonus hands.
  */
 data class HandCustomization(
     val handsDealt: HandsDealt = HandsDealt.RANDOM,
     val switchedOff: Set<HandType> = emptySet(),
     val multiCardHands: Boolean = true,
     val cardCountHands: Boolean = true,
+    val bonusHands: Boolean = true,
 )

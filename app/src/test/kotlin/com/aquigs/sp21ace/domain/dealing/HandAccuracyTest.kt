@@ -27,10 +27,11 @@ class HandAccuracyTest {
         PracticeAnswer(at, rules, hand, if (right) correctMove else Move.entries.first { it != correctMove }, correctMove)
 
     @Test
-    fun aHandIsItsTwoCardValuesInEitherOrderAgainstTheUpcardsWhateverTheSuits() {
-        assertEquals(HandValues(Upcard.SEVEN, Upcard.NINE, Upcard.ACE), nineSevenVsAce.values)
-        assertEquals(nineSevenVsAce.values, TrainerHand(cards("7h 9s"), card("Ad")).values)
-        assertEquals(tenSixVsAce.values, TrainerHand(cards("6h Jd"), card("Ac")).values)
+    fun aHandIsItsTwoCardValuesInEitherOrderAgainstTheUpcardsWhateverTheSuitsAndItsMove() {
+        // Hard 16 vs A hits when the dealer stands on soft 17
+        assertEquals(HandValues(Upcard.SEVEN, Upcard.NINE, Upcard.ACE, Move.HIT), nineSevenVsAce.key(s17))
+        assertEquals(nineSevenVsAce.key(s17), TrainerHand(cards("7h 9s"), card("Ad")).key(s17))
+        assertEquals(tenSixVsAce.key(s17), TrainerHand(cards("6h Jd"), card("Ac")).key(s17))
     }
 
     @Test
@@ -41,9 +42,38 @@ class HandAccuracyTest {
         assertEquals(MultiCardHand(ChartRow(ChartTable.HARD, "14"), Upcard.FOUR, Move.STAND), fiveFourFiveVsFour.key(s17))
         assertEquals(fiveFourFiveVsFour.key(s17), TrainerHand(cards("Kh 2d 2s"), card("4d")).key(s17))
         assertEquals(MultiCardHand(ChartRow(ChartTable.HARD, "14"), Upcard.FOUR, Move.HIT), TrainerHand(cards("2c 3d 4h 5s"), card("4s")).key(s17))
-        assertEquals(nineSevenVsAce.values, nineSevenVsAce.key(s17))
         // Prioritize worse hands never deals a doubled hand
         assertNull(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true).key(s17))
+    }
+
+    @Test
+    fun twoCardsWhoseSuitsMakeABonusAreAHandApartFromTheSameCardsInOtherSuits() {
+        // Hard 14 vs 6 is S6" when the dealer hits soft 17, so a 6-8 of spades hits for the bonus while any other 6-8 stands
+        val h17 = StrategyCharts.forRules(RuleSet.H17)
+        val spaded = TrainerHand(cards("6s 8s"), card("6h")).key(h17)
+
+        assertEquals(HandValues(Upcard.SIX, Upcard.EIGHT, Upcard.SIX, Move.HIT), spaded)
+        assertEquals(HandValues(Upcard.SIX, Upcard.EIGHT, Upcard.SIX, Move.STAND), TrainerHand(cards("6h 8h"), card("6s")).key(h17))
+        // Hard 14 vs 4 is S4*, so every 6-8 hits for the bonus
+        assertEquals(TrainerHand(cards("6s 8s"), card("4h")).key(h17), TrainerHand(cards("6h 8d"), card("4s")).key(h17))
+    }
+
+    @Test
+    fun theBonusSwitchCountsAnswersToBonusHandsInEverySuitByTheRulesThatGradedThem() {
+        // When the dealer hits soft 17, hard 13 vs 6 is S4*, 7-7 vs 7 P$ and hard 14 vs 6 S6", while hard 13 vs 6 is a plain hit
+        // when the dealer stands
+        val history = listOf(
+            answer(TrainerHand(cards("6c 7d"), card("6s")), right = true, Move.HIT, rules = RuleSet.H17),
+            answer(TrainerHand(cards("7h 7h"), card("7s")), right = false, Move.HIT, rules = RuleSet.H17),
+            answer(TrainerHand(cards("7h 7s"), card("7d")), right = true, Move.SPLIT, rules = RuleSet.H17),
+            answer(TrainerHand(cards("6h 8c"), card("6d")), right = false, Move.STAND, rules = RuleSet.H17),
+            answer(TrainerHand(cards("6c 7d"), card("6s")), right = true, Move.HIT, rules = RuleSet.S17),
+            // Hard 14 vs 7 carries no bonus mark, and 3 cards could only make a bonus at 21
+            answer(TrainerHand(cards("6c 8d"), card("7s")), right = true, Move.HIT, rules = RuleSet.H17),
+            answer(TrainerHand(cards("2c 6d 5h"), card("6s")), right = true, Move.STAND, rules = RuleSet.H17),
+        )
+
+        assertEquals(Tally(correct = 2, incorrect = 2), history.bonusTally())
     }
 
     @Test
@@ -58,8 +88,8 @@ class HandAccuracyTest {
         )
 
         val expected = mapOf(
-            nineSevenVsAce.values to Tally(correct = 1, incorrect = 1),
-            tenSixVsAce.values to Tally(correct = 0, incorrect = 1),
+            HandValues(Upcard.SEVEN, Upcard.NINE, Upcard.ACE, Move.HIT) to Tally(correct = 1, incorrect = 1),
+            HandValues(Upcard.SIX, Upcard.TEN, Upcard.ACE, Move.HIT) to Tally(correct = 0, incorrect = 1),
             MultiCardHand(ChartRow(ChartTable.HARD, "16"), Upcard.ACE, Move.HIT) to Tally(correct = 1, incorrect = 0),
         )
         assertEquals(expected, history.tallyByHand(s17))

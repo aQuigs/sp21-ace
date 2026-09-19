@@ -55,7 +55,7 @@ class DealableHandsTest {
 
         val upcards = oneOfEachValue.map { Card(it, Suit.CLUBS) }.associateBy { it.upcard }
         val hitting = twoCardHands(rules).filter { it.type.move == Move.HIT }
-        for (hands in hitting.groupBy { handValues(it.player, it.upcard) }.values) {
+        for (hands in hitting.groupBy { handValues(it.player, it.upcard, it.type.move) }.values) {
             hit(hands.first().player, upcards.getValue(hands.first().upcard), hands.sumOf { it.ways } / (288.0 * 287 * 286))
         }
 

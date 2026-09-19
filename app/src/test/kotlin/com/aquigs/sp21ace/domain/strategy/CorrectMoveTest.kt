@@ -8,6 +8,8 @@ import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.spanishShoe
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CorrectMoveTest {
@@ -52,6 +54,20 @@ class CorrectMoveTest {
         // 7-7 vs 7 is P$
         assertEquals(Move.HIT, h17.correctMove(cards("7h 7h"), card("7c")))
         assertEquals(Move.SPLIT, h17.correctMove(cards("7h 7s"), card("7c")))
+    }
+
+    @Test
+    fun aBonusHandIsOneWhoseRanksCouldMakeItsSquaresBonusWhateverItsSuits() {
+        // With the dealer hitting soft 17, hard 14 vs 6 is S6", hard 13 vs 6 S4* and 7-7 vs 7 P$
+        for (hand in listOf("6s 8s", "6h 8d", "8c 6c")) assertTrue(hand, h17.bonusHand(cards(hand), Upcard.SIX))
+        assertTrue(h17.bonusHand(cards("6c 7d"), Upcard.SIX))
+        assertTrue(h17.bonusHand(cards("7h 7s"), Upcard.SEVEN))
+        // A 5-9 makes no 6-7-8, and neither 7-7 vs 6 nor hard 14 vs 7 carries a bonus mark
+        assertFalse(h17.bonusHand(cards("5c 9d"), Upcard.SIX))
+        assertFalse(h17.bonusHand(cards("7h 7h"), Upcard.SIX))
+        assertFalse(h17.bonusHand(cards("6c 8d"), Upcard.SEVEN))
+        // With the dealer standing on soft 17, hard 13 vs 6 is a plain hit
+        assertFalse(s17.bonusHand(cards("6c 7d"), Upcard.SIX))
     }
 
     @Test
