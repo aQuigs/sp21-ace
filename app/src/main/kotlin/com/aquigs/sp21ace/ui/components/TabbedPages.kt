@@ -24,8 +24,9 @@ import kotlinx.coroutines.launch
 
 /**
  * A sub-page's tabs over their pages, which a swipe moves between as a tap on a tab does, as in Blackjack Ace. It opens on the
- * first tab and keeps the one chosen through recreation. New [tabs] that lack it, such as After doubling: soft once the rules drop
- * redoubling, fall back to the first. The tabs scroll, since the tables after Hard, Soft and Pairs have long names.
+ * first tab and keeps the one chosen through recreation. New [tabs] that lack it, such as Already doubled: soft once the rules
+ * drop redoubling, fall back to the first. The tabs scroll rather than wrap their names, as Accuracy's four would at a large
+ * font size on a narrow phone.
  */
 @Composable
 fun <T : Enum<T>> TabbedPages(tabs: List<T>, title: (T) -> Int, modifier: Modifier = Modifier, page: @Composable (T) -> Unit) {
