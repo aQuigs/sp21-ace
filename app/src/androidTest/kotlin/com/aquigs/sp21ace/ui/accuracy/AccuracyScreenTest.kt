@@ -229,9 +229,9 @@ class AccuracyScreenTest {
     fun theGridShowsOnlyTheRowsTheTrainerDeals() {
         showAccuracy(emptyList())
 
-        compose.square("19 vs 2: Stand, no answers", "S")
-        // Two ten-value cards are a pair, so no dealt hand is hard 20
-        compose.onNode(hasContentDescription("20 vs ", substring = true)).assertDoesNotExist()
+        // Two ten-value cards are a pair, so only 3 or more cards make hard 20, and 21 leaves nothing to decide
+        compose.square("20 vs 2: Stand, no answers", "S")
+        compose.onNode(hasContentDescription("21 vs ", substring = true)).assertDoesNotExist()
     }
 
     @Test

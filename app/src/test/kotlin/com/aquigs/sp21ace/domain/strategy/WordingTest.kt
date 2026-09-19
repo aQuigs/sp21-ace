@@ -51,6 +51,18 @@ class WordingTest {
     }
 
     @Test
+    fun leadsWithTheHitWhenTheCardCountMakesTheHandAHit() {
+        assertEquals("Hit with 3 or more cards. Otherwise double", words(S17, HARD, "11", Upcard.TEN, Move.HIT, cards = 3))
+        assertEquals(
+            "Hit with 4 or more cards. Otherwise stand, but hit while any 6-7-8 is possible",
+            words(S17, HARD, "14", Upcard.FOUR, Move.HIT, cards = 4),
+        )
+        assertEquals("Stand, but hit with 4 or more cards or while any 6-7-8 is possible", words(S17, HARD, "14", Upcard.FOUR, Move.STAND, cards = 3))
+        // Late surrender comes only with the first two cards, so past them RH hits like a count of 3
+        assertEquals("Hit with 3 or more cards. Otherwise surrender", words(S17, HARD, "17", Upcard.ACE, Move.HIT, cards = 3))
+    }
+
+    @Test
     fun marksDebatedSquares() {
         assertEquals("Stand † (debated)", words(S17, SOFT, "A-9", Upcard.TEN, Move.STAND))
         assertEquals(
@@ -107,8 +119,8 @@ class WordingTest {
     }
 
     // Read from the shipped charts, which ChartCellsTest pins to the fixtures, so every code worded here is a real square
-    private fun words(ruleSet: RuleSet, table: ChartTable, hand: String, upcard: Upcard, correctMove: Move): String =
-        requireNotNull(StrategyCharts.forRules(ruleSet).play(table, hand, upcard)).inPlainWords(correctMove)
+    private fun words(ruleSet: RuleSet, table: ChartTable, hand: String, upcard: Upcard, correctMove: Move, cards: Int = 2): String =
+        requireNotNull(StrategyCharts.forRules(ruleSet).play(table, hand, upcard)).inPlainWords(correctMove, cards)
 
     private fun squareWords(ruleSet: RuleSet, table: ChartTable, hand: String, upcard: Upcard): String =
         ChartSquare(ChartRow(table, hand), upcard).inPlainWords(StrategyCharts.forRules(ruleSet).play(table, hand, upcard))

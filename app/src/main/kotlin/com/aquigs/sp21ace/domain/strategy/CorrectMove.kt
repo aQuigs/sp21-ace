@@ -1,11 +1,12 @@
 package com.aquigs.sp21ace.domain.strategy
 
 import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.Rank
 import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.total
 
-/** The answers a player can give to a hand's first decision. */
+/** The answers a player can give to a hand. */
 enum class Move { HIT, STAND, DOUBLE, SPLIT, SURRENDER }
 
 data class ChartRow(val table: ChartTable, val hand: String)
@@ -18,13 +19,15 @@ val Card.upcard: Upcard get() = if (rank.value == 10) Upcard.TEN else Upcard.fro
 fun chartRow(hand: List<Card>): ChartRow =
     if (hand.size == 2 && hand[0].upcard == hand[1].upcard) hand[0].upcard.label.let { ChartRow(ChartTable.PAIRS, "$it-$it") } else totalRow(hand)
 
-/** The row a hand is read from by its total alone: soft 18 from the soft table as "A-7", and hard 16 from the hard table as "16". */
-fun totalRow(hand: List<Card>): ChartRow {
-    val total = hand.total()
-    require(total.value <= 21) { "A busted hand has no chart row" }
+/** The row a hand is read from by its total alone. */
+fun totalRow(hand: List<Card>): ChartRow = hand.total().row
 
-    return if (total.soft) ChartRow(ChartTable.SOFT, "A-${total.value - 11}") else ChartRow(ChartTable.HARD, "${total.value}")
-}
+/** The row a total is read from: soft 18 from the soft table as "A-7", and hard 16 from the hard table as "16". */
+val HandTotal.row: ChartRow
+    get() {
+        require(value <= 21) { "A busted hand has no chart row" }
+        return if (soft) ChartRow(ChartTable.SOFT, "A-${value - 11}") else ChartRow(ChartTable.HARD, "$value")
+    }
 
 /**
  * The row a doubled hand is read from by its total: "16" from After doubling: hard and "A-7" from After doubling: soft, whatever
@@ -35,23 +38,31 @@ fun afterDoublingRow(hand: List<Card>): ChartRow {
     return ChartRow(if (row.table == ChartTable.SOFT) ChartTable.AFTER_DOUBLE_SOFT else ChartTable.AFTER_DOUBLE_HARD, row.hand)
 }
 
-fun StrategyChart.play(hand: List<Card>, upcard: Card): Play {
-    val row = chartRow(hand)
-    return requireNotNull(play(row.table, row.hand, upcard.upcard)) { "No chart square for ${row.hand} vs ${upcard.upcard.label}" }
+fun StrategyChart.play(hand: List<Card>, upcard: Card): Play = play(chartRow(hand), upcard.upcard)
+
+fun StrategyChart.play(row: ChartRow, upcard: Upcard): Play = requireNotNull(play(row.table, row.hand, upcard)) { "No chart square for ${row.hand} vs ${upcard.label}" }
+
+/**
+ * The chart's answer to a hand not yet doubled. A bonus exception turns the play into a hit while its bonus hand can still be
+ * made, which only two cards can.
+ */
+fun StrategyChart.correctMove(hand: List<Card>, upcard: Card): Move {
+    val play = play(hand, upcard)
+    return if (play.bonusException?.canStillMake(hand, upcard) == true) Move.HIT else play.move(cards = hand.size)
 }
 
 /**
- * The chart's answer to a two-card starting hand. Late surrender is always allowed on the first decision, so RH means
- * surrender. Card-count exceptions start at 3 cards and never apply here, but a bonus exception turns the play into a
- * hit while its bonus hand can still be made.
+ * The square as it reads for a hand of [cards] cards. Late surrender comes only with the first two, so past them RH is a surrender
+ * that hits with 3 or more cards, which grading and the words both read the same way.
  */
-fun StrategyChart.firstMove(hand: List<Card>, upcard: Card): Move {
-    require(hand.size == 2) { "A first decision has two cards, not ${hand.size}" }
-    val play = play(hand, upcard)
+internal fun Play.forCards(cards: Int): Play = if (action == Action.SURRENDER_OR_HIT && cards > 2) copy(action = Action.SURRENDER, hitWithCards = 3) else this
 
-    if (play.bonusException?.canStillMake(hand, upcard) == true) return Move.HIT
+/** The move a square calls for in a hand of [cards] cards, bonus exceptions aside. */
+internal fun Play.move(cards: Int): Move {
+    val square = forCards(cards)
+    if (square.hitWithCards != null && cards >= square.hitWithCards) return Move.HIT
 
-    return when (play.action) {
+    return when (square.action) {
         Action.HIT -> Move.HIT
         Action.STAND -> Move.STAND
         Action.DOUBLE -> Move.DOUBLE

@@ -16,6 +16,8 @@ import androidx.compose.ui.test.LayoutDirection
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
@@ -69,9 +71,13 @@ class StrategyTrainerScreenTest {
     private val eightsVsSix = TrainerHand(cards("8h 8s"), card("6d"))
     private val softSeventeenVsKing = TrainerHand(cards("Ah 6d"), card("Kh"))
 
-    // Hard 15 vs 6 is debated, stands but hits with 6 cards, and gives way to a hit while a spaded 6-7-8 is possible: the
-    // longest feedback there is
-    private val spadedFifteenVsSix = TrainerHand(cards("7s 8s"), card("6d"))
+    // Hard 17 vs A is RH, so once there are 3 cards surrender is gone and the hit is right
+    private val threeCardSeventeenVsAce = TrainerHand(cards("9c 4d 4h"), card("As"))
+
+    // Hard 15 vs 6 is debated, stands, and hits with 6 or more cards or while a spaded 6-7-8 is possible. With nine cards it hits
+    // by count, which adds the count of cards to the longest feedback there is.
+    private val nineCardFifteenVsSix = TrainerHand(cards("Ac Ad Ah As 2c 2d 2h 2s 3c"), card("6d"))
+    private val nineCardNames = listOf("Ace of clubs", "Ace of diamonds", "Ace of hearts", "Ace of spades", "2 of clubs", "2 of diamonds", "2 of hearts", "2 of spades", "3 of clubs")
 
     private var settings by mutableStateOf(Settings())
 
@@ -395,11 +401,62 @@ class StrategyTrainerScreenTest {
 
     @Test
     fun onANarrowPhoneAtTheLargestFontSizeTheLongestFeedbackFitsTheBar() {
-        showTrainer(Modifier.size(360.dp, 640.dp), first = spadedFifteenVsSix, configuration = DeviceConfigurationOverride.FontScale(2f))
+        showTrainer(Modifier.size(360.dp, 640.dp), first = nineCardFifteenVsSix, configuration = DeviceConfigurationOverride.FontScale(2f))
 
-        button(Move.HIT).performClick()
+        button(Move.STAND).performClick()
 
-        compose.onNodeWithText("Hard 15 vs 6", substring = true).fetchSemanticsNode().textLayout().assertFits()
+        val feedback = compose.onNodeWithText("9-card hard 15 vs 6 | Hit with 6 or more cards. Otherwise stand, but hit while a spaded 6-7-8 is possible † (debated)")
+        feedback.fetchSemanticsNode().textLayout().assertFits()
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeNineCardsShrinkToFitApartFromTheButtonsOnEitherSideWithEachIndexShowing() {
+        showTrainer(Modifier.size(360.dp, 640.dp), first = nineCardFifteenVsSix, configuration = DeviceConfigurationOverride.FontScale(2f))
+
+        for (location in ButtonLocation.entries) {
+            settings = Settings(buttonLocation = location, handTotals = true)
+            val controls = Move.entries.map { button(it).getBoundsInRoot() } + bounds(string(R.string.open_strategy_chart))
+            val cards = nineCardNames.map(::bounds)
+
+            for (control in controls) {
+                // The cards stop 8dp short of their space either side, less a hair for bounds read back in dp from whole pixels
+                val nearby = DpRect(control.left - 7.9.dp, control.top, control.right + 7.9.dp, control.bottom)
+                for (card in cards) assertFalse("$location: $card is within 8dp of $control", nearby.overlaps(card))
+            }
+            // Dealt left to right, each over most of the one before, so every card's corner index stays uncovered
+            assertEquals(cards.sortedBy { it.left }, cards)
+            cards.zipWithNext { covered, over -> assertTrue("$over hides $covered's index", over.left - covered.left >= covered.width * 0.19f) }
+        }
+    }
+
+    @Test
+    fun onAHandOf3OrMoreCardsSplitAndSurrenderKeepTheirPlacesButTakeNoAnswer() {
+        showTrainer(first = threeCardSeventeenVsAce)
+        val places = Move.entries.map { button(it).getBoundsInRoot() }
+
+        button(Move.SPLIT).assertIsNotEnabled()
+        button(Move.SURRENDER).assertIsNotEnabled().performClick()
+
+        compose.onNodeWithText(string(R.string.previous_hand)).assertDoesNotExist()
+
+        button(Move.HIT).assertIsEnabled().performClick()
+
+        compose.onNodeWithText("3-card hard 17 vs A | Hit with 3 or more cards. Otherwise surrender").assertIsDisplayed()
+        // The next hand has two cards, so every button takes an answer again, each where it was
+        Move.entries.forEach { button(it).assertIsEnabled() }
+        assertEquals(places, Move.entries.map { button(it).getBoundsInRoot() })
+    }
+
+    @Test
+    fun whenTheCardCountMakesTheHandAHitTheFeedbackLeadsWithIt() {
+        // Hard 14 vs 4 is S4*, so with 4 cards it hits
+        showTrainer(first = TrainerHand(cards("2c 3d 4h 5s"), card("4c")))
+
+        button(Move.STAND).performClick()
+
+        val words = "Hit with 4 or more cards. Otherwise stand, but hit while any 6-7-8 is possible"
+        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. 4-card hard 14 vs 4. $words").assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.strategy)) and hasText(string(R.string.move_hit))).assertIsDisplayed()
     }
 
     @Test

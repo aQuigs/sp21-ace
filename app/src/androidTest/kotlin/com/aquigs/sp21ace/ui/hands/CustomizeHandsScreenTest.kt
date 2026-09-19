@@ -109,6 +109,27 @@ class CustomizeHandsScreenTest {
     }
 
     @Test
+    fun theSwitchForHandsOf3OrMoreCardsShowsTheirAccuracyAndTurnsThemOffAndOnAgain() {
+        // Hard 16 vs A hits when the dealer stands on soft 17, with two cards or three
+        val history = listOf(
+            PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("9c 4d 3s"), card("As")), Move.HIT, Move.HIT),
+            PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("9c 7d"), card("As")), Move.STAND, Move.HIT),
+        )
+        showScreen(history)
+        val switch = compose.onNode(hasText(string(R.string.multi_card_hands)) and isToggleable())
+
+        assertEquals(listOf(string(R.string.multi_card_hands), summary(percentage(100.0))), switch.texts())
+
+        switch.performScrollTo().assertIsOn().performClick().assertIsOff()
+
+        assertEquals(HandCustomization(multiCardHands = false), customization)
+
+        switch.performClick().assertIsOn()
+
+        assertEquals(HandCustomization(), customization)
+    }
+
+    @Test
     fun theHandsDealtRowShowsRandomAndOpensItsPage() {
         var opened = 0
         showScreen(onOpenHandsDealt = { opened++ })

@@ -15,17 +15,20 @@ class HandCustomizationStore(context: Context, name: String = "customize_hands")
     fun load() = HandCustomization(
         handsDealt = prefs.getEnum(HANDS_DEALT, defaults.handsDealt),
         switchedOff = HAND_TYPES.filter { !prefs.getBoolean(it.key, true) }.toSet(),
+        multiCardHands = prefs.getBoolean(MULTI_CARD_HANDS, defaults.multiCardHands),
     )
 
     fun save(customization: HandCustomization) {
         prefs.edit {
             putString(HANDS_DEALT, customization.handsDealt.name)
             HAND_TYPES.forEach { putBoolean(it.key, it !in customization.switchedOff) }
+            putBoolean(MULTI_CARD_HANDS, customization.multiCardHands)
         }
     }
 
     private companion object {
         const val HANDS_DEALT = "hands_dealt"
+        const val MULTI_CARD_HANDS = "deal_multi_card_hands"
 
         // A switch without a saved value reads as on, so a type added later starts on
         val HandType.key: String get() = "deal_${table.name.lowercase()}_${move.name.lowercase()}"

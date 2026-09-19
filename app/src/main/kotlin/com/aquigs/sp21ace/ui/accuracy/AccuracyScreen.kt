@@ -38,7 +38,6 @@ import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
 import com.aquigs.sp21ace.domain.strategy.RuleSet
-import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.ui.chart.title
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.PageTabRow
@@ -96,7 +95,7 @@ fun AccuracyScreen(
                 PeriodChips(selected = period, onSelect = { period = it }, modifier = Modifier.padding(horizontal = TextInset))
                 hands.table?.let { table ->
                     AccuracyHeatmap(
-                        chart = StrategyCharts.forRules(rules),
+                        rules = rules,
                         table = table,
                         bySquare = accuracy.bySquare,
                         modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp).widthIn(max = MaxContentWidth),

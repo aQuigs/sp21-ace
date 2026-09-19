@@ -3,11 +3,11 @@ package com.aquigs.sp21ace.domain.trainer
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
-import com.aquigs.sp21ace.domain.strategy.firstMove
+import com.aquigs.sp21ace.domain.strategy.correctMove
 import com.aquigs.sp21ace.domain.strategy.play
 import java.io.Serializable
 
-/** [correctMove] can differ from the square's [play], because a bonus exception turns the play into a hit. */
+/** [correctMove] can differ from the square's [play], because a card count or a bonus exception turns the play into a hit. */
 data class Grade(val hand: TrainerHand, val play: Play, val answer: Move, val correctMove: Move) : Serializable {
     val isCorrect: Boolean get() = answer == correctMove
 }
@@ -24,12 +24,12 @@ data class Answered(val state: TrainerState, val grade: Grade)
 /**
  * Grades the answer to [asked] and deals the next hand at once, because the trainer never waits for a continue tap. [deal] is
  * handed the grade, so a deal that weighs answers can count this one. An answer to a hand no longer on the table, such as a
- * second tap before the screen redraws, grades nothing: null.
+ * second tap before the screen redraws, or a move the hand doesn't allow, grades nothing: null.
  */
 fun TrainerState.answer(asked: TrainerHand, move: Move, chart: StrategyChart, deal: (Grade) -> TrainerHand): Answered? {
-    if (asked != hand) return null
+    if (asked != hand || move !in hand.moves) return null
 
-    val grade = Grade(hand, chart.play(hand.player, hand.upcard), move, chart.firstMove(hand.player, hand.upcard))
+    val grade = Grade(hand, chart.play(hand.player, hand.upcard), move, chart.correctMove(hand.player, hand.upcard))
     return Answered(copy(hand = deal(grade), lastGrade = grade, streak = nextStreak(streak, grade.isCorrect)), grade)
 }
 

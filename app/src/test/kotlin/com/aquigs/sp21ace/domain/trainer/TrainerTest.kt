@@ -52,6 +52,31 @@ class TrainerTest {
     }
 
     @Test
+    fun gradesAHandOf3OrMoreCardsByItsTotalWithTheCardCountTurningTheStandIntoAHit() {
+        // Hard 14 vs 4 is S4*, with no 6-7-8 left to make once there are 3 cards
+        val threeCards = TrainerHand(cards("5c 4d 5h"), card("4s"))
+        val fourCards = TrainerHand(cards("2c 3d 4h 5s"), card("4s"))
+        val square = Play(Action.STAND, hitWithCards = 4, bonusException = BonusException.ANY_678)
+
+        assertEquals(Grade(threeCards, square, Move.STAND, Move.STAND), TrainerState(threeCards).answer(threeCards, Move.STAND, s17) { sixteenVsAce }?.grade)
+        assertEquals(Grade(fourCards, square, Move.STAND, Move.HIT), TrainerState(fourCards).answer(fourCards, Move.STAND, s17) { sixteenVsAce }?.grade)
+    }
+
+    @Test
+    fun aMoveOnlyTheFirstTwoCardsAllowGradesNothingOnceThereAreMore() {
+        // Hard 17 vs A is RH: surrender on the first two cards, and a hit after
+        val threeCards = TrainerHand(cards("9c 4d 4h"), card("As"))
+        val state = TrainerState(threeCards)
+
+        assertEquals(Move.entries.toSet(), sixteenVsAce.moves)
+        assertEquals(setOf(Move.HIT, Move.STAND, Move.DOUBLE), threeCards.moves)
+        for (move in Move.entries - threeCards.moves) {
+            assertNull("$move", state.answer(threeCards, move, s17) { error("A move the hand doesn't allow must not deal") })
+        }
+        assertEquals(Move.HIT, state.answer(threeCards, Move.STAND, s17) { sixteenVsAce }?.grade?.correctMove)
+    }
+
+    @Test
     fun anAnswerToAHandNoLongerOnTheTableGradesNothing() {
         val state = TrainerState(softSeventeenVsTen, Grade(sixteenVsAce, Play(Action.HIT), Move.HIT, Move.HIT))
 

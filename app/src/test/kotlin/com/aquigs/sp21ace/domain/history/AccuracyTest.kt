@@ -13,7 +13,7 @@ import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
-import com.aquigs.sp21ace.domain.strategy.firstMove
+import com.aquigs.sp21ace.domain.strategy.correctMove
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -254,7 +254,7 @@ class AccuracyTest {
         val hands = deck.flatMap { first -> deck.map { listOf(first, it) } }.filterNot { it.isBlackjack() }
         val upcards = deck.filter { it.suit == Suit.SPADES }
         val called = RuleSet.entries.map(StrategyCharts::forRules).flatMap { chart ->
-            hands.flatMap { hand -> upcards.map { upcard -> chartRow(hand).table to chart.firstMove(hand, upcard) } }
+            hands.flatMap { hand -> upcards.map { upcard -> chartRow(hand).table to chart.correctMove(hand, upcard) } }
         }.groupBy({ it.first }, { it.second })
 
         for (tab in HandFilter.entries) {
