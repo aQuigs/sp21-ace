@@ -57,6 +57,9 @@ fun StrategyChart.correctMove(hand: List<Card>, upcard: Card): Move {
  */
 internal fun Play.forCards(cards: Int): Play = if (action == Action.SURRENDER_OR_HIT && cards > 2) copy(action = Action.SURRENDER, hitWithCards = 3) else this
 
+/** Whether the number of cards decides the square's move in a hand of 3 or more cards: D3 to D6, S4 to S6, and RH. */
+internal val Play.countsCards: Boolean get() = forCards(cards = 3).hitWithCards != null
+
 /** The move a square calls for in a hand of [cards] cards, bonus exceptions aside. */
 internal fun Play.move(cards: Int): Move {
     val square = forCards(cards)

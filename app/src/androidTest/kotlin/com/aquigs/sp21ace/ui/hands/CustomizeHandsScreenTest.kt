@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -75,7 +76,7 @@ class CustomizeHandsScreenTest {
 
         switches(R.string.move_hit).assertCountEquals(3)
 
-        group(R.string.table_hard).performClick()
+        group(R.string.table_hard).performScrollTo().performClick()
 
         switches(R.string.move_hit).assertCountEquals(2)
         switches(R.string.move_surrender).assertCountEquals(1)
@@ -127,6 +128,29 @@ class CustomizeHandsScreenTest {
         switch.performClick().assertIsOn()
 
         assertEquals(HandCustomization(), customization)
+    }
+
+    @Test
+    fun theCardCountSwitchShowsItsAccuracyTurnsOffAndOnAndGreysOutWithHandsOf3OrMoreCardsOff() {
+        // When the dealer stands on soft 17, hard 17 vs A is RH, so with 3 cards the count makes it a hit, while hard 16 vs A always hits
+        val history = listOf(
+            PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("9c 4d 4h"), card("As")), Move.HIT, Move.HIT),
+            PracticeAnswer(now, RuleSet.S17, TrainerHand(cards("9c 4d 3s"), card("As")), Move.STAND, Move.HIT),
+        )
+        showScreen(history)
+        val switch = compose.onNode(hasText(string(R.string.card_count_hands)) and isToggleable())
+
+        assertEquals(listOf(string(R.string.card_count_hands), summary(percentage(100.0))), switch.texts())
+
+        switch.performScrollTo().assertIsOn().performClick().assertIsOff()
+
+        assertEquals(HandCustomization(cardCountHands = false), customization)
+
+        switch.performClick().assertIsOn()
+        compose.onNode(hasText(string(R.string.multi_card_hands)) and isToggleable()).performClick()
+
+        switch.assertIsNotEnabled().assertIsOn()
+        assertEquals(HandCustomization(multiCardHands = false), customization)
     }
 
     @Test

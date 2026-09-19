@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.ui.theme.disabledContent
 
 // As in Blackjack Ace, rows leave an icon's width at their start, so every title lines up under a page's intro text
 private val IconSpace = 24.dp
@@ -89,14 +90,18 @@ fun ChoiceRow(title: String, value: String, onClick: () -> Unit, modifier: Modif
     SettingItem(title, modifier.clickable(onClick = onClick), supporting = value)
 }
 
-/** A yes or no setting. The whole row toggles, so a screen reader announces one switch named by its title. */
+/**
+ * A yes or no setting. The whole row toggles, so a screen reader announces one switch named by its title. A row that isn't
+ * [enabled] greys out and keeps its value.
+ */
 @Composable
-fun SwitchRow(title: String, summary: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+fun SwitchRow(title: String, summary: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     SettingItem(
         title,
-        modifier.toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange),
+        modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange),
         supporting = summary,
-        trailing = { Switch(checked = checked, onCheckedChange = null) },
+        trailing = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+        enabled = enabled,
     )
 }
 
@@ -165,11 +170,15 @@ private fun SettingItem(
     emphasized: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
     color: Color = Color.Unspecified,
+    enabled: Boolean = true,
 ) {
+    // A list item has no disabled state of its own to apply it
+    val disabled = MaterialTheme.colorScheme.disabledContent
+
     ListItem(
-        headlineContent = { Text(title, color = color, fontWeight = if (emphasized) FontWeight.Bold else null) },
+        headlineContent = { Text(title, color = if (enabled) color else disabled, fontWeight = if (emphasized) FontWeight.Bold else null) },
         modifier = modifier,
-        supportingContent = supporting?.let { text -> { Text(text) } },
+        supportingContent = supporting?.let { text -> { Text(text, color = if (enabled) Color.Unspecified else disabled) } },
         leadingContent = {
             if (icon == null) Spacer(Modifier.size(IconSpace)) else Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(IconSpace))
         },

@@ -15,9 +15,13 @@ val HandFilter.types: List<HandType> get() = table?.let { table -> moves.map { H
 /** Every switch, kind by kind. */
 val HAND_TYPES: List<HandType> = HandFilter.entries.flatMap { it.types }
 
-/** How the trainer deals. A type is dealt unless switched off, so every switch starts on, as does the one for hands of 3 or more cards. */
+/**
+ * How the trainer deals. A type is dealt unless switched off, so every switch starts on, as do the ones for hands of 3 or more
+ * cards and for card-count hands.
+ */
 data class HandCustomization(
     val handsDealt: HandsDealt = HandsDealt.RANDOM,
     val switchedOff: Set<HandType> = emptySet(),
     val multiCardHands: Boolean = true,
+    val cardCountHands: Boolean = true,
 )
