@@ -130,7 +130,7 @@ internal val CHART_GRIDS: Map<RuleSet, Map<ChartTable, String>> = mapOf(
             10-10 S     S     S     S     S     S     S     S     S     S
             A-A   P     P     P     P     P     P     P     P     P     P
         """,
-        ChartTable.RESCUE to """
+        ChartTable.AFTER_DOUBLE_HARD to """
             hand  2     3     4     5     6     7     8     9     10    A
             12    S     S     S     S     S     S     R     R     R     R
             13    S     S     S     S     S     S     R     R     R     R
@@ -188,7 +188,7 @@ internal val CHART_GRIDS: Map<RuleSet, Map<ChartTable, String>> = mapOf(
             10-10 S     S     S     S     S     S     S     S     S     S
             A-A   P     P     P     P     P     P     P     P     P     P
         """,
-        ChartTable.RESCUE to """
+        ChartTable.AFTER_DOUBLE_HARD to """
             hand  2     3     4     5     6     7     8     9     10    A
             12    .     .     .     .     .     .     R     R     R     R
             13    .     .     .     .     .     .     R     R     R     R
