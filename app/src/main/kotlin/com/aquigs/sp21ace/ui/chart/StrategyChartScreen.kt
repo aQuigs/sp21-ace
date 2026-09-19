@@ -42,23 +42,27 @@ import com.aquigs.sp21ace.domain.strategy.legend
 import com.aquigs.sp21ace.ui.components.ChartGrid
 import com.aquigs.sp21ace.ui.components.CodeSquare
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
-import com.aquigs.sp21ace.ui.components.PageTabRow
 import com.aquigs.sp21ace.ui.components.SubPage
+import com.aquigs.sp21ace.ui.components.TabbedPages
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
 @Composable
 fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val chart = StrategyCharts.forRules(rules)
     var chosen by rememberSaveable { mutableStateOf(ChartTable.HARD) }
-    // A tab the rules have since dropped, such as After doubling: soft once redoubling isn't allowed, falls back to the first
-    val selected = chosen.takeIf { it in chart.tables } ?: chart.tables.first()
     val legends = remember(chart) { chart.tables.associateWith(chart::legend) }
 
     SubPage(title = stringResource(R.string.strategy_chart), onBack = onBack, modifier = modifier) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Scrollable, because the tables after Hard, Soft and Pairs have long names
-            PageTabRow(tabs = chart.tables, selected = selected, onSelect = { chosen = it }, title = chart::title, scrollable = true)
-
+        // Scrollable, because the tables after Hard, Soft and Pairs have long names. A tab the rules have since dropped, such as
+        // After doubling: soft once redoubling isn't allowed, falls back to the first.
+        TabbedPages(
+            tabs = chart.tables,
+            selected = chosen,
+            onSelect = { chosen = it },
+            title = chart::title,
+            modifier = Modifier.fillMaxSize().padding(padding),
+            scrollable = true,
+        ) { table ->
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -75,12 +79,12 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
                 )
                 ChartGrid(
                     chart = chart,
-                    table = selected,
-                    hands = chart.hands(selected),
+                    table = table,
+                    hands = chart.hands(table),
                     footerCodes = legends.values.flatten().map { it.symbol },
                     modifier = Modifier.widthIn(max = MaxContentWidth),
                     square = { square, play, codeStyle, squareModifier -> Square(square, play, codeStyle, squareModifier) },
-                    footer = { swatchSize, _, codeStyle -> Legend(legends.getValue(selected), swatchSize, codeStyle) },
+                    footer = { swatchSize, _, codeStyle -> Legend(legends.getValue(table), swatchSize, codeStyle) },
                 )
             }
         }

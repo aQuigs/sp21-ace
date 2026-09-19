@@ -33,6 +33,8 @@ import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.legend
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
+import com.aquigs.sp21ace.ui.swipeToNextTab
+import com.aquigs.sp21ace.ui.swipeToPreviousTab
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
@@ -57,12 +59,12 @@ class StrategyChartScreenTest {
         compose.onNodeWithText(string(title)).performScrollTo().performClick()
     }
 
+    private fun describes(hand: String, upcard: String) = SemanticsMatcher("describes $hand vs $upcard") { node ->
+        node.config.getOrElse(SemanticsProperties.ContentDescription) { emptyList() }.any { it.startsWith("$hand vs $upcard: ") }
+    }
+
     // Many squares print the same code, so a square is found by the hand and upcard its description opens with
-    private fun square(hand: String, upcard: String, code: String) = compose.onNode(
-        SemanticsMatcher("describes $hand vs $upcard") { node ->
-            node.config.getOrElse(SemanticsProperties.ContentDescription) { emptyList() }.any { it.startsWith("$hand vs $upcard: ") }
-        } and hasText(code),
-    )
+    private fun square(hand: String, upcard: String, code: String) = compose.onNode(describes(hand, upcard) and hasText(code))
 
     private fun SemanticsNodeInteraction.centreX(): Float = getBoundsInRoot().let { (it.left + it.right).value / 2 }
 
@@ -97,6 +99,36 @@ class StrategyChartScreenTest {
         openTab(R.string.table_pairs)
 
         square("7-7", "7", "P$").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun aSwipeMovesToTheNextTableAndBack() {
+        showChart()
+
+        compose.swipeToNextTab()
+
+        compose.onNodeWithText(string(R.string.table_soft)).assertIsSelected()
+        compose.onNode(describes("A-7", "2")).assertExists()
+        compose.onNode(describes("14", "4")).assertDoesNotExist()
+
+        compose.swipeToPreviousTab()
+
+        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        compose.onNode(describes("14", "4")).assertExists()
+    }
+
+    @Test
+    fun aSwipeGoesNoFurtherThanTheFirstOrLastTableAndScrollsItsTabIntoView() {
+        rules = RuleSet.H17_REDOUBLE
+        showChart()
+
+        compose.swipeToPreviousTab()
+
+        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+
+        repeat(StrategyCharts.forRules(rules).tables.size) { compose.swipeToNextTab() }
+
+        compose.onNodeWithText(string(R.string.table_after_double_soft)).assertIsSelected().assertIsDisplayed()
     }
 
     @Test
