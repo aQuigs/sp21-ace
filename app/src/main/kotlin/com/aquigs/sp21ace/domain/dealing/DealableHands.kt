@@ -133,7 +133,8 @@ private class Hitting(private val chart: StrategyChart, private val upcard: Upca
     }
 
     fun hands(): Map<MultiCardHand, List<Dealable>> {
-        val hands = HashMap<MultiCardHand, MutableList<Dealable>>()
+        // In the order reached rather than by hash, which an enum's changes from run to run, so a seeded Random deals the same hands every run
+        val hands = LinkedHashMap<MultiCardHand, MutableList<Dealable>>()
         for ((end, hits) in hitsInto) {
             val hand = MultiCardHand(end.total.row, upcard, move(end.total, end.cards))
             hands.getOrPut(hand) { mutableListOf() } += End(end, hand.type, hits.total)

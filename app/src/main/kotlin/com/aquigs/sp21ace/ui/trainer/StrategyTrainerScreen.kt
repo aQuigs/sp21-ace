@@ -68,6 +68,7 @@ import com.aquigs.sp21ace.ui.components.appBarColors
 import com.aquigs.sp21ace.ui.components.autoSizeDownTo
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
+import com.aquigs.sp21ace.ui.theme.disabledContent
 
 private val ButtonSize = 64.dp
 
@@ -256,8 +257,8 @@ private fun Controls(
 @Composable
 private fun AnswerButtons(moves: Set<Move>, onAnswer: (Move) -> Unit, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
-    // Material's colour for a disabled label, which its outlined button doesn't give its border
-    val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    // An outlined button greys out its label but not its border
+    val disabledColor = MaterialTheme.colorScheme.disabledContent
 
     ProvideDefaultFontScale {
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {

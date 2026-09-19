@@ -78,6 +78,25 @@ class HandAccuracyTest {
     }
 
     @Test
+    fun theCardCountSwitchCountsAnswersOf3OrMoreCardsOnSquaresWhoseMoveTheCardCountDecides() {
+        // When the dealer stands on soft 17, hard 14 vs 4 is S4*, hard 10 vs 8 D3, hard 17 vs A RH and hard 16 vs A a plain hit,
+        // but when the dealer hits soft 17, hard 16 vs A is RH too
+        val history = listOf(
+            answer(TrainerHand(cards("5c 4d 5h"), card("4s")), right = true, Move.STAND, rules = RuleSet.S17),
+            answer(TrainerHand(cards("2c 3d 4h 5s"), card("4s")), right = false, Move.HIT, rules = RuleSet.S17),
+            answer(TrainerHand(cards("2c 3d 5h"), card("8s")), right = true, Move.HIT, rules = RuleSet.S17),
+            answer(TrainerHand(cards("9c 4d 4h"), card("As")), right = true, Move.HIT, rules = RuleSet.S17),
+            answer(TrainerHand(cards("9c 4d 3s"), card("Ad")), right = false, Move.HIT, rules = RuleSet.S17),
+            answer(TrainerHand(cards("9h 4c 3d"), card("Ac")), right = false, Move.HIT, rules = RuleSet.H17),
+            // Hard 11 vs 5 is D5, but two cards make no card-count hand, and a doubled hand is read from the after-doubling tables
+            answer(TrainerHand(cards("6c 5d"), card("5s")), right = false, Move.DOUBLE, rules = RuleSet.S17),
+            answer(TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true), right = false, rules = RuleSet.S17),
+        )
+
+        assertEquals(Tally(correct = 3, incorrect = 2), history.cardCountTally())
+    }
+
+    @Test
     fun everyAnswerEverGivenCountsForTheTypeOfHandItsGradeCalledFor() {
         // When the dealer stands on soft 17, hard 16 vs A is a hit, hard 18 vs 6 a stand and a pair of 8s vs 6 a split
         val sixteenVsAce = TrainerHand(cards("9c 7d"), card("As"))

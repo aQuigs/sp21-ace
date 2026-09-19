@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -157,6 +158,9 @@ internal val DarkSp21AceColors = Sp21AceColors(
     heatmapMiddle = Color(0xFF57534C),
     heatmapReach = 1f,
 )
+
+/** Material's colour for disabled content, for the parts its components leave to us, such as a list item's text. */
+val ColorScheme.disabledContent: Color get() = onSurface.copy(alpha = 0.38f)
 
 private val LocalSp21AceColors = staticCompositionLocalOf { LightSp21AceColors }
 

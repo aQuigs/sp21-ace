@@ -7,8 +7,11 @@ import com.aquigs.sp21ace.domain.history.TallyCounter
 import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
+import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.correctMove
+import com.aquigs.sp21ace.domain.strategy.countsCards
+import com.aquigs.sp21ace.domain.strategy.play
 import com.aquigs.sp21ace.domain.strategy.totalRow
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
@@ -69,11 +72,15 @@ fun List<PracticeAnswer>.tallyByHandType(): Map<HandType, Tally> {
 }
 
 /** Every answer ever given to a hand of 3 or more cards not yet doubled, for their Customize Hands switch. */
-fun List<PracticeAnswer>.multiCardTally(): Tally {
-    val answers = filter { it.hand.player.size > 2 && !it.hand.doubled }
-    val correct = answers.count { it.isCorrect }
-    return Tally(correct = correct, incorrect = answers.size - correct)
-}
+fun List<PracticeAnswer>.multiCardTally(): Tally = filter { it.isMultiCard }.tally()
+
+/** Every answer ever given to a card-count hand, told apart by the rules that graded it as the other switches' answers are, for its switch. */
+fun List<PracticeAnswer>.cardCountTally(): Tally =
+    filter { it.isMultiCard && StrategyCharts.forRules(it.ruleSet).play(it.square.row, it.square.upcard).countsCards }.tally()
+
+private val PracticeAnswer.isMultiCard: Boolean get() = hand.player.size > 2 && !hand.doubled
+
+private fun List<PracticeAnswer>.tally(): Tally = count { it.isCorrect }.let { Tally(correct = it, incorrect = size - it) }
 
 /** How heavily a hand weighs under Prioritize worse hands: the inverse of its accuracy, with no answers counting as 50%. */
 internal fun weight(tally: Tally?): Double {
