@@ -4,7 +4,6 @@ import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.strategy.ChartTable.AFTER_DOUBLE_HARD
 import com.aquigs.sp21ace.domain.strategy.ChartTable.HARD
 import com.aquigs.sp21ace.domain.strategy.ChartTable.PAIRS
-import com.aquigs.sp21ace.domain.strategy.ChartTable.RESCUE
 import com.aquigs.sp21ace.domain.strategy.ChartTable.SOFT
 import com.aquigs.sp21ace.domain.strategy.RuleSet.H17
 import com.aquigs.sp21ace.domain.strategy.RuleSet.H17_REDOUBLE
@@ -79,8 +78,8 @@ class WordingTest {
     fun wordsTheSquaresOfAHandAlreadyDoubledBlankOnesIncluded() {
         assertEquals("Redouble", squareWords(H17_REDOUBLE, AFTER_DOUBLE_HARD, "11", Upcard.TWO))
         assertEquals("Rescue", squareWords(H17_REDOUBLE, AFTER_DOUBLE_HARD, "16", Upcard.EIGHT))
-        assertEquals("Rescue", squareWords(S17, RESCUE, "16", Upcard.TEN))
-        assertEquals("Stand, no rescue", squareWords(S17, RESCUE, "12", Upcard.TWO))
+        assertEquals("Rescue", squareWords(S17, AFTER_DOUBLE_HARD, "16", Upcard.TEN))
+        assertEquals("Stand, no rescue", squareWords(S17, AFTER_DOUBLE_HARD, "12", Upcard.TWO))
     }
 
     @Test
@@ -114,7 +113,7 @@ class WordingTest {
         )
         assertEquals(
             listOf(LegendEntry("R", "Rescue", Action.SURRENDER), LegendEntry("", "Stand, no rescue")),
-            StrategyCharts.forRules(S17).legend(RESCUE),
+            StrategyCharts.forRules(S17).legend(AFTER_DOUBLE_HARD),
         )
     }
 

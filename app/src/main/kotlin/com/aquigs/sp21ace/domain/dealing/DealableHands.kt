@@ -125,7 +125,7 @@ private fun StrategyChart.hitting(upcard: Upcard, starts: List<Dealable>): Map<H
  */
 private fun StrategyChart.doubling(upcard: Upcard, starts: List<Dealable>): Map<HandKey, List<Dealable>> =
     Drawing(starts).hands { end ->
-        DoubledHand(end.total.afterDoublingRow, upcard, correctMoveAfterDoubling(end.total, upcard)).takeIf { doubledRow(end.total) != null }
+        doubledRow(end.total)?.let { DoubledHand(it, upcard, correctMoveAfterDoubling(end.total, upcard)) }
     }
 
 /** A total a hand reaches, and how many cards were drawn to it after the hand it started from. */

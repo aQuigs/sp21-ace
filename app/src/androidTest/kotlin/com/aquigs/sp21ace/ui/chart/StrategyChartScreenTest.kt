@@ -126,7 +126,7 @@ class StrategyChartScreenTest {
     }
 
     @Test
-    fun redoublingTradesTheRescueTabForTheAfterDoublingTables() {
+    fun withRedoublingTheRescueTabIsAfterDoublingHardBesideAfterDoublingSoft() {
         rules = RuleSet.H17_REDOUBLE
         showChart()
 
@@ -148,12 +148,24 @@ class StrategyChartScreenTest {
 
     @Test
     fun aTabTheNewRulesDontHaveFallsBackToHard() {
+        rules = RuleSet.H17_REDOUBLE
+        showChart()
+        openTab(R.string.table_after_double_soft)
+
+        rules = RuleSet.S17
+
+        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+    }
+
+    @Test
+    fun doubleDownRescueStaysOpenOnceRedoublingIsAllowedAsTheSameHandsAfterDoublingHard() {
+        rules = RuleSet.H17
         showChart()
         openTab(R.string.table_rescue)
 
         rules = RuleSet.H17_REDOUBLE
 
-        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        compose.onNodeWithText(string(R.string.table_after_double_hard)).assertIsSelected()
     }
 
     @Test

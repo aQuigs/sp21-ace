@@ -39,7 +39,6 @@ import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
-import com.aquigs.sp21ace.domain.strategy.printedTable
 import com.aquigs.sp21ace.ui.chart.title
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.PageTabRow
@@ -67,7 +66,7 @@ fun AccuracyScreen(
 ) {
     val chart = StrategyCharts.forRules(rules)
     // A tab for every table the chart prints, as the chart has, and All
-    val tabs = HandFilter.entries.filter { filter -> filter.table?.let { chart.printedTable(it) != null } ?: true }
+    val tabs = HandFilter.entries.filter { it.table == null || it.table in chart.tables }
     var chosen by rememberSaveable { mutableStateOf(HandFilter.HARD) }
     // A tab chosen under rules that printed its table, such as After doubling: soft with redoubling, is gone once they change
     val hands = chosen.takeIf { it in tabs } ?: HandFilter.HARD
@@ -93,7 +92,7 @@ fun AccuracyScreen(
                 tabs = tabs,
                 selected = hands,
                 onSelect = { chosen = it },
-                title = { filter -> filter.table?.let { chart.printedTable(it)?.title } ?: R.string.all_hands },
+                title = { filter -> filter.table?.let(chart::title) ?: R.string.all_hands },
                 scrollable = true,
             )
 

@@ -39,17 +39,23 @@ class CorrectMoveTest {
     }
 
     @Test
-    fun rulesWithoutRedoublingPrintDoubledHardHandsInDoubleDownRescueAndNoSoftOnes() {
+    fun rulesWithoutRedoublingPrintDoubledHardHandsAsDoubleDownRescueWithNoRedoubleAndNoSoftOnes() {
         val redouble = StrategyCharts.forRules(RuleSet.H17_REDOUBLE)
 
-        RuleSet.entries.forEach { assertEquals("$it", it.redoubling, StrategyCharts.forRules(it).redoubling) }
-        assertEquals(ChartTable.RESCUE, h17.printedTable(ChartTable.AFTER_DOUBLE_HARD))
-        assertNull(s17.printedTable(ChartTable.AFTER_DOUBLE_SOFT))
-        assertEquals(ChartTable.AFTER_DOUBLE_HARD, redouble.printedTable(ChartTable.AFTER_DOUBLE_HARD))
-        assertEquals(ChartTable.HARD, h17.printedTable(ChartTable.HARD))
+        for (rules in RuleSet.entries) {
+            val chart = StrategyCharts.forRules(rules)
+            val afterDoubling = chart.tables.filter { it.afterDoubling }.flatMap { table ->
+                chart.hands(table).flatMap { hand -> Upcard.entries.mapNotNull { chart.play(table, hand, it)?.action } }
+            }
+
+            assertEquals("$rules", rules.redoubling, Action.DOUBLE in afterDoubling)
+            assertEquals("$rules", rules.redoubling, ChartTable.AFTER_DOUBLE_SOFT in chart.tables)
+            assertTrue("$rules", ChartTable.AFTER_DOUBLE_HARD in chart.tables)
+        }
 
         // Double Down Rescue's rows are hard 12 to 17
-        assertEquals(ChartRow(ChartTable.RESCUE, "12"), h17.doubledRow(HandTotal(12, soft = false)))
+        assertEquals((12..17).map { "$it" }, h17.hands(ChartTable.AFTER_DOUBLE_HARD))
+        assertEquals(ChartRow(ChartTable.AFTER_DOUBLE_HARD, "12"), h17.doubledRow(HandTotal(12, soft = false)))
         assertNull(h17.doubledRow(HandTotal(18, soft = false)))
         assertNull(s17.doubledRow(HandTotal(18, soft = true)))
         assertEquals(ChartRow(ChartTable.AFTER_DOUBLE_SOFT, "A-7"), redouble.doubledRow(HandTotal(18, soft = true)))
@@ -177,7 +183,7 @@ class CorrectMoveTest {
             Fixtures.doubledTotals.flatMap { total ->
                 val hand = if (total.soft) "A-${total.value - 11}" else "${total.value}"
                 upcards.mapNotNull { upcard ->
-                    val square = listOf(if (!ruleSet.redoubling) "RESCUE" else if (total.soft) "AFTER_DOUBLE_SOFT" else "AFTER_DOUBLE_HARD", hand, label(upcard.rank.value))
+                    val square = listOf(if (total.soft) "AFTER_DOUBLE_SOFT" else "AFTER_DOUBLE_HARD", hand, label(upcard.rank.value))
                     // Double Down Rescue leaves a square blank, and prints no row, where the doubled hand stands
                     val code = if (ruleSet.redoubling) codes.getValue(square) else codes[square] ?: "S"
                     val expected = when (code.first()) {

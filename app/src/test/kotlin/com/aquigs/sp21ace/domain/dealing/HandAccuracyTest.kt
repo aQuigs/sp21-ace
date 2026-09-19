@@ -45,8 +45,7 @@ class HandAccuracyTest {
 
     @Test
     fun aDoubledHandIsItsTotalAfterDoublingAgainstTheUpcardAndTheMoveTheChartCallsForHoweverManyCards() {
-        // Hard 14 vs 9 once doubled is a rescue whatever the rules, filed under After doubling: hard even where Double Down
-        // Rescue prints it
+        // Hard 14 vs 9 once doubled is a rescue whatever the rules
         val rescue = DoubledHand(ChartRow(ChartTable.AFTER_DOUBLE_HARD, "14"), Upcard.NINE, Move.RESCUE)
 
         assertEquals(rescue, TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true).key(s17))
