@@ -22,6 +22,8 @@ import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.ui.swipeToNextTab
+import com.aquigs.sp21ace.ui.swipeToPreviousTab
 import com.aquigs.sp21ace.ui.theme.HeatmapColors
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
@@ -157,6 +159,24 @@ class AccuracyScreenTest {
 
         tap(R.string.all_hands).assertIsSelected()
         assertEquals(figures(R.string.overall, "50.0%", correct = 1, incorrect = 1), accuracyCard(R.string.overall))
+    }
+
+    @Test
+    fun aSwipeMovesBetweenTheTabsAndKeepsThePeriod() {
+        showAccuracy(listOf(answer(right = true), answer(right = false, daysAgo = 3, hand = softSeventeenVsKing)))
+        tap(R.string.week)
+
+        compose.swipeToNextTab()
+
+        compose.onNodeWithText(string(R.string.table_soft)).assertIsSelected()
+        compose.onNodeWithText(string(R.string.week)).assertIsSelected()
+        assertEquals(figures(R.string.overall, "0.0%", correct = 0, incorrect = 1), accuracyCard(R.string.overall))
+
+        compose.swipeToPreviousTab()
+
+        compose.onNodeWithText(string(R.string.table_hard)).assertIsSelected()
+        compose.onNodeWithText(string(R.string.week)).assertIsSelected()
+        assertEquals(figures(R.string.overall, "100.0%", correct = 1, incorrect = 0), accuracyCard(R.string.overall))
     }
 
     @Test
