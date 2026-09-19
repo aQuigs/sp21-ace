@@ -390,6 +390,23 @@ class StrategyTrainerScreenTest {
     }
 
     @Test
+    fun atFullSizeEachLabelOfADoubledHandStops7dpShortOfTheCurveOfItsRingAsDoubleDoes() {
+        showTrainer(Modifier.size(411.dp, 880.dp), first = doubledSixteenVsKing, rules = RuleSet.H17_REDOUBLE)
+
+        for (move in listOf(Move.HIT, Move.STAND, Move.REDOUBLE, Move.SPLIT, Move.RESCUE)) {
+            val name = string(move.displayName)
+            assertFullSize(name)
+            val circle = bounds(name)
+            val label = textsInside(name, 1).single()
+            val line = label.textLayout()
+            val (left, right) = with(compose.density) { (label.boundsInRoot.left + line.getLineLeft(0)).toDp() to (label.boundsInRoot.left + line.getLineRight(0)).toDp() }
+
+            assertTrue("$name starts ${left - circle.left} in", left - circle.left >= 6.5.dp)
+            assertTrue("$name ends ${circle.right - right} in", circle.right - right >= 6.5.dp)
+        }
+    }
+
+    @Test
     fun atTheDefaultFontSizeTheButtonsAndTheTileAreFullSizeWithTheirLabelsAtTheirLargestAndAtDoubleItTheyLookTheSame() {
         var fontScale by mutableFloatStateOf(1f)
         // Tall enough that five full-size buttons and the tile fit above a recap grown by the double font. The scale is read in

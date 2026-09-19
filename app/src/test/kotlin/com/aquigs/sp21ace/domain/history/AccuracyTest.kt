@@ -1,6 +1,5 @@
 package com.aquigs.sp21ace.domain.history
 
-import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
@@ -9,6 +8,7 @@ import com.aquigs.sp21ace.domain.cards.spanishShoe
 import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.ChartSquare
 import com.aquigs.sp21ace.domain.strategy.ChartTable
+import com.aquigs.sp21ace.domain.strategy.Fixtures
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
@@ -285,11 +285,9 @@ class AccuracyTest {
         // The same card twice included, so the suited 7-7 bonus exception is there too
         val hands = deck.flatMap { first -> deck.map { listOf(first, it) } }.filterNot { it.isBlackjack() }
         val upcards = deck.filter { it.suit == Suit.SPADES }
-        // Every total a doubled hand can have, from hard 6 and soft 13 up
-        val doubled = (6..20).map { HandTotal(it, soft = false) } + (13..20).map { HandTotal(it, soft = true) }
         val called = RuleSet.entries.map(StrategyCharts::forRules).flatMap { chart ->
             hands.flatMap { hand -> upcards.map { upcard -> chartRow(hand).table to chart.correctMove(hand, upcard) } } +
-                doubled.flatMap { total -> upcards.map { total.afterDoublingRow.table to chart.correctMoveAfterDoubling(total, it.upcard) } }
+                Fixtures.doubledTotals.flatMap { total -> upcards.map { total.afterDoublingRow.table to chart.correctMoveAfterDoubling(total, it.upcard) } }
         }.groupBy({ it.first }, { it.second })
 
         for (tab in HandFilter.entries) {

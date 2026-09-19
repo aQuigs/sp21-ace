@@ -269,8 +269,11 @@ class HandPickerTest {
 
             // The only pair to surrender is 8-8 against an ace, which splits when the dealer stands on soft 17, and without
             // redoubling no doubled hand redoubles and none is soft, since Double Down Rescue prints only hard rows
-            val withoutRedoubling = setOf(Move.REDOUBLE to ChartTable.AFTER_DOUBLE_HARD, Move.REDOUBLE to ChartTable.AFTER_DOUBLE_SOFT, Move.STAND to ChartTable.AFTER_DOUBLE_SOFT)
-                .mapTo(HashSet()) { (move, table) -> HandType(table, move) }
+            val withoutRedoubling = setOf(
+                HandType(ChartTable.AFTER_DOUBLE_HARD, Move.REDOUBLE),
+                HandType(ChartTable.AFTER_DOUBLE_SOFT, Move.REDOUBLE),
+                HandType(ChartTable.AFTER_DOUBLE_SOFT, Move.STAND),
+            )
             val impossible = when (rules) {
                 RuleSet.H17_REDOUBLE -> emptySet()
                 RuleSet.H17 -> withoutRedoubling

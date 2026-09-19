@@ -63,25 +63,24 @@ internal class DealableHand(val player: List<Card>, val upcard: Upcard, override
     override fun deal(random: Random): TrainerHand = TrainerHand(player.shuffled(random), drawCard(upcard, player, random))
 }
 
-/** Every hand the trainer can deal under a rule set, as Prioritize worse hands tells them apart, each with its ways to deal. */
-internal class DealableHands(val hands: Map<HandKey, List<Dealable>>) {
+/**
+ * Every hand the trainer can deal under a rule set, as Prioritize worse hands tells them apart, each with its ways to deal, and
+ * [withoutHits] the ones a player reaches without hitting, a doubled hand only from two cards, for when hands of 3 or more cards
+ * are switched off.
+ */
+internal class DealableHands(val hands: Map<HandKey, List<Dealable>>, val withoutHits: Map<HandKey, List<Dealable>>) {
     val rows: Set<ChartRow> = PLAYER_CARDS.mapTo(HashSet(), ::chartRow) + hands.keys.filterIsInstance<TotalHand>().map { it.row }
 }
 
-private val DEALABLE: Map<Pair<RuleSet, Boolean>, Lazy<DealableHands>> = RuleSet.entries.flatMap { rules ->
-    listOf(true, false).map { multiCardHands -> (rules to multiCardHands) to lazy { StrategyCharts.forRules(rules).dealableHands(multiCardHands) } }
-}.toMap()
+private val DEALABLE: Map<RuleSet, Lazy<DealableHands>> = RuleSet.entries.associateWith { rules -> lazy { StrategyCharts.forRules(rules).dealableHands() } }
 
-/**
- * Every hand the trainer can deal under [rules], or without [multiCardHands] only the ones a player reaches without hitting, so
- * a doubled hand only from two cards. Built on first use, and only for the rules and switch in play.
- */
-internal fun dealableHands(rules: RuleSet, multiCardHands: Boolean = true): DealableHands = DEALABLE.getValue(rules to multiCardHands).value
+/** Every hand the trainer can deal under [rules]. Built on first use, and only for the rules in play. */
+internal fun dealableHands(rules: RuleSet): DealableHands = DEALABLE.getValue(rules).value
 
 /** The chart rows of every hand the trainer deals under [rules], read from the hands it deals, so the heatmap and the deal can't disagree. */
 fun dealtRows(rules: RuleSet): Set<ChartRow> = dealableHands(rules).rows
 
-private fun StrategyChart.dealableHands(multiCardHands: Boolean): DealableHands {
+private fun StrategyChart.dealableHands(): DealableHands {
     val twoCard = LinkedHashMap<HandValues, MutableList<DealableHand>>()
 
     // The table once per two cards, since the upcard doesn't change it
@@ -95,23 +94,27 @@ private fun StrategyChart.dealableHands(multiCardHands: Boolean): DealableHands 
         }
     }
 
-    return DealableHands(
-        buildMap {
-            putAll(twoCard)
-            twoCard.values.flatten().groupBy { it.upcard }.forEach { (upcard, twoCards) ->
-                val multiCard = if (multiCardHands) hitting(upcard, twoCards.filter { it.type.move == Move.HIT }) else emptyMap()
-                putAll(multiCard)
-                putAll(doubling(upcard, (twoCards + multiCard.values.flatten()).filter { it.type.move == Move.DOUBLE }))
-            }
-        },
-    )
+    val hands = LinkedHashMap<HandKey, List<Dealable>>(twoCard)
+    val withoutHits = LinkedHashMap<HandKey, List<Dealable>>(twoCard)
+    twoCard.values.flatten().groupBy { it.upcard }.forEach { (upcard, twoCards) ->
+        val multiCard = hitting(upcard, twoCards.filter { it.type.move == Move.HIT })
+        val doubledFromTwo = doubling(upcard, twoCards.filter { it.type.move == Move.DOUBLE })
+        hands += multiCard
+        withoutHits += doubledFromTwo
+        // A doubled hand reached from two cards and after hits alike, with the ways from each
+        for (doubled in listOf(doubledFromTwo, doubling(upcard, multiCard.values.flatten().filter { it.type.move == Move.DOUBLE }))) {
+            for ((hand, ways) in doubled) hands.merge(hand, ways) { before, more -> before + more }
+        }
+    }
+
+    return DealableHands(hands, withoutHits)
 }
 
 /** The hands of 3 or more cards a player reaches against [upcard] by hitting where the chart says hit, from the two-card hands in [starts] the chart hits. */
 private fun StrategyChart.hitting(upcard: Upcard, starts: List<Dealable>): Map<HandKey, List<Dealable>> {
     fun move(end: Reached) = play(end.total.row, upcard).move(cards = end.draws + 2)
 
-    return Drawing(starts, doubles = false) { move(it) == Move.HIT }.hands { MultiCardHand(it.total.row, upcard, move(it)) }
+    return Drawing(starts) { move(it) == Move.HIT }.hands { MultiCardHand(it.total.row, upcard, move(it)) }
 }
 
 /**
@@ -121,8 +124,8 @@ private fun StrategyChart.hitting(upcard: Upcard, starts: List<Dealable>): Map<H
  * worked out for one double, can't answer a hand with more at stake.
  */
 private fun StrategyChart.doubling(upcard: Upcard, starts: List<Dealable>): Map<HandKey, List<Dealable>> =
-    Drawing(starts, doubles = true) { false }.hands { end ->
-        doubledRow(end.total)?.let { DoubledHand(end.total.afterDoublingRow, upcard, correctMoveAfterDoubling(end.total, upcard)) }
+    Drawing(starts).hands { end ->
+        DoubledHand(end.total.afterDoublingRow, upcard, correctMoveAfterDoubling(end.total, upcard)).takeIf { doubledRow(end.total) != null }
     }
 
 /** A total a hand reaches, and how many cards were drawn to it after the hand it started from. */
@@ -132,12 +135,12 @@ private data class Reached(val total: HandTotal, val draws: Int)
 private data class Draw(val from: HandTotal, val value: Upcard)
 
 /**
- * The totals a player reaches drawing a card at a time from the hands in [starts], drawing again wherever [drawsAgain], each
- * card a hit or, with [doubles], a double. Only the starting cards and the upcard come out of the shoe. Each card drawn after
+ * The totals a player reaches drawing a card at a time from the hands in [starts], drawing again wherever [drawsAgain], as hits
+ * do, where a double draws its one card. Only the starting cards and the upcard come out of the shoe. Each card drawn after
  * them is drawn as from a full shoe: the few cards gone by then shift its chances by a shade, and counting them out would take a
  * total for every set of cards drawn rather than one for every total.
  */
-private class Drawing(starts: List<Dealable>, private val doubles: Boolean, drawsAgain: (Reached) -> Boolean) {
+private class Drawing(starts: List<Dealable>, drawsAgain: (Reached) -> Boolean = { false }) {
     private val startsByTotal: Map<HandTotal, Weighted<Dealable>> = starts.groupBy { it.total }.mapValues { (_, hands) -> Weighted(hands) { it.chance } }
 
     // Every total reached, and the draws reaching it, each weighed by how often a round comes that way
@@ -189,7 +192,7 @@ private class Drawing(starts: List<Dealable>, private val doubles: Boolean, draw
 
             val start = startsByTotal.getValue(at.total).pick(random).deal(random)
             val hand = drawn.fold(start) { hand, value -> hand.copy(player = hand.player + drawCard(value, hand.player + hand.upcard, random)) }
-            return if (doubles) hand.copy(doubled = true) else hand
+            return if (type.table.afterDoubling) hand.copy(doubled = true) else hand
         }
     }
 }

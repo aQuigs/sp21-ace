@@ -32,7 +32,7 @@ class HandPicker(rules: RuleSet, private val customization: HandCustomization) {
 
     private val chart = StrategyCharts.forRules(rules)
 
-    private val groups: List<Group> = dealableHands(rules, customization.multiCardHands).hands.let { all ->
+    private val groups: List<Group> = dealableHands(rules).let { if (customization.multiCardHands) it.hands else it.withoutHits }.let { all ->
         // A hand carries the move it's graded with, so every way to deal it is graded alike
         val possible = all.values.mapTo(HashSet()) { it.first().type }
         val dealt = (possible - customization.switchedOff).ifEmpty { possible }

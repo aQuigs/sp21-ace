@@ -43,6 +43,8 @@ class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard,
 
     fun hands(table: ChartTable): List<String> = squares[table]?.keys?.toList().orEmpty()
 
+    fun printsRow(table: ChartTable, hand: String): Boolean = squares[table]?.containsKey(hand) == true
+
     fun play(table: ChartTable, hand: String, upcard: Upcard): Play? = squares[table]?.get(hand)?.get(upcard)
 
     companion object {

@@ -127,7 +127,7 @@ fun StrategyTrainerScreen(
             Controls(
                 showChartTile = settings.chartButton,
                 alignment = if (buttonsOnLeft) AbsoluteAlignment.Left else AbsoluteAlignment.Right,
-                doubled = state.hand.doubled,
+                buttons = if (state.hand.doubled) AFTER_DOUBLING_BUTTONS else BUTTONS,
                 moves = state.hand.moves(redoubling),
                 onOpenChart = onOpenChart,
                 // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
@@ -250,7 +250,7 @@ private fun HandArea(label: String, total: String?, modifier: Modifier = Modifie
 private fun Controls(
     showChartTile: Boolean,
     alignment: Alignment.Horizontal,
-    doubled: Boolean,
+    buttons: List<Move>,
     moves: Set<Move>,
     onOpenChart: () -> Unit,
     onAnswer: (Move) -> Unit,
@@ -259,7 +259,7 @@ private fun Controls(
         if (showChartTile) ChartTile(onClick = onOpenChart, modifier = Modifier.size(ButtonSize))
         // Holds the buttons at the bottom whether or not the tile shows
         Spacer(Modifier.weight(1f))
-        AnswerButtons(buttons = if (doubled) AFTER_DOUBLING_BUTTONS else BUTTONS, moves = moves, onAnswer = onAnswer, modifier = Modifier.padding(top = 8.dp))
+        AnswerButtons(buttons = buttons, moves = moves, onAnswer = onAnswer, modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -299,9 +299,9 @@ private fun AnswerButtons(buttons: List<Move>, moves: Set<Move>, onAnswer: (Move
                     // The capitals and SURR. are for the eye; a screen reader says the move's name
                     Text(
                         text = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
-                        // The longest label, whose end letters would touch the curve of a full-size ring, so it stops short there as
-                        // though padded 8dp. The smallest circles have no room to spare for that.
-                        modifier = if (move == Move.REDOUBLE) Modifier.widthIn(max = ButtonSize - 16.dp) else Modifier,
+                        // A label as wide as a full-size circle allows touches the curve of its ring with its end letters, so it stops
+                        // 7dp short, as DOUBLE does at its largest. The smallest circles have no room to spare for that.
+                        modifier = Modifier.widthIn(max = ButtonSize - 14.dp),
                         fontWeight = FontWeight.Bold,
                         // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen, or REDOUBLE, needs less
                         autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = 13.sp),

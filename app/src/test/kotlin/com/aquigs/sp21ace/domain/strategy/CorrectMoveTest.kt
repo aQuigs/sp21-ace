@@ -170,14 +170,11 @@ class CorrectMoveTest {
 
     @Test
     fun everyAnswerToADoubledHandFollowsItsFixtureSquareReadByTheChartLegend() {
-        // Hard 6 and soft 13 are the lowest a double reaches
-        val totals = (6..20).map { HandTotal(it, soft = false) } + (13..20).map { HandTotal(it, soft = true) }
-
         val mismatches = RuleSet.entries.flatMap { ruleSet ->
             val chart = StrategyCharts.forRules(ruleSet)
             val codes = fixtureCodes(ruleSet)
 
-            totals.flatMap { total ->
+            Fixtures.doubledTotals.flatMap { total ->
                 val hand = if (total.soft) "A-${total.value - 11}" else "${total.value}"
                 upcards.mapNotNull { upcard ->
                     val square = listOf(if (!ruleSet.redoubling) "RESCUE" else if (total.soft) "AFTER_DOUBLE_SOFT" else "AFTER_DOUBLE_HARD", hand, label(upcard.rank.value))

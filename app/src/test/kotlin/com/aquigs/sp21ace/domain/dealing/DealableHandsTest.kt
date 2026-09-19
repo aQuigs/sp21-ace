@@ -31,25 +31,38 @@ class DealableHandsTest {
 
     private fun multiCardHands(rules: RuleSet) = dealableHands(rules).hands.filterKeys { it is MultiCardHand }
 
-    private fun doubledHands(rules: RuleSet) = dealableHands(rules).hands.filterKeys { it is DoubledHand }
+    private fun doubledHands(rules: RuleSet, multiCardHands: Boolean = true) =
+        dealableHands(rules).let { if (multiCardHands) it.hands else it.withoutHits }.filterKeys { it is DoubledHand }
 
     private fun waysToDeal(player: String, upcard: Upcard) = s17Hands.single { it.player.toSet() == cards(player).toSet() && it.upcard == upcard }.ways
 
     // A way a round reaches a hand of 3 or more cards: the hand, its first two card values and how many cards it holds
     private data class Way(val hand: MultiCardHand, val start: List<Upcard>, val cards: Int)
 
+    private val oneOfEachValue = Rank.entries.distinctBy { it.value }
+
+    // A card of each value as a six-deck shoe of 288 draws it, the tens four ranks of 24
+    private fun drawChance(rank: Rank) = (if (rank.value == 10) 72 else 24) / 288.0
+
+    // Each two-card hand the chart plays with [moves], dealt against a club of its upcard's value, with how often a round deals it
+    private fun starts(rules: RuleSet, vararg moves: Move): List<Pair<TrainerHand, Double>> {
+        val upcards = oneOfEachValue.map { Card(it, Suit.CLUBS) }.associateBy { it.upcard }
+        return twoCardHands(rules).filter { moves.isEmpty() || it.type.move in moves }.groupBy { handValues(it.player, it.upcard, it.type.move) }.values.map { hands ->
+            TrainerHand(hands.first().player, upcards.getValue(hands.first().upcard)) to hands.sumOf { it.ways } / (288.0 * 287 * 286)
+        }
+    }
+
     // How often a round reaches each way, walking every card a player following the chart hits to, each drawn as from a full shoe
     private fun reached(rules: RuleSet): Map<Way, Double> {
         val chart = StrategyCharts.forRules(rules)
         val reached = HashMap<Way, Double>()
-        val oneOfEachValue = Rank.entries.distinctBy { it.value }
 
         fun hit(player: List<Card>, upcard: Card, chance: Double) {
             for (rank in oneOfEachValue) {
                 val grown = player + Card(rank, Suit.CLUBS)
                 if (grown.total().value >= 21) continue
 
-                val grownChance = chance * (if (rank.value == 10) 72 else 24) / 288.0
+                val grownChance = chance * drawChance(rank)
                 val move = chart.correctMove(grown, upcard)
                 val way = Way(MultiCardHand(totalRow(grown), upcard.upcard, move), player.take(2).map { it.upcard }.sorted(), grown.size)
                 reached.merge(way, grownChance, Double::plus)
@@ -57,12 +70,7 @@ class DealableHandsTest {
             }
         }
 
-        val upcards = oneOfEachValue.map { Card(it, Suit.CLUBS) }.associateBy { it.upcard }
-        val hitting = twoCardHands(rules).filter { it.type.move == Move.HIT }
-        for (hands in hitting.groupBy { handValues(it.player, it.upcard, it.type.move) }.values) {
-            hit(hands.first().player, upcards.getValue(hands.first().upcard), hands.sumOf { it.ways } / (288.0 * 287 * 286))
-        }
-
+        for ((hand, chance) in starts(rules, Move.HIT)) hit(hand.player, hand.upcard, chance)
         return reached
     }
 
@@ -71,11 +79,10 @@ class DealableHandsTest {
     private fun reachedDoubled(rules: RuleSet, hits: Boolean): Map<HandKey, Double> {
         val chart = StrategyCharts.forRules(rules)
         val reached = HashMap<HandKey, Double>()
-        val oneOfEachValue = Rank.entries.distinctBy { it.value }
 
         fun play(hand: TrainerHand, chance: Double) {
             if (hand.doubled) {
-                if (chart.doubledRow(hand.player.total()) != null) reached.merge(DoubledHand(hand.row, hand.upcard.upcard, chart.correctMove(hand)), chance, Double::plus)
+                if (chart.doubledRow(hand.player.total()) != null) reached.merge(hand.key(chart), chance, Double::plus)
                 return
             }
 
@@ -83,15 +90,11 @@ class DealableHandsTest {
             if (move != Move.DOUBLE && !(hits && move == Move.HIT)) return
             for (rank in oneOfEachValue) {
                 val grown = hand.copy(player = hand.player + Card(rank, Suit.CLUBS), doubled = move == Move.DOUBLE)
-                if (grown.player.total().value < 21) play(grown, chance * (if (rank.value == 10) 72 else 24) / 288.0)
+                if (grown.player.total().value < 21) play(grown, chance * drawChance(rank))
             }
         }
 
-        val upcards = oneOfEachValue.map { Card(it, Suit.CLUBS) }.associateBy { it.upcard }
-        for (hands in twoCardHands(rules).groupBy { handValues(it.player, it.upcard, it.type.move) }.values) {
-            play(TrainerHand(hands.first().player, upcards.getValue(hands.first().upcard)), hands.sumOf { it.ways } / (288.0 * 287 * 286))
-        }
-
+        for ((hand, chance) in starts(rules)) play(hand, chance)
         return reached
     }
 
@@ -100,7 +103,7 @@ class DealableHandsTest {
         for (rules in RuleSet.entries) {
             for (hits in listOf(true, false)) {
                 val expected = reachedDoubled(rules, hits)
-                val dealt = dealableHands(rules, multiCardHands = hits).hands.filterKeys { it is DoubledHand }.mapValues { (_, ways) -> ways.sumOf { it.chance } }
+                val dealt = doubledHands(rules, multiCardHands = hits).mapValues { (_, ways) -> ways.sumOf { it.chance } }
 
                 assertEquals("$rules $hits", expected.keys, dealt.keys)
                 expected.forEach { (hand, chance) -> assertEquals("$rules $hits $hand", chance, dealt.getValue(hand), chance * 1e-9) }

@@ -21,6 +21,7 @@ private val PAST_TWO_CARDS = setOf(Move.HIT, Move.STAND, Move.DOUBLE)
 
 // A double draws one card and no more, so a doubled hand can only stand, redouble or rescue
 private val AFTER_DOUBLING = setOf(Move.STAND, Move.RESCUE)
+private val AFTER_DOUBLING_WITH_REDOUBLING = setOf(Move.STAND, Move.REDOUBLE, Move.RESCUE)
 
 /**
  * A trainer question: the player's cards against the dealer's upcard. A [doubled] hand asks what to do after doubling, its last
@@ -48,7 +49,7 @@ data class TrainerHand(val player: List<Card>, val upcard: Card, val doubled: Bo
 
     /** The moves the player can make. Splitting and late surrender come only with the first two cards, and a redouble only with [redoubling]. */
     fun moves(redoubling: Boolean): Set<Move> = when {
-        doubled -> if (redoubling) AFTER_DOUBLING + Move.REDOUBLE else AFTER_DOUBLING
+        doubled -> if (redoubling) AFTER_DOUBLING_WITH_REDOUBLING else AFTER_DOUBLING
         player.size == 2 -> FIRST_TWO_CARDS
         else -> PAST_TWO_CARDS
     }

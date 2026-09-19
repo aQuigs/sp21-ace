@@ -51,7 +51,7 @@ fun StrategyChart.printedTable(filed: ChartTable): ChartTable? =
 /** The row the chart prints a doubled [total] in, or null where it prints none, as Double Down Rescue prints no soft or hard 18. */
 fun StrategyChart.doubledRow(total: HandTotal): ChartRow? {
     val filed = total.afterDoublingRow
-    return printedTable(filed.table)?.let { ChartRow(it, filed.hand) }?.takeIf { it.hand in hands(it.table) }
+    return printedTable(filed.table)?.let { ChartRow(it, filed.hand) }?.takeIf { printsRow(it.table, it.hand) }
 }
 
 // A blank Double Down Rescue square, or a total it prints no row for, means no rescue: stand on the doubled hand
