@@ -60,11 +60,9 @@ import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.dealerTotal
 import com.aquigs.sp21ace.domain.trainer.playerTotal
 import com.aquigs.sp21ace.ui.chart.ChartTile
-import com.aquigs.sp21ace.ui.components.CardBack
+import com.aquigs.sp21ace.ui.components.DealerHand
 import com.aquigs.sp21ace.ui.components.Dissolve
-import com.aquigs.sp21ace.ui.components.DissolvingCard
-import com.aquigs.sp21ace.ui.components.OverlappingCards
-import com.aquigs.sp21ace.ui.components.PlayingCard
+import com.aquigs.sp21ace.ui.components.DissolvingHand
 import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
 import com.aquigs.sp21ace.ui.components.appBarColors
 import com.aquigs.sp21ace.ui.components.autoSizeDownTo
@@ -115,21 +113,14 @@ fun StrategyTrainerScreen(
                     total = state.hand.dealerTotal.takeIf { settings.handTotals },
                     modifier = Modifier.weight(1f),
                 ) { fan ->
-                    OverlappingCards(fan) {
-                        CardBack()
-                        DissolvingCard(state.hand.upcard)
-                    }
+                    DealerHand(state.hand.upcard, fan)
                 }
                 HandArea(
                     label = stringResource(R.string.you),
                     total = state.hand.playerTotal.takeIf { settings.handTotals },
                     modifier = Modifier.weight(1f),
                 ) { fan ->
-                    // Keyed on the cards alone, so a hand drilled against a new upcard doesn't dissolve into itself, which would
-                    // show the table through it halfway
-                    Dissolve(state.hand.player to state.hand.doubled, fan, AbsoluteAlignment.TopLeft) { (player, doubled) ->
-                        OverlappingCards(sideways = doubled) { player.forEach { PlayingCard(it) } }
-                    }
+                    DissolvingHand(state.hand.player, fan, sideways = state.hand.doubled)
                 }
             }
         }
@@ -165,23 +156,35 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
         false -> colors.wrong
     }
 
+    // Right and wrong otherwise differ only in colour and mark, which a screen reader can't announce
+    val spoken = lastGrade?.let {
+        "${stringResource(if (it.isCorrect) R.string.right_answer else R.string.wrong_answer)}. ${it.hand.matchup}. ${it.inPlainWords()}"
+    }
+
     TopAppBar(
         title = {
-            // Centred, so a verdict of one line and one of three dissolve about the same middle
-            Dissolve(lastGrade, alignment = Alignment.CenterStart, durationMillis = FEEDBACK_MILLIS) { grade ->
-                if (grade == null) {
-                    Text(text = stringResource(R.string.strategy_trainer), modifier = Modifier.semantics { heading() })
-                } else {
-                    FeedbackText(grade)
-                }
+            Dissolve(
+                lastGrade,
+                // Each verdict dissolves in on its own, so a screen reader hears every one from the node the dissolve keeps
+                Modifier.semantics(mergeDescendants = true) {
+                    if (spoken == null) {
+                        heading()
+                    } else {
+                        liveRegion = LiveRegionMode.Polite
+                        contentDescription = spoken
+                    }
+                },
+                durationMillis = FEEDBACK_MILLIS,
+            ) { grade ->
+                if (grade == null) Text(stringResource(R.string.strategy_trainer)) else FeedbackText(grade)
             }
         },
         navigationIcon = {
             Dissolve(lastGrade?.isCorrect, durationMillis = FEEDBACK_MILLIS) { correct ->
-                correct?.let {
-                    // FeedbackText speaks the verdict, so the mark stays silent
+                // The title speaks the verdict, so the mark stays silent
+                if (correct != null) {
                     Icon(
-                        painterResource(if (it) R.drawable.ic_check_circle else R.drawable.ic_cancel),
+                        painterResource(if (correct) R.drawable.ic_check_circle else R.drawable.ic_cancel),
                         contentDescription = null,
                         modifier = Modifier.padding(start = 4.dp, end = 8.dp).size(52.dp),
                     )
@@ -197,21 +200,15 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
     )
 }
 
+private fun Grade.inPlainWords() = play.inPlainWords(correctMove, cards = hand.player.size, afterDoubling = hand.doubled)
+
 @Composable
 private fun FeedbackText(grade: Grade) {
-    val verdict = stringResource(if (grade.isCorrect) R.string.right_answer else R.string.wrong_answer)
-    val words = grade.play.inPlainWords(grade.correctMove, cards = grade.hand.player.size, afterDoubling = grade.hand.doubled)
-
     Text(
         text = buildAnnotatedString {
             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(grade.hand.matchup) }
             append(" | ")
-            append(words)
-        },
-        // Right and wrong otherwise differ only in colour and mark, which a screen reader can't announce
-        modifier = Modifier.semantics {
-            liveRegion = LiveRegionMode.Polite
-            contentDescription = "$verdict. ${grade.hand.matchup}. $words"
+            append(grade.inPlainWords())
         },
         // The longest squares need three lines, and an em line height keeps them inside the bar as autoSize shrinks the text
         autoSize = autoSizeDownTo(minSize = 10.dp, maxFontSize = 16.sp),

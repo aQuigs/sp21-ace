@@ -20,10 +20,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -34,12 +34,10 @@ import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.trainer.Grade
-import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.DISSOLVE_MILLIS
+import com.aquigs.sp21ace.ui.components.DealerHand
 import com.aquigs.sp21ace.ui.components.Dissolve
-import com.aquigs.sp21ace.ui.components.DissolvingCard
-import com.aquigs.sp21ace.ui.components.OverlappingCards
-import com.aquigs.sp21ace.ui.components.PlayingCard
+import com.aquigs.sp21ace.ui.components.DissolvingHand
 import com.aquigs.sp21ace.ui.components.autoSizeDownTo
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
@@ -61,7 +59,7 @@ fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
     )
     val shown by animateFloatAsState(if (grade == null) 0f else 1f, tween(DISSOLVE_MILLIS), label = "recap alpha")
 
-    Column(modifier = modifier.background(background)) {
+    Column(modifier = modifier.drawBehind { drawRect(background) }) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         // Blank before the first answer, as in Blackjack Ace, but still measured so the table above doesn't shift when the recap fills in
@@ -69,7 +67,7 @@ fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                .alpha(shown)
+                .graphicsLayer { alpha = shown }
                 .then(if (grade == null) Modifier.clearAndSetSemantics {} else Modifier),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -82,17 +80,8 @@ fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Dissolving what changes, as the table above does
-                RecapColumn(stringResource(R.string.you), grade) { recap ->
-                    Dissolve(recap.hand.player to recap.hand.doubled, alignment = AbsoluteAlignment.TopLeft) { (player, doubled) ->
-                        OverlappingCards(sideways = doubled) { player.forEach { PlayingCard(it) } }
-                    }
-                }
-                RecapColumn(stringResource(R.string.dealer), grade) { recap ->
-                    OverlappingCards {
-                        CardBack()
-                        DissolvingCard(recap.hand.upcard)
-                    }
-                }
+                RecapColumn(stringResource(R.string.you), grade) { recap -> DissolvingHand(recap.hand.player, sideways = recap.hand.doubled) }
+                RecapColumn(stringResource(R.string.dealer), grade) { DealerHand(it.hand.upcard) }
                 RecapColumn(stringResource(R.string.action), grade) { MoveTile(it.answer) }
                 RecapColumn(stringResource(R.string.strategy), grade) { MoveTile(it.correctMove) }
             }
@@ -125,7 +114,7 @@ private fun MoveTile(move: Move) {
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.small),
         contentAlignment = Alignment.Center,
     ) {
-        Dissolve(move, alignment = Alignment.Center) {
+        Dissolve(move) {
             Text(
                 text = stringResource(it.displayName),
                 modifier = Modifier.padding(horizontal = 4.dp),

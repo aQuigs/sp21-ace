@@ -8,8 +8,10 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.LayoutDirection
@@ -181,6 +183,23 @@ class StrategyTrainerScreenTest {
 
         compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs A. Hit").assertIsDisplayed()
         compose.onNodeWithText("Hard 16 vs A | Hit").assertIsDisplayed()
+    }
+
+    @Test
+    fun aScreenReaderHearsEachVerdictFromTheSameNode() {
+        showTrainer(deals = listOf(eightsVsSix, eightsVsSix))
+        val verdict = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion))
+
+        button(Move.HIT).performClick()
+        val right = verdict.fetchSemanticsNode()
+        assertEquals(listOf("${string(R.string.right_answer)}. Hard 16 vs A. Hit"), right.config[SemanticsProperties.ContentDescription])
+        // Standing on a pair of 8s against a 6 is wrong: they split
+        button(Move.STAND).performClick()
+        val wrong = verdict.fetchSemanticsNode()
+
+        assertEquals(right.id, wrong.id)
+        assertEquals(LiveRegionMode.Polite, wrong.config[SemanticsProperties.LiveRegion])
+        assertTrue(wrong.config[SemanticsProperties.ContentDescription].single().startsWith("${string(R.string.wrong_answer)}. Pair of 8s vs 6."))
     }
 
     @Test

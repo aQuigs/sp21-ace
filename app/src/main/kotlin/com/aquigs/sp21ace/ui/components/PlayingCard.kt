@@ -2,7 +2,6 @@ package com.aquigs.sp21ace.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -81,25 +80,36 @@ private val PIPS: Map<Rank, List<Offset>> = run {
     )
 }
 
-@Composable
-fun PlayingCard(card: Card, modifier: Modifier = Modifier) {
-    val measurer = rememberTextMeasurer()
-    val description = card.name()
-
-    Spacer(modifier.cardSurface().semantics { contentDescription = description }.drawBehind { drawFace(card, measurer) })
-}
-
 /**
  * A face-up card that dissolves into the next [card] as a [Dissolve] would, but face to face on the one opaque card, so a card it
  * lies over never shows through it halfway, as Blackjack Ace's upcard covers its hole card throughout.
  */
 @Composable
-fun DissolvingCard(card: Card, modifier: Modifier = Modifier) {
+fun PlayingCard(card: Card, modifier: Modifier = Modifier) {
     val measurer = rememberTextMeasurer()
     val description = card.name()
 
-    Box(modifier.cardSurface().semantics { contentDescription = description }) {
-        Dissolve(card, Modifier.fillMaxSize()) { shown -> Spacer(Modifier.fillMaxSize().drawBehind { drawFace(shown, measurer) }) }
+    Dissolve(card, modifier.cardSurface().semantics { contentDescription = description }) { shown ->
+        Spacer(Modifier.fillMaxSize().drawBehind { drawFace(shown, measurer) })
+    }
+}
+
+/**
+ * A fan of face-up [cards] that dissolves into the next as a [Dissolve] would. While the fan keeps its shape, as many cards
+ * lying the same way, each card dissolves on its own as a [PlayingCard], so the table never shows through the hand halfway.
+ */
+@Composable
+fun DissolvingHand(cards: List<Card>, modifier: Modifier = Modifier, sideways: Boolean = false) {
+    Dissolve(cards to sideways, modifier, contentKey = { it.first.size to it.second }) { (shown, shownSideways) ->
+        OverlappingCards(sideways = shownSideways) { shown.forEach { PlayingCard(it) } }
+    }
+}
+
+@Composable
+fun DealerHand(upcard: Card, modifier: Modifier = Modifier) {
+    OverlappingCards(modifier) {
+        CardBack()
+        PlayingCard(upcard)
     }
 }
 
