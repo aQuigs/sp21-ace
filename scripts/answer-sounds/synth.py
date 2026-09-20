@@ -8,11 +8,15 @@ PEAK = 10 ** (-1 / 20)
 LIMIT_DB = 3
 RELEASE = 0.003
 
+C6 = 1046.5
 # A clay chip clacks from about 3 to 9 kHz and dies within tens of milliseconds; the stack under it adds a short, lower knock.
 # Each mode is (frequency, seconds to fade 60 dB, gain).
 CLAY = [(3200, 0.050, 1.0), (4860, 0.038, 0.7), (6940, 0.026, 0.45), (9280, 0.018, 0.25), (1150, 0.030, 0.35)]
-# Chips dragged in a heap knock softly, lower and deader than one dropped
-MUFFLED_CLAY = [(f * 0.8, t60 * 0.5, gain) for f, t60, gain in CLAY]
+
+
+def bar(freq, ring):
+    """A marimba bar's modes, tuned about 1 : 4 : 9 as its bars are cut to be, ringing for `ring` s."""
+    return [(freq, ring, 1.0), (freq * 3.93, ring * 0.2, 0.22), (freq * 9.2, ring * 0.07, 0.06)]
 
 
 def resonate(excitation, freq, t60, out, start, gain):
@@ -45,37 +49,20 @@ def impact(out, at, amp, modes, contact, grit, rng, pitch):
         resonate(excitation, freq * pitch, t60, out, start, gain * rng.uniform(0.7, 1.3) * rng.choice((-1, 1)))
 
 
-def swish(out, length, band_from, band_to, q, level, rng):
-    """Felt brushed for `length` s: noise through a band gliding from band_from to band_to Hz, swelling then fading, with the
-    uneven drag of the cloth."""
-    n = int(length * RATE)
-    low = band = drag = 0.0
-    for k in range(min(n, len(out))):
-        t = k / n
-        g = 2 * math.sin(math.pi * band_from * (band_to / band_from) ** t / RATE)
-        high = rng.gauss(0, 1) - low - band / q
-        band += g * high
-        low += g * band
-        drag += 0.004 * (rng.gauss(0, 1) - drag)
-        envelope = math.sin(math.pi / 2 * min(1, t / 0.15)) ** 2 * (1 - t) ** 1.5
-        out[k] += level * envelope * (1 + 8 * drag) * band
-
-
 def right(out, rng):
-    """Two clay chips paid onto your stack, each landing with a clack and a quick rattle as it settles."""
-    for at, amp in [(0.0, 1.0), (0.13, 0.8)]:
-        pitch = 1 + rng.uniform(-0.04, 0.04)
-        gap = 0.042
-        for _ in range(3):
-            impact(out, at, amp, CLAY, 0.00012, 0.3, rng, pitch * (1 + rng.uniform(-0.012, 0.012)))
-            at, gap, amp = at + gap, gap * 0.62, amp * 0.45
+    """One marimba note, C6, struck with a soft mallet and left to ring."""
+    impact(out, 0.0, 1.0, bar(C6, 0.45), 0.0006, 0.05, rng, 1.0)
 
 
 def wrong(out, rng):
-    """Your chips raked away across the felt, knocking together as they go."""
-    swish(out, 0.48, 2400, 800, 1.4, 0.05, rng)
-    for at, amp in [(0.04, 0.45), (0.13, 0.3), (0.23, 0.2)]:
-        impact(out, at, amp, MUFFLED_CLAY, 0.0005, 0.4, rng, 1 + rng.uniform(-0.05, 0.05))
+    """Two clay chips set down, each landing with a clack and a quick rattle as it settles. Lower, softer and slower than chips
+    paid out, so it doesn't sound upbeat."""
+    for at, amp in [(0.0, 1.0), (0.17, 0.8)]:
+        pitch = 0.88 * (1 + rng.uniform(-0.04, 0.04))
+        gap = 0.042 * 1.35
+        for _ in range(3):
+            impact(out, at, amp, CLAY, 0.00025, 0.3, rng, pitch * (1 + rng.uniform(-0.012, 0.012)))
+            at, gap, amp = at + gap, gap * 0.62, amp * 0.45
 
 
 def limited(samples):
