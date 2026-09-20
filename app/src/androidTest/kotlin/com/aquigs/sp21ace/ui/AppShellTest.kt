@@ -73,6 +73,7 @@ class AppShellTest {
     private val historyStore by lazy { PracticeHistoryStore(File(compose.activity.filesDir, "practice_history_app_shell_test.txt")) }
 
     private var handsDealt = 0
+    private val played = mutableListOf<Boolean>()
 
     // Deals 16 vs A first and a pair of 8s after every answer, unless a test deals through the picker instead
     private var dealHand: (HandPicker, List<PracticeAnswer>) -> TrainerHand = { _, _ -> if (handsDealt++ == 0) sixteenVsAce else eightsVsSix }
@@ -93,7 +94,9 @@ class AppShellTest {
         settingsStore.save(Settings(colorTheme = ColorTheme.LIGHT))
         historyStore.clear()
 
-        compose.setContent { Sp21AceApp(store, historyStore, handsStore, settingsStore, deal = { picker, history -> dealHand(picker, history) }) }
+        compose.setContent {
+            Sp21AceApp(store, historyStore, handsStore, settingsStore, deal = { picker, history -> dealHand(picker, history) }, sounds = { played += it })
+        }
     }
 
     @After
@@ -155,7 +158,7 @@ class AppShellTest {
         compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, 1)).assertIsDisplayed()
 
         openFromDrawer(R.string.settings)
-        compose.onNodeWithText(string(R.string.clear_practice_history)).performClick()
+        compose.onNodeWithText(string(R.string.clear_practice_history)).performScrollTo().performClick()
         compose.onNodeWithText(string(R.string.clear)).performClick()
         compose.onNodeWithContentDescription(string(R.string.back)).performClick()
 
@@ -290,6 +293,23 @@ class AppShellTest {
         compose.onNodeWithContentDescription(string(R.string.move_surrender)).performClick()
 
         compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs A. Surrender, otherwise hit").assertIsDisplayed()
+    }
+
+    @Test
+    fun withSoundEffectsSwitchedOnEachAnswerSoundsRightOrWrong() {
+        // Muted to begin with, as in Blackjack Ace
+        compose.onNodeWithContentDescription(string(R.string.move_hit)).performClick()
+        assertEquals(emptyList<Boolean>(), played)
+
+        openFromDrawer(R.string.settings)
+        compose.onNode(hasText(string(R.string.sound_effects)) and isToggleable()).performClick()
+        compose.onNodeWithContentDescription(string(R.string.back)).performClick()
+
+        // Right to split the pair of 8s, then wrong to stand on the next
+        compose.onNodeWithContentDescription(string(R.string.move_split)).performClick()
+        compose.onNodeWithContentDescription(string(R.string.move_stand)).performClick()
+
+        assertEquals(listOf(true, false), played)
     }
 
     @Test

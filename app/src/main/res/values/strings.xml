@@ -29,6 +29,9 @@
     <string name="strategy_chart_button">Strategy chart button</string>
     <string name="visible">Visible</string>
     <string name="hidden">Hidden</string>
+    <string name="sound_effects">Sound effects</string>
+    <string name="muted">Muted</string>
+    <string name="on">On</string>
     <string name="practice">Practice</string>
     <string name="streak_meter">Streak meter</string>
     <string name="clear_practice_history">Clear practice history</string>
