@@ -22,6 +22,7 @@ scripts/run.sh                       # install the debug build and open it
 scripts/screenshot.sh [name]         # adb screencap → screenshots/<name>.png (gitignored)
 scripts/record.sh [name] [seconds]   # adb screenrecord → screenshots/<name>.mp4 (gitignored)
 scripts/pr-media.sh <files>          # upload shots as GitHub attachments, print markdown for the PR body
+scripts/court-art/generate.sh        # regenerate the court card drawables from Fomin's CC0 SVGs (needs node)
 scripts/answer-sounds/generate.sh    # regenerate the trainer's right and wrong answer sounds in res/raw (needs python3 and ffmpeg)
 scrcpy                               # mirror the emulator interactively
 ```
@@ -38,7 +39,7 @@ app/src/main/kotlin/com/aquigs/sp21ace/
 └── ui/                  # Compose: screens, components, theme
 app/src/test/            # JVM unit tests (domain, and data's line formats)
 app/src/androidTest/     # Compose UI tests and the activity smoke test (emulator)
-scripts/                 # emulator, run, screenshot helpers (zsh), and generators for the app's sounds
+scripts/                 # emulator, run, screenshot helpers (zsh), and generators for the court card art and the app's sounds
 ```
 
 Dependencies flow down only: `ui → domain` and `data → domain`, and `MainActivity` is the only place that wires them together, so screens never read storage. `domain` never imports `android.*`, so every rule and strategy decision is testable on the JVM.

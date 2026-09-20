@@ -17,7 +17,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -83,8 +86,9 @@ private val PIPS: Map<Rank, List<Offset>> = run {
 fun PlayingCard(card: Card, modifier: Modifier = Modifier) {
     val measurer = rememberTextMeasurer()
     val description = card.name()
+    val figure = card.figure()?.let { painterResource(it) }
 
-    Spacer(modifier.cardSurface().semantics { contentDescription = description }.drawBehind { drawFace(card, measurer) })
+    Spacer(modifier.cardSurface().semantics { contentDescription = description }.drawBehind { drawFace(card, measurer, figure) })
 }
 
 @Composable
@@ -147,7 +151,29 @@ private fun Card.name(): String {
     return stringResource(R.string.card_name, rankName, stringResource(suitName))
 }
 
-private fun DrawScope.drawFace(card: Card, measurer: TextMeasurer) {
+internal fun Card.figure(): Int? = when (rank) {
+    Rank.JACK -> when (suit) {
+        Suit.SPADES -> R.drawable.court_jack_spades
+        Suit.HEARTS -> R.drawable.court_jack_hearts
+        Suit.DIAMONDS -> R.drawable.court_jack_diamonds
+        Suit.CLUBS -> R.drawable.court_jack_clubs
+    }
+    Rank.QUEEN -> when (suit) {
+        Suit.SPADES -> R.drawable.court_queen_spades
+        Suit.HEARTS -> R.drawable.court_queen_hearts
+        Suit.DIAMONDS -> R.drawable.court_queen_diamonds
+        Suit.CLUBS -> R.drawable.court_queen_clubs
+    }
+    Rank.KING -> when (suit) {
+        Suit.SPADES -> R.drawable.court_king_spades
+        Suit.HEARTS -> R.drawable.court_king_hearts
+        Suit.DIAMONDS -> R.drawable.court_king_diamonds
+        Suit.CLUBS -> R.drawable.court_king_clubs
+    }
+    else -> null
+}
+
+private fun DrawScope.drawFace(card: Card, measurer: TextMeasurer, figure: Painter?) {
     val ink = if (card.suit == Suit.HEARTS || card.suit == Suit.DIAMONDS) Red else Black
 
     // Sizes follow the card rather than the font scale, because a card's print is part of its picture
@@ -166,12 +192,7 @@ private fun DrawScope.drawFace(card: Card, measurer: TextMeasurer) {
 
     when (card.rank) {
         Rank.ACE -> drawCentred(measure(card.suit.glyph, 0.45f), center)
-        Rank.JACK, Rank.QUEEN, Rank.KING -> {
-            // Set in further than OVERLAP_STEP, so a covered court card shows its index but not a sliver of frame
-            val frame = Offset(size.width * 0.23f, size.height * 0.15f)
-            drawRect(ink, frame, Size(size.width - 2 * frame.x, size.height - 2 * frame.y), alpha = 0.5f, style = Stroke(size.width * 0.012f))
-            drawCentred(measure(card.rank.label, 0.4f, FontWeight.Bold), center)
-        }
+        Rank.JACK, Rank.QUEEN, Rank.KING -> figure?.let { drawFigure(it) }
         else -> {
             val pip = measure(card.suit.glyph, 0.22f)
             PIPS.getValue(card.rank).forEach { (x, y) ->
@@ -180,6 +201,15 @@ private fun DrawScope.drawFace(card: Card, measurer: TextMeasurer) {
             }
         }
     }
+}
+
+// Fomin's card, which the drawable keeps only the figure and frame of, fills ours from top to bottom as his does, centred across.
+// That leaves our index the corner his frame opens for his own. A covered court card shows a strip of frame and figure beside
+// its index, as Blackjack Ace's realistic cards do.
+private fun DrawScope.drawFigure(figure: Painter) {
+    val drawn = figure.intrinsicSize * (size.height / figure.intrinsicSize.height)
+
+    translate(left = (size.width - drawn.width) / 2) { with(figure) { draw(drawn) } }
 }
 
 private fun DrawScope.drawBack() {
