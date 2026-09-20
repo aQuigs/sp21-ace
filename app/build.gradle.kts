@@ -25,12 +25,10 @@ android {
     }
 
     buildTypes {
-        // As fast as a store build: Compose runs several times slower in a debuggable build, and R8 speeds it up further.
-        // Signed with this machine's debug key rather than a release key kept somewhere, so it installs over a debug build
-        // made here and keeps its practice history.
+        // Store-build speed: Compose runs several times slower when debuggable, and R8 speeds it up further. Debug-signed, so
+        // it installs over this machine's debug build and keeps its practice history.
         release {
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfig = signingConfigs.getByName("debug")
         }
     }
