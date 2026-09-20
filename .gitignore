@@ -26,3 +26,6 @@ Thumbs.db
 *.log
 screenshots/
 .claude/
+
+# The court art converter's libraries (scripts/court-art)
+node_modules/
