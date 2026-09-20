@@ -1,4 +1,4 @@
-<!-- The king of diamonds from Dmitry Fomin's English pattern playing cards (CC0, Wikimedia Commons), recoloured to the card red, navy and saffron. PlayingCard draws only what lies inside its picture frame. -->
+<!-- The king of diamonds from Dmitry Fomin's English pattern playing cards (CC0, Wikimedia Commons): his figure in its frame, without his blank card and corner index, recoloured to the card red, navy and saffron by scripts/court-art. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:width="72dp"
@@ -12,12 +12,6 @@
     <path
         android:pathData="M153.3 287.3L158 287.4 159.1 276.9 160.2 263.4 160.2 245 159.5 220.5 157 204.2 153.7 193.4 160.9 191.4 167.6 188.3 161.1 173.3 159.1 171.9 155.3 175.1 150.6 174.6 148.1 176.1 144.3 177.3 140.7 176.6 145.6 190.9 148.8 203.3 152.6 217.8 154.2 234.2 153.9 262.6Z"
         android:fillColor="#FFD99A1E" />
-    <path
-        android:pathData="M340 510V480 460H335V475L332 482 325 460H320L329 488 320 510H325L335 486V510Z"
-        android:fillColor="#FFC8102E" />
-    <path
-        android:pathData="M20 30V60 80H25V65L28 58 35 80H40L31 52 40 30H35L25 54V30Z"
-        android:fillColor="#FFC8102E" />
     <path
         android:pathData="M140.5 177C140.5 177 144.8 188.6 146.5 194.5 148.4 201.1 150.2 207.7 151.5 214.5 152.7 221.1 153.6 227.8 154 234.5 154.4 240.7 154.1 246.8 154 253 153.9 259.3 153.8 265.7 153.5 272 153.3 277 152.5 287 152.5 287"
         android:strokeColor="#FF1F3A5F"
@@ -1318,15 +1312,12 @@
         android:pathData="M158.4 262.9L172 263.5 172.5 252.7 188.3 252.5 188.3 263.2 201.8 263.5 201.9 277.2 188.5 277 188.3 287.7 172.2 287.5 172.1 277 158.8 277Z"
         android:fillColor="#FFD99A1E" />
     <path
+        android:pathData="M174.5 265.5H186.4V274.9H174.5Z"
+        android:fillColor="#FF1B1B1B" />
+    <path
         android:pathData="M90 45C90 45 96 60 103 70 110 80 120 90 120 90 120 90 110 100 103 110 96 120 90 135 90 135 90 135 84 120 77 110 70 100 60 90 60 90 60 90 70 80 77 70 84 60 90 45 90 45"
         android:fillColor="#FFC8102E" />
     <path
-        android:pathData="M30 90C30 90 33 97.5 36.5 102.5 40 107.5 45 112.5 45 112.5 45 112.5 40 117.5 36.5 122.5 33 127.5 30 135 30 135 30 135 27 127.5 23.5 122.5 20 117.5 15 112.5 15 112.5 15 112.5 20 107.5 23.5 102.5 27 97.5 30 90 30 90"
-        android:fillColor="#FFC8102E" />
-    <path
         android:pathData="M270 495C270 495 264 480 257 470 250 460 240 450 240 450 240 450 250 440 257 430 264 420 270 405 270 405 270 405 276 420 283 430 290 440 300 450 300 450 300 450 290 460 283 470 276 480 270 495 270 495"
-        android:fillColor="#FFC8102E" />
-    <path
-        android:pathData="M330 450C330 450 327 442.5 323.5 437.5 320 432.5 315 427.5 315 427.5 315 427.5 320 422.5 323.5 417.5 327 412.5 330 405 330 405 330 405 333 412.5 336.5 417.5 340 422.5 345 427.5 345 427.5 345 427.5 340 432.5 336.5 437.5 333 442.5 330 450 330 450"
         android:fillColor="#FFC8102E" />
 </vector>

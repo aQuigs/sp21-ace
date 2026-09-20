@@ -12,11 +12,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
@@ -63,15 +61,6 @@ private val Suit.glyph: String
         Suit.DIAMONDS -> "♦"
         Suit.CLUBS -> "♣"
     } + "︎"
-
-// Dmitry Fomin's court figures are drawn on a card 360 by 540 inside a frame from 30 to 330 across and 30 to 510 down. The frame
-// is open where his index sits, left of 60 and above 150, and the same turned about at the bottom right.
-private const val FIGURE_WIDTH = 360f
-private const val FRAME_INSET = 30f
-private val FRAME_OPENING = Offset(60f, 150f)
-
-// As far in from the top and bottom as Fomin's frame, which leaves room across for the index in its opening
-private const val FRAME_TOP = FRAME_INSET / 540f
 
 // Pip centres as fractions of the card's width and height. Pips below the middle print upside down.
 private val PIPS: Map<Rank, List<Offset>> = run {
@@ -162,7 +151,7 @@ private fun Card.name(): String {
     return stringResource(R.string.card_name, rankName, stringResource(suitName))
 }
 
-private fun Card.figure(): Int? = when (rank) {
+internal fun Card.figure(): Int? = when (rank) {
     Rank.JACK -> when (suit) {
         Suit.SPADES -> R.drawable.court_jack_spades
         Suit.HEARTS -> R.drawable.court_jack_hearts
@@ -214,33 +203,13 @@ private fun DrawScope.drawFace(card: Card, measurer: TextMeasurer, figure: Paint
     }
 }
 
-/**
- * Fomin's figure in his frame, scaled to fill the card from top to bottom as his does and centred across. Only what lies inside the
- * frame is drawn, so his index in its opening gives way to ours.
- */
+// Fomin's card, which the drawable keeps only the figure and frame of, fills ours from top to bottom as his does, centred across.
+// That leaves our index the corner his frame opens for his own. A covered court card shows a strip of frame and figure beside
+// its index, as Blackjack Ace's realistic cards do.
 private fun DrawScope.drawFigure(figure: Painter) {
-    val frameHeight = size.height * (1 - 2 * FRAME_TOP)
-    // Units of Fomin's card to a pixel of ours
-    val scale = frameHeight / (540f - 2 * FRAME_INSET)
-    val frameLeft = (size.width - (FIGURE_WIDTH - 2 * FRAME_INSET) * scale) / 2
-    val origin = Offset(frameLeft - FRAME_INSET * scale, size.height * FRAME_TOP - FRAME_INSET * scale)
+    val drawn = figure.intrinsicSize * (size.height / figure.intrinsicSize.height)
 
-    fun at(x: Float, y: Float) = origin + Offset(x, y) * scale
-    // Out to the frame's outer edge, which his 2-wide lines take a unit past their centres
-    val outer = FRAME_INSET - 1
-    val window = Path().apply {
-        val (openX, openY) = FRAME_OPENING - Offset(1f, 1f)
-        val (right, bottom) = Offset(FIGURE_WIDTH - outer, 540f - outer)
-        listOf(
-            at(openX, outer), at(right, outer), at(right, 540f - openY), at(FIGURE_WIDTH - openX, 540f - openY),
-            at(FIGURE_WIDTH - openX, bottom), at(outer, bottom), at(outer, openY), at(openX, openY),
-        ).forEachIndexed { index, point -> if (index == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y) }
-        close()
-    }
-
-    clipPath(window) {
-        translate(origin.x, origin.y) { with(figure) { draw(Size(FIGURE_WIDTH, 540f) * scale) } }
-    }
+    translate(left = (size.width - drawn.width) / 2) { with(figure) { draw(drawn) } }
 }
 
 private fun DrawScope.drawBack() {

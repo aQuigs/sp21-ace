@@ -1,4 +1,4 @@
-<!-- The jack of hearts from Dmitry Fomin's English pattern playing cards (CC0, Wikimedia Commons), recoloured to the card red, navy and saffron. PlayingCard draws only what lies inside its picture frame. -->
+<!-- The jack of hearts from Dmitry Fomin's English pattern playing cards (CC0, Wikimedia Commons): his figure in its frame, without his blank card and corner index, recoloured to the card red, navy and saffron by scripts/court-art. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:width="72dp"
@@ -6,12 +6,6 @@
     android:viewportWidth="360"
     android:viewportHeight="540"
     tools:ignore="VectorPath">
-    <path
-        android:pathData="M30 30L30 35 35 35 35 70C35 72.8 32.8 75 30 75 27.2 75 25 72.8 25 70L25 65 20 65 20 70C20 75.5 24.5 80 30 80 35.5 80 40 75.5 40 70L40 30Z"
-        android:fillColor="#FFC8102E" />
-    <path
-        android:pathData="M330 510L330 505 325 505 325 470C325 467.2 327.2 465 330 465 332.8 465 335 467.2 335 470L335 475 340 475 340 470C340 464.5 335.5 460 330 460 324.5 460 320 464.5 320 470L320 510Z"
-        android:fillColor="#FFC8102E" />
     <path
         android:pathData="M60 30L330 30 330 390 330 390"
         android:strokeColor="#FF1F3A5F"
@@ -1573,13 +1567,7 @@
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
-        android:pathData="M29.5 99C29.5 93.5 26.6 90 22.5 90 18.4 90 15 94.5 15 100 15 100.5 15 100.9 15 101.4 15 105.1 16.3 108.6 17.5 111.9 18.7 115.3 20.4 118.3 22 121.3 24.5 126.1 30 135 30 135 30 135 35.5 126.1 38 121.3 39.6 118.3 41.3 115.3 42.5 111.9 43.7 108.6 45 105.1 45 101.4 45 100.9 45 100.4 45 100 45 94.5 41.6 90 37.5 90 33.4 90 30.5 93.5 30.5 99 30.5 100 29.5 100 29.5 99Z"
-        android:fillColor="#FFC8102E" />
-    <path
         android:pathData="M89 63C89 52 83.3 45 75 45 66.7 45 60 54 60 65 60 66 60 66.9 60 67.8 60 75.1 62.7 82.2 65 88.8 67.4 95.6 70.8 101.6 74.1 107.7 79.1 117.1 90 135 90 135 90 135 100.9 117.1 105.9 107.7 109.2 101.6 112.6 95.6 115 88.8 117.3 82.2 120 75.1 120 67.8 120 66.8 120 65.9 120 65 120 54 113.3 45 105 45 96.7 45 91 52 91 63 91 65 89 65 89 63Z"
-        android:fillColor="#FFC8102E" />
-    <path
-        android:pathData="M330.5 441C330.5 446.5 333.4 450 337.5 450 341.6 450 345 445.5 345 440 345 439.5 345 439.1 345 438.6 345 434.9 343.7 431.4 342.5 428.1 341.3 424.7 339.6 421.7 338 418.7 335.5 413.9 330 405 330 405 330 405 324.5 413.9 322 418.7 320.4 421.7 318.7 424.7 317.5 428.1 316.3 431.4 315 434.9 315 438.6 315 439.1 315 439.6 315 440 315 445.5 318.4 450 322.5 450 326.6 450 329.5 446.5 329.5 441 329.5 440 330.5 440 330.5 441Z"
         android:fillColor="#FFC8102E" />
     <path
         android:pathData="M271 477C271 488 276.7 495 285 495 293.3 495 300 486 300 475 300 474 300 473.1 300 472.2 300 464.9 297.3 457.8 295 451.2 292.6 444.4 289.2 438.4 285.9 432.3 280.9 422.9 270 405 270 405 270 405 259.1 422.9 254.1 432.3 250.8 438.4 247.4 444.4 245 451.2 242.7 457.8 240 464.9 240 472.2 240 473.2 240 474.1 240 475 240 486 246.7 495 255 495 263.3 495 269 488 269 477 269 475 271 475 271 477Z"
