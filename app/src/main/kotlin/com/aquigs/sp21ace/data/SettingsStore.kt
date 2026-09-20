@@ -14,6 +14,7 @@ class SettingsStore(context: Context, name: String = "settings") {
         buttonLocation = prefs.getEnum(BUTTON_LOCATION, defaults.buttonLocation),
         handTotals = prefs.getBoolean(HAND_TOTALS, defaults.handTotals),
         chartButton = prefs.getBoolean(CHART_BUTTON, defaults.chartButton),
+        soundEffects = prefs.getBoolean(SOUND_EFFECTS, defaults.soundEffects),
         streakMeter = prefs.getBoolean(STREAK_METER, defaults.streakMeter),
     )
 
@@ -23,6 +24,7 @@ class SettingsStore(context: Context, name: String = "settings") {
             putString(BUTTON_LOCATION, settings.buttonLocation.name)
             putBoolean(HAND_TOTALS, settings.handTotals)
             putBoolean(CHART_BUTTON, settings.chartButton)
+            putBoolean(SOUND_EFFECTS, settings.soundEffects)
             putBoolean(STREAK_METER, settings.streakMeter)
         }
     }
@@ -32,6 +34,7 @@ class SettingsStore(context: Context, name: String = "settings") {
         const val BUTTON_LOCATION = "button_location"
         const val HAND_TOTALS = "hand_totals"
         const val CHART_BUTTON = "chart_button"
+        const val SOUND_EFFECTS = "sound_effects"
         const val STREAK_METER = "streak_meter"
     }
 }

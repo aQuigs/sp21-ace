@@ -23,7 +23,7 @@ import com.aquigs.sp21ace.ui.components.SettingsHeader
 import com.aquigs.sp21ace.ui.components.SettingsPage
 import com.aquigs.sp21ace.ui.components.SwitchRow
 
-/** Blackjack Ace's Settings, less what this app has nothing for yet: sound effects and the Play section. */
+/** Blackjack Ace's Settings, less what this app has nothing for yet: the Play section. */
 @Composable
 fun SettingsScreen(
     settings: Settings,
@@ -41,6 +41,12 @@ fun SettingsScreen(
         ChoiceRow(title = stringResource(R.string.button_location), value = stringResource(settings.buttonLocation.title), onClick = onOpenButtonLocation)
         VisibilityRow(R.string.hand_totals, settings.handTotals) { onChange(settings.copy(handTotals = it)) }
         VisibilityRow(R.string.strategy_chart_button, settings.chartButton) { onChange(settings.copy(chartButton = it)) }
+        SwitchRow(
+            title = stringResource(R.string.sound_effects),
+            summary = stringResource(if (settings.soundEffects) R.string.on else R.string.muted),
+            checked = settings.soundEffects,
+            onCheckedChange = { onChange(settings.copy(soundEffects = it)) },
+        )
         HorizontalDivider()
 
         SettingsHeader(stringResource(R.string.practice))

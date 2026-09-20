@@ -44,6 +44,7 @@ class SettingsStoreTest {
             defaults.copy(buttonLocation = ButtonLocation.LEFT),
             defaults.copy(handTotals = true),
             defaults.copy(chartButton = false),
+            defaults.copy(soundEffects = true),
             defaults.copy(streakMeter = false),
         )
 

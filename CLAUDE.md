@@ -22,6 +22,7 @@ scripts/run.sh                       # install the debug build and open it
 scripts/screenshot.sh [name]         # adb screencap → screenshots/<name>.png (gitignored)
 scripts/record.sh [name] [seconds]   # adb screenrecord → screenshots/<name>.mp4 (gitignored)
 scripts/pr-media.sh <files>          # upload shots as GitHub attachments, print markdown for the PR body
+scripts/answer-sounds/generate.sh    # regenerate the trainer's right and wrong answer sounds in res/raw (needs ffmpeg)
 scrcpy                               # mirror the emulator interactively
 ```
 

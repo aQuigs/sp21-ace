@@ -31,6 +31,8 @@ import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.AppShell
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import com.aquigs.sp21ace.ui.theme.isDark
+import com.aquigs.sp21ace.ui.trainer.AnswerSounds
+import com.aquigs.sp21ace.ui.trainer.rememberAnswerSounds
 import java.time.Instant
 
 class MainActivity : ComponentActivity() {
@@ -47,7 +49,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** The composition root. Tests pass their own stores and [deal]. */
+/** The composition root. Tests pass their own stores, [deal] and [sounds]. */
 @Composable
 internal fun Sp21AceApp(
     store: TableRulesStore,
@@ -55,6 +57,7 @@ internal fun Sp21AceApp(
     handsStore: HandCustomizationStore,
     settingsStore: SettingsStore,
     deal: (picker: HandPicker, history: List<PracticeAnswer>) -> TrainerHand = { picker, history -> picker.pick(history) },
+    sounds: AnswerSounds = rememberAnswerSounds(),
 ) {
     val activity = LocalActivity.current
     // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
@@ -89,6 +92,7 @@ internal fun Sp21AceApp(
                 trainer.record(asked, move, rules.ruleSet, historyStore.history.value.orEmpty(), Instant.now()) { deal(picker, it) }?.let { (next, answer) ->
                     trainer = next
                     historyStore.append(answer)
+                    if (settings.soundEffects) sounds.play(answer.isCorrect)
                 }
             },
             onRulesChange = {

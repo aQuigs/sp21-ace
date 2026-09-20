@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -20,6 +21,7 @@ import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -70,6 +72,19 @@ class SettingsScreenTest {
         summary(R.string.hand_totals, R.string.visible).assertIsDisplayed()
         summary(R.string.strategy_chart_button, R.string.hidden).assertIsDisplayed()
         summary(R.string.streak_meter, R.string.hidden).assertIsDisplayed()
+    }
+
+    @Test
+    fun soundEffectsStartMutedAfterTheChartButtonAndSayWhenTheyAreOn() {
+        showSettings()
+
+        summary(R.string.sound_effects, R.string.muted).assertIsDisplayed()
+        assertTrue(switch(R.string.strategy_chart_button).getBoundsInRoot().bottom <= switch(R.string.sound_effects).getBoundsInRoot().top)
+
+        switch(R.string.sound_effects).assertIsOff().performClick()
+
+        assertEquals(Settings(soundEffects = true), settings)
+        summary(R.string.sound_effects, R.string.on).assertIsDisplayed()
     }
 
     @Test
