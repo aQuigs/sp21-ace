@@ -57,13 +57,14 @@ internal fun Sp21AceApp(
     handsStore: HandCustomizationStore,
     settingsStore: SettingsStore,
     deal: (picker: HandPicker, history: List<PracticeAnswer>) -> TrainerHand = { picker, history -> picker.pick(history) },
-    sounds: AnswerSounds = rememberAnswerSounds(),
+    sounds: AnswerSounds? = null,
 ) {
     val activity = LocalActivity.current
     // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
     var rules by remember { mutableStateOf(store.load()) }
     var customization by remember { mutableStateOf(handsStore.load()) }
     var settings by remember { mutableStateOf(settingsStore.load()) }
+    val answerSounds = sounds ?: rememberAnswerSounds(settings.soundEffects)
     val history by historyStore.history.collectAsState()
     // Each deal reads the rules, the customization and the history, so a change applies from the next hand while the one on the table stays
     val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
@@ -92,7 +93,7 @@ internal fun Sp21AceApp(
                 trainer.record(asked, move, rules.ruleSet, historyStore.history.value.orEmpty(), Instant.now()) { deal(picker, it) }?.let { (next, answer) ->
                     trainer = next
                     historyStore.append(answer)
-                    if (settings.soundEffects) sounds.play(answer.isCorrect)
+                    if (settings.soundEffects) answerSounds?.play(answer.isCorrect)
                 }
             },
             onRulesChange = {

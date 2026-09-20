@@ -79,7 +79,10 @@ class SettingsScreenTest {
         showSettings()
 
         summary(R.string.sound_effects, R.string.muted).assertIsDisplayed()
-        assertTrue(switch(R.string.strategy_chart_button).getBoundsInRoot().bottom <= switch(R.string.sound_effects).getBoundsInRoot().top)
+        // Between the chart button and the Practice section, as in Blackjack Ace
+        val row = switch(R.string.sound_effects).getBoundsInRoot()
+        assertTrue(switch(R.string.strategy_chart_button).getBoundsInRoot().bottom <= row.top)
+        assertTrue(row.bottom <= compose.onNodeWithText(string(R.string.practice)).getBoundsInRoot().top)
 
         switch(R.string.sound_effects).assertIsOff().performClick()
 

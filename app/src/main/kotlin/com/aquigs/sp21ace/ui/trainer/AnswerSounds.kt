@@ -14,11 +14,12 @@ fun interface AnswerSounds {
     fun play(correct: Boolean)
 }
 
+/** Both sounds while [enabled], so they load as sound effects are switched on, ready by the next answer, and cost nothing muted. */
 @Composable
-fun rememberAnswerSounds(): AnswerSounds {
+fun rememberAnswerSounds(enabled: Boolean): AnswerSounds? {
     val context = LocalContext.current.applicationContext
 
-    return remember(context) { SoundPoolAnswerSounds(context) }
+    return remember(context, enabled) { if (enabled) SoundPoolAnswerSounds(context) else null }
 }
 
 // A SoundPool keeps both sounds decoded, so each starts at the tap rather than after a player spins up. Game audio follows the

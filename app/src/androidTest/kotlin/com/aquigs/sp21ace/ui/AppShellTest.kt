@@ -158,7 +158,7 @@ class AppShellTest {
         compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, 1)).assertIsDisplayed()
 
         openFromDrawer(R.string.settings)
-        compose.onNodeWithText(string(R.string.clear_practice_history)).performClick()
+        compose.onNodeWithText(string(R.string.clear_practice_history)).performScrollTo().performClick()
         compose.onNodeWithText(string(R.string.clear)).performClick()
         compose.onNodeWithContentDescription(string(R.string.back)).performClick()
 

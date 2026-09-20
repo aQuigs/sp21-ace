@@ -4,7 +4,7 @@ enum class ColorTheme { SYSTEM, LIGHT, DARK }
 
 enum class ButtonLocation { LEFT, RIGHT }
 
-/** How the app looks and what the trainer shows around the cards, each starting as Blackjack Ace's does. */
+/** How the app looks, what the trainer shows and whether answers make a sound, each starting as Blackjack Ace's does. */
 data class Settings(
     val colorTheme: ColorTheme = ColorTheme.SYSTEM,
     val buttonLocation: ButtonLocation = ButtonLocation.RIGHT,
