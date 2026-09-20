@@ -18,7 +18,7 @@ Spanish 21 basic strategy trainer for Android ("Spanish 21 Ace"): set the table 
 ./gradlew lintDebug                  # Android lint → app/build/reports/lint-results-debug.html (pre-commit runs it too)
 scripts/emulator.sh                  # this repo's AVD from the installed Play Store image, boot, wait (IMAGE_TAG=google_apis for adb root, HEADLESS=1 for no window)
 ./gradlew connectedDebugAndroidTest  # Compose UI + activity tests on the running emulator
-scripts/run.sh                       # install the debug build and open it
+scripts/run.sh                       # install the debug build and open it (VARIANT=Release: the minified, store-speed build, over the debug one)
 scripts/screenshot.sh [name]         # adb screencap → screenshots/<name>.png (gitignored)
 scripts/record.sh [name] [seconds]   # adb screenrecord → screenshots/<name>.mp4 (gitignored)
 scripts/pr-media.sh <files>          # upload shots as GitHub attachments, print markdown for the PR body

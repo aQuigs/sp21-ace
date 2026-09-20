@@ -23,6 +23,15 @@ android {
     buildFeatures {
         compose = true
     }
+
+    buildTypes {
+        // Store-build speed: Compose runs several times slower when debuggable, and R8 speeds it up further. Debug-signed, so
+        // it installs over this machine's debug build and keeps its practice history.
+        release {
+            isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
 }
 
 // Refreshes the shared copies described in CLAUDE.md when sync-common is on PATH. The configuration cache records isFile
