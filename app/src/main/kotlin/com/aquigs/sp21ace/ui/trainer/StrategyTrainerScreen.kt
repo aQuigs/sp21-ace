@@ -61,6 +61,8 @@ import com.aquigs.sp21ace.domain.trainer.dealerTotal
 import com.aquigs.sp21ace.domain.trainer.playerTotal
 import com.aquigs.sp21ace.ui.chart.ChartTile
 import com.aquigs.sp21ace.ui.components.CardBack
+import com.aquigs.sp21ace.ui.components.Dissolve
+import com.aquigs.sp21ace.ui.components.DissolvingCard
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
 import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
@@ -71,6 +73,9 @@ import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import com.aquigs.sp21ace.ui.theme.disabledContent
 
 private val ButtonSize = 64.dp
+
+// Blackjack Ace's verdict changes in about a quarter of a second, quicker than its cards dissolve
+private const val FEEDBACK_MILLIS = 250
 
 /**
  * The cards, with the answer buttons down one edge and, as [settings] choose, the hand totals, the chart tile and the streak
@@ -109,17 +114,22 @@ fun StrategyTrainerScreen(
                     label = stringResource(R.string.dealer),
                     total = state.hand.dealerTotal.takeIf { settings.handTotals },
                     modifier = Modifier.weight(1f),
-                ) {
-                    CardBack()
-                    PlayingCard(state.hand.upcard)
+                ) { fan ->
+                    OverlappingCards(fan) {
+                        CardBack()
+                        DissolvingCard(state.hand.upcard)
+                    }
                 }
                 HandArea(
                     label = stringResource(R.string.you),
                     total = state.hand.playerTotal.takeIf { settings.handTotals },
                     modifier = Modifier.weight(1f),
-                    sideways = state.hand.doubled,
-                ) {
-                    state.hand.player.forEach { PlayingCard(it) }
+                ) { fan ->
+                    // Keyed on the cards alone, so a hand drilled against a new upcard doesn't dissolve into itself, which would
+                    // show the table through it halfway
+                    Dissolve(state.hand.player to state.hand.doubled, fan, AbsoluteAlignment.TopLeft) { (player, doubled) ->
+                        OverlappingCards(sideways = doubled) { player.forEach { PlayingCard(it) } }
+                    }
                 }
             }
         }
@@ -148,6 +158,7 @@ fun StrategyTrainerScreen(
 @Composable
 private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
     val colors = Sp21AceTheme.colors
+    // The app bar fades to a new colour on its own, about as quickly as Blackjack Ace's
     val container = when (lastGrade?.isCorrect) {
         null -> colors.appBar
         true -> colors.correct
@@ -156,20 +167,25 @@ private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
 
     TopAppBar(
         title = {
-            if (lastGrade == null) {
-                Text(text = stringResource(R.string.strategy_trainer), modifier = Modifier.semantics { heading() })
-            } else {
-                FeedbackText(lastGrade)
+            // Centred, so a verdict of one line and one of three dissolve about the same middle
+            Dissolve(lastGrade, alignment = Alignment.CenterStart, durationMillis = FEEDBACK_MILLIS) { grade ->
+                if (grade == null) {
+                    Text(text = stringResource(R.string.strategy_trainer), modifier = Modifier.semantics { heading() })
+                } else {
+                    FeedbackText(grade)
+                }
             }
         },
         navigationIcon = {
-            lastGrade?.let {
-                // FeedbackText speaks the verdict, so the mark stays silent
-                Icon(
-                    painterResource(if (it.isCorrect) R.drawable.ic_check_circle else R.drawable.ic_cancel),
-                    contentDescription = null,
-                    modifier = Modifier.padding(start = 4.dp, end = 8.dp).size(52.dp),
-                )
+            Dissolve(lastGrade?.isCorrect, durationMillis = FEEDBACK_MILLIS) { correct ->
+                correct?.let {
+                    // FeedbackText speaks the verdict, so the mark stays silent
+                    Icon(
+                        painterResource(if (it) R.drawable.ic_check_circle else R.drawable.ic_cancel),
+                        contentDescription = null,
+                        modifier = Modifier.padding(start = 4.dp, end = 8.dp).size(52.dp),
+                    )
+                }
             }
         },
         actions = {
@@ -205,11 +221,11 @@ private fun FeedbackText(grade: Grade) {
 }
 
 /**
- * A hand's label over its cards, with its [total], when given, on the label's line at the cards' right edge, as in Blackjack Ace.
- * A [sideways] last card is a double's card, turned sideways.
+ * A hand's label over its [cards], with its [total], when given, on the label's line at the cards' right edge, as in Blackjack Ace.
+ * The cards take the modifier they are given, which fits them to the space.
  */
 @Composable
-private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, sideways: Boolean = false, cards: @Composable () -> Unit) {
+private fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, cards: @Composable (Modifier) -> Unit) {
     val color = MaterialTheme.colorScheme.primary
 
     BoxWithConstraints(modifier) {
@@ -240,7 +256,7 @@ private fun HandArea(label: String, total: String?, modifier: Modifier = Modifie
                     )
                 }
             }
-            OverlappingCards(modifier = Modifier.weight(1f, fill = false).widthIn(max = cardsMaxWidth), sideways = sideways, content = cards)
+            cards(Modifier.weight(1f, fill = false).widthIn(max = cardsMaxWidth))
         }
     }
 }

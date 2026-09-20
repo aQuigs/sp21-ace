@@ -2,8 +2,10 @@ package com.aquigs.sp21ace.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -85,6 +87,20 @@ fun PlayingCard(card: Card, modifier: Modifier = Modifier) {
     val description = card.name()
 
     Spacer(modifier.cardSurface().semantics { contentDescription = description }.drawBehind { drawFace(card, measurer) })
+}
+
+/**
+ * A face-up card that dissolves into the next [card] as a [Dissolve] would, but face to face on the one opaque card, so a card it
+ * lies over never shows through it halfway, as Blackjack Ace's upcard covers its hole card throughout.
+ */
+@Composable
+fun DissolvingCard(card: Card, modifier: Modifier = Modifier) {
+    val measurer = rememberTextMeasurer()
+    val description = card.name()
+
+    Box(modifier.cardSurface().semantics { contentDescription = description }) {
+        Dissolve(card, Modifier.fillMaxSize()) { shown -> Spacer(Modifier.fillMaxSize().drawBehind { drawFace(shown, measurer) }) }
+    }
 }
 
 @Composable

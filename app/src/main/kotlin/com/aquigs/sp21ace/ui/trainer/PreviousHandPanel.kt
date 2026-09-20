@@ -1,5 +1,8 @@
 package com.aquigs.sp21ace.ui.trainer
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +19,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -30,6 +35,9 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.trainer.Grade
 import com.aquigs.sp21ace.ui.components.CardBack
+import com.aquigs.sp21ace.ui.components.DISSOLVE_MILLIS
+import com.aquigs.sp21ace.ui.components.Dissolve
+import com.aquigs.sp21ace.ui.components.DissolvingCard
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
 import com.aquigs.sp21ace.ui.components.autoSizeDownTo
@@ -42,11 +50,16 @@ private val ThumbnailHeight = 64.dp
 @Composable
 fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
     val colors = Sp21AceTheme.colors
-    val background = when (grade?.isCorrect) {
-        null -> MaterialTheme.colorScheme.surfaceContainer
-        true -> colors.correctTint
-        false -> colors.wrongTint
-    }
+    val background by animateColorAsState(
+        targetValue = when (grade?.isCorrect) {
+            null -> MaterialTheme.colorScheme.surfaceContainer
+            true -> colors.correctTint
+            false -> colors.wrongTint
+        },
+        animationSpec = tween(DISSOLVE_MILLIS),
+        label = "recap tint",
+    )
+    val shown by animateFloatAsState(if (grade == null) 0f else 1f, tween(DISSOLVE_MILLIS), label = "recap alpha")
 
     Column(modifier = modifier.background(background)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -56,7 +69,8 @@ fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                .then(if (grade == null) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier),
+                .alpha(shown)
+                .then(if (grade == null) Modifier.clearAndSetSemantics {} else Modifier),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
@@ -67,13 +81,16 @@ fun PreviousHandPanel(grade: Grade?, modifier: Modifier = Modifier) {
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Dissolving what changes, as the table above does
                 RecapColumn(stringResource(R.string.you), grade) { recap ->
-                    OverlappingCards(sideways = recap.hand.doubled) { recap.hand.player.forEach { PlayingCard(it) } }
+                    Dissolve(recap.hand.player to recap.hand.doubled, alignment = AbsoluteAlignment.TopLeft) { (player, doubled) ->
+                        OverlappingCards(sideways = doubled) { player.forEach { PlayingCard(it) } }
+                    }
                 }
                 RecapColumn(stringResource(R.string.dealer), grade) { recap ->
                     OverlappingCards {
                         CardBack()
-                        PlayingCard(recap.hand.upcard)
+                        DissolvingCard(recap.hand.upcard)
                     }
                 }
                 RecapColumn(stringResource(R.string.action), grade) { MoveTile(it.answer) }
@@ -108,11 +125,13 @@ private fun MoveTile(move: Move) {
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.shapes.small),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = stringResource(move.displayName),
-            modifier = Modifier.padding(horizontal = 4.dp),
-            autoSize = autoSizeDownTo(minSize = 8.dp, maxFontSize = 20.sp),
-            maxLines = 1,
-        )
+        Dissolve(move, alignment = Alignment.Center) {
+            Text(
+                text = stringResource(it.displayName),
+                modifier = Modifier.padding(horizontal = 4.dp),
+                autoSize = autoSizeDownTo(minSize = 8.dp, maxFontSize = 20.sp),
+                maxLines = 1,
+            )
+        }
     }
 }
