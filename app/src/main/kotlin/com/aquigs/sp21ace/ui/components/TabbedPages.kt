@@ -10,12 +10,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,7 +28,7 @@ import kotlinx.coroutines.launch
  * A sub-page's tabs over their pages, which a swipe moves between as a tap on a tab does, as in Blackjack Ace. It opens on the
  * first tab and keeps the one chosen through recreation. New [tabs] that lack it, such as Already doubled: soft once the rules
  * drop redoubling, fall back to the first. The tabs scroll rather than wrap their names, as Accuracy's four would at a large
- * font size on a narrow phone.
+ * font size on a narrow phone. Every page stays built once the open one is on screen, so a switch only slides them.
  */
 @Composable
 fun <T : Enum<T>> TabbedPages(tabs: List<T>, title: (T) -> Int, modifier: Modifier = Modifier, page: @Composable (T) -> Unit) {
@@ -39,6 +41,17 @@ fun <T : Enum<T>> TabbedPages(tabs: List<T>, title: (T) -> Int, modifier: Modifi
     // The target rather than the current page, so a tap on a tab two away doesn't choose the one it slides past
     LaunchedEffect(pager) {
         snapshotFlow { pager.targetPage }.collect { chosen = tabs[it] }
+    }
+
+    // A chart page is over a hundred squares, and building one as it slides in dropped frames on every switch; a page left
+    // behind was dropped and rebuilt on the way back. So every page stays built, but the open one shows first and the rest
+    // follow a page a frame, since a screen opened from the drawer builds them while the drawer is still closing.
+    var beside by remember(pager) { mutableIntStateOf(0) }
+    LaunchedEffect(pager) {
+        while (beside < tabs.lastIndex) {
+            withFrameNanos {}
+            beside++
+        }
     }
 
     Column(modifier = modifier) {
@@ -57,6 +70,11 @@ fun <T : Enum<T>> TabbedPages(tabs: List<T>, title: (T) -> Int, modifier: Modifi
                 )
             }
         }
-        HorizontalPager(state = pager, modifier = Modifier.weight(1f), verticalAlignment = Alignment.Top) { index -> page(tabs[index]) }
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.weight(1f),
+            beyondViewportPageCount = beside,
+            verticalAlignment = Alignment.Top,
+        ) { index -> page(tabs[index]) }
     }
 }

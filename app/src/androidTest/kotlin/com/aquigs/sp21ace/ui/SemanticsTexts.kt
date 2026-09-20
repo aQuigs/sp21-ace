@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.text.TextLayoutResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -14,14 +15,27 @@ import org.junit.Assert.assertTrue
 val isPlaced = SemanticsMatcher("is placed") { node -> generateSequence(node.layoutInfo) { it.parentInfo }.all { it.isPlaced } }
 
 /**
- * Finds only nodes on screen. After a page change a pager composes the page beyond the open one, ready for the next swipe, without
- * placing it, so a plain lookup would find that page's copy of a text too.
+ * Nodes within every horizontal pager they sit in, which one on a page placed beside the open one, ready to slide in, is not.
+ * Unclipped, so a node scrolled up or down out of view still counts, to be scrolled to.
+ */
+private val isOnOpenPage = SemanticsMatcher("is on the open page") { node ->
+    val left = node.positionInRoot.x
+    generateSequence(node.parent) { it.parent }
+        .filter { hasScrollToKeyAction().matches(it) && SemanticsProperties.HorizontalScrollAxisRange in it.config }
+        .all { pager -> left < pager.positionInRoot.x + pager.size.width && left + node.size.width > pager.positionInRoot.x }
+}
+
+/**
+ * Finds only nodes on screen. A pager places every page beside the open one, ready for a swipe, and after a page change composes
+ * the one beyond it without placing it, so a plain lookup would find those pages' copies of a text too.
  */
 val SemanticsNodeInteractionsProvider.onScreen: SemanticsNodeInteractionsProvider
     get() = object : SemanticsNodeInteractionsProvider {
-        override fun onNode(matcher: SemanticsMatcher, useUnmergedTree: Boolean) = this@onScreen.onNode(matcher and isPlaced, useUnmergedTree)
+        override fun onNode(matcher: SemanticsMatcher, useUnmergedTree: Boolean) =
+            this@onScreen.onNode(matcher and isPlaced and isOnOpenPage, useUnmergedTree)
 
-        override fun onAllNodes(matcher: SemanticsMatcher, useUnmergedTree: Boolean) = this@onScreen.onAllNodes(matcher and isPlaced, useUnmergedTree)
+        override fun onAllNodes(matcher: SemanticsMatcher, useUnmergedTree: Boolean) =
+            this@onScreen.onAllNodes(matcher and isPlaced and isOnOpenPage, useUnmergedTree)
     }
 
 /** A node's texts in reading order. A merged row or card is one item for a screen reader, so they come title first. */

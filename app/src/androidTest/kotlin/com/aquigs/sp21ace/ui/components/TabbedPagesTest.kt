@@ -3,6 +3,7 @@ package com.aquigs.sp21ace.ui.components
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -18,10 +20,12 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.ui.isPlaced
 import com.aquigs.sp21ace.ui.onScreen
 import com.aquigs.sp21ace.ui.swipeToNextTab
 import com.aquigs.sp21ace.ui.swipeToPreviousTab
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -49,6 +53,9 @@ class TabbedPagesTest {
     private fun tab(table: Table) = screen.onNodeWithText(compose.activity.getString(table.title))
 
     private fun page(table: Table) = screen.onNodeWithText("${table.name} page")
+
+    // Every page placed, whether on screen or beside it, ready to slide in
+    private fun placedPages() = compose.onAllNodes(hasText(" page", substring = true) and isPlaced).fetchSemanticsNodes().size
 
     private fun assertOpen(table: Table) {
         tab(table).assertIsSelected()
@@ -98,6 +105,44 @@ class TabbedPagesTest {
 
         assertOpen(Table.AFTER_DOUBLE_SOFT)
         assertTrue("the last tab is in view", last.getUnclippedBoundsInRoot().right <= screenRight)
+    }
+
+    @Test
+    fun everyPageIsBuiltOnceAndKeptSoASwitchOnlySlidesIt() {
+        val built = mutableListOf<Table>()
+        compose.setContent {
+            Sp21AceTheme {
+                TabbedPages(tabs, title = { it.title }) { table ->
+                    LaunchedEffect(Unit) { built += table }
+                    Text("${table.name} page")
+                }
+            }
+        }
+
+        screen.swipeToNextTab()
+        screen.swipeToPreviousTab()
+        tab(Table.AFTER_DOUBLE_SOFT).performScrollTo().performClick()
+        compose.waitForIdle()
+
+        assertEquals(Table.entries, built.sorted())
+    }
+
+    @Test
+    fun theOpenPageShowsAFrameBeforeThoseBesideItAlsoWhenTheTabsChange() {
+        compose.mainClock.autoAdvance = false
+        compose.setContent(pages)
+
+        assertEquals(1, placedPages())
+
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        assertEquals(Table.entries.size, placedPages())
+
+        compose.mainClock.autoAdvance = false
+        tabs = tabs - Table.SOFT
+        compose.mainClock.advanceTimeByFrame()
+
+        assertEquals(1, placedPages())
     }
 
     @Test

@@ -274,7 +274,7 @@ class AppShellTest {
         Espresso.pressBack()
         compose.onNodeWithContentDescription(string(R.string.open_strategy_chart)).performClick()
 
-        compose.onNodeWithText("Dealer hits soft 17 · Redoubling allowed · 6 decks").assertIsDisplayed()
+        compose.onScreen.onNodeWithText("Dealer hits soft 17 · Redoubling allowed · 6 decks").assertIsDisplayed()
         compose.onNodeWithText(string(R.string.already_doubled)).performClick()
         // Only redoubling gives a doubled hand a soft table
         compose.onNodeWithText(string(R.string.table_soft)).assertExists()
