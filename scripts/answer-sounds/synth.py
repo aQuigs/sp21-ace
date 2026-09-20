@@ -15,7 +15,8 @@ CLAY = [(3200, 0.050, 1.0), (4860, 0.038, 0.7), (6940, 0.026, 0.45), (9280, 0.01
 
 
 def bar(freq, ring):
-    """A marimba bar's modes, tuned about 1 : 4 : 9 as its bars are cut to be, ringing for `ring` s."""
+    """A marimba bar's modes, with overtones at about 4 and 9 times its note, near the 1 : 4 : 10 its bars are cut to, ringing
+    for `ring` s."""
     return [(freq, ring, 1.0), (freq * 3.93, ring * 0.2, 0.22), (freq * 9.2, ring * 0.07, 0.06)]
 
 
@@ -55,8 +56,8 @@ def right(out, rng):
 
 
 def wrong(out, rng):
-    """Two clay chips set down, each landing with a clack and a quick rattle as it settles. Lower, softer and slower than chips
-    paid out, so it doesn't sound upbeat."""
+    """Two clay chips set down, each landing with a clack and a quick rattle as it settles. A little under a clay chip's own pitch,
+    landing softly and settling slowly, so it doesn't sound upbeat."""
     for at, amp in [(0.0, 1.0), (0.17, 0.8)]:
         pitch = 0.88 * (1 + rng.uniform(-0.04, 0.04))
         gap = 0.042 * 1.35
