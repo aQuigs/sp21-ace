@@ -27,4 +27,9 @@ class HandTotalsTest {
         assertEquals("17", total("Ah 6d Kc"))
         assertEquals("A-2", total("Ac Ad Ah"))
     }
+
+    @Test
+    fun aBustReadsAsItsTotal() {
+        assertEquals("26", totalLabel(cards("Kc 6d Qs")))
+    }
 }

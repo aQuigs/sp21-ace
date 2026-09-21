@@ -22,8 +22,11 @@ import com.aquigs.sp21ace.data.HandCustomizationStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
+import com.aquigs.sp21ace.data.TableStore
 import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.record
+import com.aquigs.sp21ace.domain.game.Shoe
+import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
@@ -34,6 +37,7 @@ import com.aquigs.sp21ace.ui.theme.isDark
 import com.aquigs.sp21ace.ui.trainer.AnswerSounds
 import com.aquigs.sp21ace.ui.trainer.rememberAnswerSounds
 import java.time.Instant
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,20 +48,23 @@ class MainActivity : ComponentActivity() {
         val store = TableRulesStore(this)
         val historyStore = PracticeHistoryStore.forApp(this)
         val handsStore = HandCustomizationStore(this)
+        val tableStore = TableStore(this)
 
-        setContent { Sp21AceApp(store, historyStore, handsStore, settingsStore) }
+        setContent { Sp21AceApp(store, historyStore, handsStore, settingsStore, tableStore) }
     }
 }
 
-/** The composition root. Tests pass their own stores, [deal] and [sounds]. */
+/** The composition root. Tests pass their own stores, [deal], [sounds] and the [random] that shuffles the table's shoe. */
 @Composable
 internal fun Sp21AceApp(
     store: TableRulesStore,
     historyStore: PracticeHistoryStore,
     handsStore: HandCustomizationStore,
     settingsStore: SettingsStore,
+    tableStore: TableStore,
     deal: (picker: HandPicker, history: List<PracticeAnswer>) -> TrainerHand = { picker, history -> picker.pick(history) },
     sounds: AnswerSounds? = null,
+    random: Random = Random.Default,
 ) {
     val activity = LocalActivity.current
     // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
@@ -69,6 +76,12 @@ internal fun Sp21AceApp(
     // Each deal reads the rules, the customization and the history, so a change applies from the next hand while the one on the table stays
     val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
+    var table by rememberSaveable { mutableStateOf(Table(tableStore.loadChips(), Shoe.shuffled(random))) }
+
+    fun seat(next: Table) {
+        if (next.chips != table.chips) tableStore.saveChips(next.chips)
+        table = next
+    }
     val dark = settings.colorTheme.isDark()
 
     DisposableEffect(activity, dark) {
@@ -84,6 +97,7 @@ internal fun Sp21AceApp(
     Sp21AceTheme(settings.colorTheme) {
         AppShell(
             trainer = trainer,
+            table = table,
             rules = rules,
             customization = customization,
             settings = settings,
@@ -96,6 +110,9 @@ internal fun Sp21AceApp(
                     if (settings.soundEffects) answerSounds?.play(answer.isCorrect)
                 }
             },
+            onTableUpdate = { change -> change(table)?.let(::seat) },
+            // A round keeps the rules it was dealt under, so a change applies from the next deal
+            onDeal = { table.deal(rules.ruleSet, random)?.let(::seat) },
             onRulesChange = {
                 rules = it
                 store.save(it)

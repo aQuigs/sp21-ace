@@ -159,8 +159,10 @@ internal val DarkSp21AceColors = Sp21AceColors(
     heatmapReach = 1f,
 )
 
-/** Material's colour for disabled content, for the parts its components leave to us, such as a list item's text. */
-val ColorScheme.disabledContent: Color get() = onSurface.copy(alpha = 0.38f)
+/** Material's opacity for disabled content, for the parts its components leave to us, such as a list item's text or a chip. */
+const val DISABLED_ALPHA = 0.38f
+
+val ColorScheme.disabledContent: Color get() = onSurface.copy(alpha = DISABLED_ALPHA)
 
 private val LocalSp21AceColors = staticCompositionLocalOf { LightSp21AceColors }
 

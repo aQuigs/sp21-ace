@@ -48,11 +48,11 @@ private const val OVERLAP_STEP = 0.2f
 private val CardShape = RoundedCornerShape(percent = 5)
 private val Edge = Color(0xFFD9D9D9)
 private val Red = Color(0xFFC8102E)
-private val Black = Color(0xFF1B1B1B)
+internal val Ink = Color(0xFF1B1B1B)
 
-// The brand navy and saffron, fixed rather than themed because a card looks the same in either theme
-private val BackNavy = Color(0xFF1F3A5F)
-private val BackSaffron = Color(0xFFD99A1E)
+// The brand navy and saffron, fixed rather than themed because a card, or a chip, looks the same in either theme
+internal val BrandNavy = Color(0xFF1F3A5F)
+internal val BrandSaffron = Color(0xFFD99A1E)
 
 // U+FE0E asks for the text glyph. Without it Android draws these suits from the colour emoji font, which ignores the ink colour.
 private val Suit.glyph: String
@@ -200,7 +200,7 @@ internal fun Card.figure(): Int? = when (rank) {
 }
 
 private fun DrawScope.drawFace(card: Card, measurer: TextMeasurer, figure: Painter?) {
-    val ink = if (card.suit == Suit.HEARTS || card.suit == Suit.DIAMONDS) Red else Black
+    val ink = if (card.suit == Suit.HEARTS || card.suit == Suit.DIAMONDS) Red else Ink
 
     // Sizes follow the card rather than the font scale, because a card's print is part of its picture
     fun measure(text: String, widthFraction: Float, weight: FontWeight = FontWeight.Normal) =
@@ -242,20 +242,20 @@ private fun DrawScope.drawBack() {
     val margin = size.width * 0.06f
     val corner = CornerRadius(margin / 2)
     val stroke = size.width * 0.012f
-    drawRoundRect(BackNavy, Offset(margin, margin), Size(size.width - 2 * margin, size.height - 2 * margin), corner)
+    drawRoundRect(BrandNavy, Offset(margin, margin), Size(size.width - 2 * margin, size.height - 2 * margin), corner)
 
     clipRect(margin, margin, size.width - margin, size.height - margin) {
         var x = -size.height
         while (x < size.width) {
-            drawLine(BackSaffron, Offset(x, 0f), Offset(x + size.height, size.height), stroke, alpha = 0.45f)
-            drawLine(BackSaffron, Offset(x, size.height), Offset(x + size.height, 0f), stroke, alpha = 0.45f)
+            drawLine(BrandSaffron, Offset(x, 0f), Offset(x + size.height, size.height), stroke, alpha = 0.45f)
+            drawLine(BrandSaffron, Offset(x, size.height), Offset(x + size.height, 0f), stroke, alpha = 0.45f)
             x += size.width / 6
         }
     }
 
     val frame = margin * 2
-    drawRoundRect(BackSaffron, Offset(frame, frame), Size(size.width - 2 * frame, size.height - 2 * frame), corner, style = Stroke(stroke * 1.5f))
+    drawRoundRect(BrandSaffron, Offset(frame, frame), Size(size.width - 2 * frame, size.height - 2 * frame), corner, style = Stroke(stroke * 1.5f))
 }
 
-private fun DrawScope.drawCentred(text: TextLayoutResult, at: Offset) =
+internal fun DrawScope.drawCentred(text: TextLayoutResult, at: Offset) =
     drawText(text, topLeft = at - Offset(text.size.width / 2f, text.size.height / 2f))

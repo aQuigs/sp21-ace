@@ -10,7 +10,7 @@
     <string name="open_menu">Open navigation menu</string>
     <string name="back">Back</string>
 
-    <string name="table_rules_intro">These are the table rules for the strategy trainer. They decide which moves are correct, and the strategy chart follows them.</string>
+    <string name="table_rules_intro">These are the table rules for the strategy trainer and the table you play at. They decide which moves are correct, and the strategy chart follows them.</string>
     <string name="soft_17">Soft 17</string>
     <string name="dealer_hits">Dealer hits</string>
     <string name="dealer_stands">Dealer stands</string>
@@ -115,4 +115,36 @@
     <string name="hearts">hearts</string>
     <string name="diamonds">diamonds</string>
     <string name="clubs">clubs</string>
+    <string name="play">Play</string>
+    <string name="play_spanish_21">Play Spanish 21</string>
+    <string name="place_your_bet">Place Your Bet</string>
+    <string name="deal">Deal</string>
+    <string name="ok">OK</string>
+    <string name="next">Next</string>
+    <string name="bankroll_description">Bankroll: %1$s. Add chips</string>
+    <string name="bet_chip">Bet %1$s</string>
+    <string name="take_back_bet">Your bet: %1$s. Take it back</string>
+    <string name="add_chips">Add chips</string>
+    <string name="add_chips_message">Select an amount to top up your chips:</string>
+    <string name="add_chips_amount">Add %1$s</string>
+    <string name="done">Done</string>
+    <string name="result_win">You Win</string>
+    <string name="result_lose">You Lose</string>
+    <string name="result_push">Push</string>
+    <string name="result_blackjack">Blackjack</string>
+    <string name="result_bust">Bust</string>
+    <string name="result_surrendered">Surrendered</string>
+    <string name="result_rescued">Rescued</string>
+    <string name="bonus_pays">%1$s pays %2$s</string>
+    <string name="bonus_five_card_21">5-card 21</string>
+    <string name="bonus_six_card_21">6-card 21</string>
+    <string name="bonus_seven_card_21">7-card 21</string>
+    <string name="bonus_mixed_678">6-7-8</string>
+    <string name="bonus_suited_678">Suited 6-7-8</string>
+    <string name="bonus_spaded_678">Spaded 6-7-8</string>
+    <string name="bonus_mixed_777">7-7-7</string>
+    <string name="bonus_suited_777">Suited 7-7-7</string>
+    <string name="bonus_spaded_777">Spaded 7-7-7</string>
+    <string name="odds">%1$d to %2$d</string>
+    <string name="super_bonus">Super Bonus %1$s</string>
 </resources>
