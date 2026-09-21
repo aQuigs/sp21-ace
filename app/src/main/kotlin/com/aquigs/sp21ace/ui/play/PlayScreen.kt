@@ -50,13 +50,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.game.Bonus
 import com.aquigs.sp21ace.domain.game.CHIPS
 import com.aquigs.sp21ace.domain.game.Finish
 import com.aquigs.sp21ace.domain.game.HandResult
 import com.aquigs.sp21ace.domain.game.Outcome
 import com.aquigs.sp21ace.domain.game.PlayerHand
-import com.aquigs.sp21ace.domain.game.Round
 import com.aquigs.sp21ace.domain.game.TOP_UPS
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.game.correctMove
@@ -120,9 +120,9 @@ fun PlayScreen(
         }
     }
 
-    // The hole card turns over as the round settles, then each card the dealer drew in turn
-    LaunchedEffect(round?.settled, table.dealerCardsShown) {
-        if (round?.settled == true && !table.revealed) {
+    // The hole card turns over once the round is settled and the last hand on show, then each card the dealer drew in turn
+    LaunchedEffect(round?.settled, table.paused, table.dealerCardsShown) {
+        if (round?.settled == true && !table.paused && !table.revealed) {
             delay(DEALER_CARD_MILLIS)
             onUpdate { it.revealDealerCard() }
         }
@@ -139,7 +139,7 @@ fun PlayScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Box(Modifier.weight(1f)) {
-                    if (round != null) DealerArea(round, table.dealerCardsShown, settings.handTotals)
+                    if (round != null) DealerArea(round.dealer, table.dealerCardsShown, settings.handTotals)
                 }
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     when {
@@ -240,20 +240,22 @@ private fun BankrollPill(available: Long, onAddChips: () -> Unit) {
     }
 }
 
+// The hole card stays face down until the dealer plays, [shown] then counting it and each card drawn
 @Composable
-private fun DealerArea(round: Round, shown: Int, handTotals: Boolean) {
-    val faceUp = round.dealer.take(shown)
+private fun DealerArea(dealer: List<Card>, shown: Int, handTotals: Boolean) {
+    val faceUp = dealer.take(shown)
+    val upcard = dealer.first()
 
     HandArea(
         label = stringResource(R.string.dealer),
-        total = (if (round.settled) totalLabel(faceUp) else round.upcard.upcard.label).takeIf { handTotals },
+        total = (if (shown > 1) totalLabel(faceUp) else upcard.upcard.label).takeIf { handTotals },
     ) { fan ->
-        if (round.settled) {
+        if (shown > 1) {
             DissolvingHand(faceUp, fan)
         } else {
             // As Blackjack Ace deals it, the hole card lies over the upcard's right side
             OverlappingCards(fan) {
-                PlayingCard(round.upcard)
+                PlayingCard(upcard)
                 CardBack()
             }
         }
@@ -282,17 +284,18 @@ private fun BetStack(bet: Long, onTakeBack: () -> Unit) {
 }
 
 /**
- * DEAL once a bet is down, the moves the hand can make while it's played, and OK or NEXT on each result. With only those moves
- * shown, the buttons shift whenever they change, so a tap waits until the new ones have been there a double tap's length: the
- * second tap of a double tap on DEAL would otherwise land on the SURRENDER that takes its place.
+ * DEAL once a bet is down, the moves the hand can make while it's played, NEXT on each finished split hand but the last, and OK
+ * or NEXT on each result. With only those moves shown, the buttons shift whenever they change, so a tap waits until the new ones
+ * have been there a double tap's length: the second tap of a double tap on DEAL would otherwise land on the SURRENDER that takes
+ * its place.
  */
 @Composable
 private fun ColumnScope.TableButtons(table: Table, onDeal: () -> Unit, onMove: (Move) -> Unit, onNext: () -> Unit) {
     val round = table.round
-    val moves = round?.takeUnless { it.settled }?.moves()?.let { moves -> Move.entries.filter { it in moves } }.orEmpty()
+    val moves = Move.entries.filter { it in table.moves }
     val action = when {
         round == null -> R.string.deal.takeIf { table.bet > 0 }
-        table.hasNextResult -> R.string.next
+        table.paused || table.hasNextResult -> R.string.next
         table.revealed -> R.string.ok
         else -> null
     }
@@ -308,18 +311,21 @@ private fun ColumnScope.TableButtons(table: Table, onDeal: () -> Unit, onMove: (
 
 /**
  * Blackjack Ace's band across the middle of the table, over the cards, with the message in large light type: Place Your Bet
- * between rounds, and each hand's result once the dealer's cards are all face up. Taps go through it to the bet under it.
+ * between rounds, a split hand's bust as the table stays on it, and each hand's result once the dealer's cards are all face up.
+ * Taps go through it to the bet under it.
  */
 @Composable
 private fun Band(table: Table, modifier: Modifier = Modifier) {
     val hand = table.shownHand
     val result = table.shownResult
+    val bust = hand?.takeIf { table.paused && it.finish == Finish.BUSTED }
     val message = when {
         table.round == null -> stringResource(R.string.place_your_bet)
         hand != null && result != null -> stringResource(result.headline(hand))
+        bust != null -> stringResource(R.string.result_bust)
         else -> null
     }
-    val details = result?.let { resultDetails(it) }
+    val details = result?.let { resultDetails(it) } ?: bust?.let { netText(-it.wager) }
     val spoken = listOfNotNull(message, details).joinToString(". ")
 
     // A live region speaks when its words change, so it's this box, there between messages too, that speaks each one
@@ -366,7 +372,10 @@ private fun resultDetails(result: HandResult): String? = listOfNotNull(
     result.net.takeIf { it != 0L }?.let(::netText),
 ).joinToString(" · ").ifEmpty { null }
 
-/** Chips to bet with between rounds, those the bankroll can't cover greyed out, and during a round the bet on each hand. */
+/**
+ * Chips to bet with between rounds, those the bankroll can't cover greyed out, and during a round the bet on each hand. As in
+ * Blackjack Ace, a hand that busts loses its bet at once.
+ */
 @Composable
 private fun Tray(table: Table, onBet: (Long) -> Unit) {
     val round = table.round
@@ -394,7 +403,7 @@ private fun Tray(table: Table, onBet: (Long) -> Unit) {
                     }
                 } else {
                     round.hands.forEachIndexed { index, hand ->
-                        HandBet(hand.wager, shown = index == table.shownIndex)
+                        if (hand.finish != Finish.BUSTED) HandBet(hand.wager, shown = index == table.shownIndex)
                     }
                 }
             }
