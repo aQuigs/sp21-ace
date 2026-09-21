@@ -27,10 +27,13 @@ import com.aquigs.sp21ace.data.HandCustomizationStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
+import com.aquigs.sp21ace.data.TableStore
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
+import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
+import com.aquigs.sp21ace.ui.play.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.HandType
 import com.aquigs.sp21ace.domain.dealing.type
@@ -71,6 +74,7 @@ class AppShellTest {
     private val handsStore by lazy { HandCustomizationStore(compose.activity, "customize_hands_app_shell_test") }
     private val settingsStore by lazy { SettingsStore(compose.activity, "settings_app_shell_test") }
     private val historyStore by lazy { PracticeHistoryStore(File(compose.activity.filesDir, "practice_history_app_shell_test.txt")) }
+    private val tableStore by lazy { TableStore(compose.activity, "table_app_shell_test") }
 
     private var handsDealt = 0
     private val played = mutableListOf<Boolean>()
@@ -78,7 +82,7 @@ class AppShellTest {
     // Deals 16 vs A first and a pair of 8s after every answer, unless a test deals through the picker instead
     private var dealHand: (HandPicker, List<PracticeAnswer>) -> TrainerHand = { _, _ -> if (handsDealt++ == 0) sixteenVsAce else eightsVsSix }
 
-    private fun string(id: Int) = compose.activity.getString(id)
+    private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
     // A closed drawer stays composed just off screen, so being displayed is what tells open from closed
     private fun drawerItem(title: Int) = compose.onNode(hasText(string(title)) and isSelectable())
@@ -89,19 +93,31 @@ class AppShellTest {
     @Before
     fun setUp() {
         store.save(TableRules())
+        tableStore.saveChips(STARTING_BANKROLL)
         handsStore.save(HandCustomization())
         // Light whatever the emulator's own theme, as the drawer's status bar check expects
         settingsStore.save(Settings(colorTheme = ColorTheme.LIGHT))
         historyStore.clear()
 
         compose.setContent {
-            Sp21AceApp(store, historyStore, handsStore, settingsStore, deal = { picker, history -> dealHand(picker, history) }, sounds = { played += it })
+            Sp21AceApp(
+                store,
+                historyStore,
+                handsStore,
+                settingsStore,
+                tableStore,
+                deal = { picker, history -> dealHand(picker, history) },
+                sounds = { played += it },
+                // Its shoe deals 8-J against a 4 first
+                random = Random(2),
+            )
         }
     }
 
     @After
     fun tearDown() {
         store.save(TableRules())
+        tableStore.saveChips(STARTING_BANKROLL)
         handsStore.save(HandCustomization())
         settingsStore.save(Settings())
         historyStore.clear()
@@ -120,7 +136,7 @@ class AppShellTest {
     private fun overallCard() = compose.onScreen.cardTexts(string(R.string.overall), string(R.string.correct))
 
     private fun overallFigures(percentage: Double, correct: Int, incorrect: Int) =
-        compose.activity.accuracyCardTexts(R.string.overall, compose.activity.getString(R.string.percentage, percentage), correct, incorrect)
+        compose.activity.accuracyCardTexts(R.string.overall, string(R.string.percentage, percentage), correct, incorrect)
 
     @Test
     fun menuButtonOpensTheDrawerOnTheStrategyTrainerWithItsItemsInBlackjackAcesOrder() {
@@ -130,9 +146,37 @@ class AppShellTest {
 
         compose.onNodeWithText(string(R.string.basic_strategy)).assertIsDisplayed()
         drawerItem(R.string.strategy_trainer).assertIsSelected()
-        val items = listOf(R.string.strategy_trainer, R.string.table_rules, R.string.strategy_chart, R.string.customize_hands, R.string.accuracy, R.string.settings)
+        compose.onNodeWithText(string(R.string.play)).assertIsDisplayed()
+        val items = listOf(
+            R.string.strategy_trainer,
+            R.string.table_rules,
+            R.string.strategy_chart,
+            R.string.customize_hands,
+            R.string.accuracy,
+            R.string.play_spanish_21,
+            R.string.settings,
+        )
             .map { drawerItem(it).assertIsDisplayed().getBoundsInRoot() }
         items.zipWithNext().forEach { (above, below) -> assertTrue(below.top >= above.bottom) }
+    }
+
+    @Test
+    fun theDrawerOpensPlayWhichSavesTheChipsAsEachRoundSettles() {
+        openFromDrawer(R.string.play_spanish_21)
+        compose.onNodeWithText(string(R.string.place_your_bet)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(string(R.string.bet_chip, "25")).performClick()
+
+        compose.onNodeWithContentDescription(string(R.string.bankroll_description, "975")).assertIsDisplayed()
+        // Chips on the table are still the player's until a round settles
+        assertEquals(STARTING_BANKROLL, tableStore.loadChips())
+
+        // The table's buttons take taps once they've been on screen a double tap's length
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithContentDescription(string(R.string.deal)).performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithContentDescription(string(R.string.move_surrender)).performClick()
+
+        assertEquals(STARTING_BANKROLL - 1_250, tableStore.loadChips())
     }
 
     @Test
@@ -155,14 +199,14 @@ class AppShellTest {
     fun clearingThePracticeHistoryResetsTheStreakMeterAccuracyAndItsHeatmap() {
         // Right on hard 16 vs A
         compose.onNodeWithContentDescription(string(R.string.move_hit)).performClick()
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, 1)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(string(R.string.streak_count, 1)).assertIsDisplayed()
 
         openFromDrawer(R.string.settings)
         compose.onNodeWithText(string(R.string.clear_practice_history)).performScrollTo().performClick()
         compose.onNodeWithText(string(R.string.clear)).performClick()
         compose.onNodeWithContentDescription(string(R.string.back)).performClick()
 
-        compose.onNodeWithContentDescription(compose.activity.getString(R.string.streak_count, 0)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(string(R.string.streak_count, 0)).assertIsDisplayed()
 
         openFromDrawer(R.string.accuracy)
 

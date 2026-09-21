@@ -17,6 +17,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
+import com.aquigs.sp21ace.data.TableStore
+import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
+import com.aquigs.sp21ace.ui.play.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.accuracy.cardTexts
@@ -37,6 +40,7 @@ class MainActivityTest {
     @After
     fun tearDown() {
         TableRulesStore(compose.activity).save(TableRules())
+        TableStore(compose.activity).saveChips(STARTING_BANKROLL)
         SettingsStore(compose.activity).save(Settings())
         PracticeHistoryStore.forApp(compose.activity).clear()
         // The system keeps a chosen theme for the app, apart from the settings file
@@ -64,6 +68,20 @@ class MainActivityTest {
         compose.activityRule.scenario.recreate()
 
         assertEquals(answered, everythingOnScreen())
+    }
+
+    @Test
+    fun keepsTheDealtRoundWhenRecreated() {
+        openFromDrawer(R.string.play_spanish_21)
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.bet_chip, "25")).performClick()
+        // DEAL takes taps once it's been on screen a double tap's length
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.deal)).performClick()
+        val dealt = everythingOnScreen()
+
+        compose.activityRule.scenario.recreate()
+
+        assertEquals(dealt, everythingOnScreen())
     }
 
     @Test

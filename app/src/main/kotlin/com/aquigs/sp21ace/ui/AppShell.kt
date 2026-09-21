@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
+import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
@@ -43,6 +44,7 @@ import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
 import com.aquigs.sp21ace.ui.components.SectionHeading
 import com.aquigs.sp21ace.ui.hands.CustomizeHandsScreen
 import com.aquigs.sp21ace.ui.hands.HandsDealtScreen
+import com.aquigs.sp21ace.ui.play.PlayScreen
 import com.aquigs.sp21ace.ui.rules.Soft17Screen
 import com.aquigs.sp21ace.ui.rules.TableRulesScreen
 import com.aquigs.sp21ace.ui.settings.ButtonLocationScreen
@@ -54,6 +56,7 @@ import kotlinx.coroutines.launch
 /** Root screens carry the menu. Every other destination opens over one as a sub-page with a back arrow. */
 enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     StrategyTrainer(R.string.strategy_trainer, isRoot = true),
+    Play(R.string.play_spanish_21, isRoot = true),
     StrategyChart(R.string.strategy_chart, isRoot = false),
     TableRules(R.string.table_rules, isRoot = false),
     Soft17(R.string.soft_17, isRoot = false),
@@ -75,17 +78,23 @@ private val BASIC_STRATEGY_ITEMS = listOf(
     Destination.Accuracy to R.drawable.ic_accuracy,
 )
 
+// Blackjack Ace's Play section also lists its own Table Rules and Strategy Chart, but here the table plays by the trainer's
+private val PLAY_ITEMS = listOf(Destination.Play to R.drawable.ic_home)
+
 // Blackjack Ace's drawer leaves about a third of the screen uncovered; Material's 360dp default covers almost all of it.
 private val DrawerWidth = 280.dp
 
 @Composable
 fun AppShell(
     trainer: TrainerState,
+    table: Table,
     rules: TableRules,
     customization: HandCustomization,
     settings: Settings,
     history: List<PracticeAnswer>,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
+    onTableUpdate: ((Table) -> Table?) -> Unit,
+    onDeal: () -> Unit,
     onRulesChange: (TableRules) -> Unit,
     onCustomizationChange: (HandCustomization) -> Unit,
     onSettingsChange: (Settings) -> Unit,
@@ -144,6 +153,14 @@ fun AppShell(
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenChart = { open(Destination.StrategyChart) },
             )
+            Destination.Play -> PlayScreen(
+                table = table,
+                settings = settings,
+                onUpdate = onTableUpdate,
+                onDeal = onDeal,
+                onOpenDrawer = { scope.launch { drawerState.open() } },
+                onOpenChart = { open(Destination.StrategyChart) },
+            )
             Destination.StrategyChart -> StrategyChartScreen(rules.ruleSet, onBack = { back() })
             Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = { back() })
             Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = { back() })
@@ -185,11 +202,23 @@ private fun Drawer(selected: Destination, onSelect: (Destination) -> Unit) {
 
             BASIC_STRATEGY_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
 
+            DrawerDivider()
+            SectionHeading(
+                text = stringResource(R.string.play),
+                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(start = 16.dp, top = 10.dp, bottom = 18.dp),
+            )
+            PLAY_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
+
             // As in Blackjack Ace, Settings belongs to no section, so it sits below them all, inset as far as the header
-            HorizontalDivider(modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(horizontal = 16.dp, vertical = 8.dp))
+            DrawerDivider()
             DrawerItem(Destination.Settings, R.drawable.ic_settings, selected, onSelect)
         }
     }
+}
+
+@Composable
+private fun DrawerDivider() {
+    HorizontalDivider(modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(horizontal = 16.dp, vertical = 8.dp))
 }
 
 @Composable
