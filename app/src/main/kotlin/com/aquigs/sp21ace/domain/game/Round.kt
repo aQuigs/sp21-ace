@@ -19,8 +19,11 @@ const val MAX_DOUBLES = 3
 /** How a hand stopped taking decisions. */
 enum class Finish { STOOD, BUSTED, SURRENDERED, RESCUED }
 
-/** Insurance against a dealer's ace: offered before the peek, then taken or declined. */
-enum class Insurance { OFFERED, TAKEN, DECLINED }
+/** Insurance pays 2 to 1, as New Jersey's, Pennsylvania's and Maryland's rules for Spanish 21 have it. */
+val INSURANCE_ODDS = Odds.TWO_TO_ONE
+
+/** Insurance against a dealer's ace, offered before the peek. Declining it leaves none. */
+enum class Insurance { OFFERED, TAKEN }
 
 /**
  * One of the player's hands and the [wager] on it in cents, which every double doubles. A [split] hand can't be a blackjack or
@@ -41,10 +44,10 @@ data class PlayerHand(
 
 /**
  * A round from the deal to the settlement, in cents. [bankroll] is the chips off the table: the bet, each double, each split and
- * insurance move chips from it onto the table, and the settlement pays back what the hands and insurance return. The dealer's second card stays face down
- * until the round is [settled]. [active] is the hand being played, and once the round is settled it is past the last hand. As in
- * Blackjack Ace, a split hand that finishes before the last stays active, with nothing to decide, until [nextHand] moves on.
- * [insurance] is null unless the table offered it.
+ * insurance move chips from it onto the table, and the settlement pays back what the hands and insurance return. The dealer's
+ * second card stays face down until the round is [settled]. [active] is the hand being played, and once the round is settled it
+ * is past the last hand. As in Blackjack Ace, a split hand that finishes before the last stays active, with nothing to decide,
+ * until [nextHand] moves on. [insurance] is null unless it's on offer or taken.
  */
 data class Round(
     val ruleSet: RuleSet,
@@ -65,28 +68,43 @@ data class Round(
      * and once the round is settled.
      */
     val activeHand: PlayerHand?
-        get() = if (settled || insurance == Insurance.OFFERED) null else hands[active].takeIf { it.finish == null }
+        get() = if (settled || offeringInsurance) null else hands[active].takeIf { it.finish == null }
+
+    /**
+     * The chips the player owns. Chips riding on the round still count until it's settled, so a round cut short by a restart gives
+     * back its bets rather than losing them. A hand the dealer's cards can't change counts as settled, though: a bust has lost
+     * its bet, and a blackjack waiting on an insurance answer has won. Insurance taken on a round still going has lost.
+     */
+    val chips: Long
+        get() = if (settled) {
+            bankroll
+        } else {
+            bankroll + hands.sumOf { if (it.finish == Finish.BUSTED || it.isBlackjack) it.wager + it.settle(dealer).net else it.wager }
+        }
 
     val waitingForNextHand: Boolean get() = !settled && hands[active].finish != null
 
     /** The round moved on from a finished split hand to the next, or null unless one waits. */
     fun nextHand(): Round? = if (waitingForNextHand) copy(active = active + 1).advance() else null
 
+    val offeringInsurance: Boolean get() = insurance == Insurance.OFFERED
+
     /** Insurance costs half the bet, as in Blackjack Ace. */
     val insuranceBet: Long get() = bet / 2
 
-    /** What insurance won or lost: 2 to 1 on a dealer blackjack, or else its cost. */
+    val insuranceWon: Boolean get() = insurance == Insurance.TAKEN && dealer.isBlackjack()
+
     val insuranceNet: Long
         get() = when {
-            insurance != Insurance.TAKEN -> 0
-            dealer.isBlackjack() -> Odds.TWO_TO_ONE.on(insuranceBet)
-            else -> -insuranceBet
+            insuranceWon -> INSURANCE_ODDS.on(insuranceBet)
+            insurance == Insurance.TAKEN -> -insuranceBet
+            else -> 0
         }
 
     /** What the settlement paid back, once the round is settled: each hand's wager and what it won or lost, and insurance that won. */
     val returned: Long?
         get() = results?.let { results ->
-            hands.zip(results).sumOf { (hand, result) -> hand.wager + result.net } + if (insuranceNet > 0) insuranceBet + insuranceNet else 0
+            hands.zip(results).sumOf { (hand, result) -> hand.wager + result.net } + if (insuranceWon) insuranceBet + insuranceNet else 0
         }
 
     /**
@@ -133,9 +151,9 @@ data class Round(
 
     /** The round once offered insurance is [taken][take] or declined, then the peek; null unless it's waiting on an answer. */
     fun insure(take: Boolean): Round? = when {
-        insurance != Insurance.OFFERED -> null
+        !offeringInsurance -> null
         take -> copy(bankroll = bankroll - insuranceBet, insurance = Insurance.TAKEN).peeked()
-        else -> copy(insurance = Insurance.DECLINED).peeked()
+        else -> copy(insurance = null).peeked()
     }
 
     /** The round with help counted on the active hand, as the hint or a warning backed out of gives it, or null once it's settled. */
@@ -174,7 +192,6 @@ data class Round(
         return settled.copy(bankroll = bankroll + requireNotNull(settled.returned))
     }
 
-    // A player blackjack is paid at once, and a dealer showing an ace or a face card peeks for blackjack, so either one settles the round
     private fun peeked(): Round = if (hands[0].isBlackjack || dealer.isBlackjack()) payOut() else this
 
     companion object {

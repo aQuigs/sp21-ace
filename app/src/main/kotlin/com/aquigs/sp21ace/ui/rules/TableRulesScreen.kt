@@ -13,7 +13,7 @@ import com.aquigs.sp21ace.ui.components.SwitchRow
 
 /**
  * Offers the rules that choose between the published charts, because a rule without a chart would leave nothing to grade against,
- * and Blackjack Ace's Insurance, which changes no chart, only whether the table offers the bet.
+ * and Blackjack Ace's Insurance.
  */
 @Composable
 fun TableRulesScreen(

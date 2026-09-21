@@ -373,7 +373,7 @@ class RoundTest {
     @Test
     fun declinedInsuranceCostsNothingAndTheDealerThenPeeks() {
         val blackjack = requireNotNull(deal("9c 7d", "As Kh", insurance = true).insure(take = false))
-        assertEquals(Insurance.DECLINED, blackjack.insurance)
+        assertNull(blackjack.insurance)
         assertEquals(listOf(Outcome.LOSE to -BET), blackjack.outcomes())
         assertEquals(BANKROLL - BET, blackjack.bankroll)
 
@@ -422,19 +422,11 @@ class RoundTest {
                 shoe = shoe.forNextRound(random)
                 var round = Round.deal(ruleSet, BET, bankroll, shoe, insurance = random.nextBoolean())
                 while (!round.settled) {
+                    assertEquals(round.activeHand != null, round.moves().isNotEmpty())
                     round = when {
-                        round.insurance == Insurance.OFFERED -> {
-                            assertEquals(emptySet<Move>(), round.moves())
-                            requireNotNull(round.insure(take = random.nextBoolean()))
-                        }
-                        round.waitingForNextHand -> {
-                            assertEquals(emptySet<Move>(), round.moves())
-                            round.next()
-                        }
-                        else -> {
-                            assertTrue(round.activeHand != null && round.moves().isNotEmpty())
-                            requireNotNull(round.play(round.moves().random(random)))
-                        }
+                        round.offeringInsurance -> requireNotNull(round.insure(take = random.nextBoolean()))
+                        round.waitingForNextHand -> round.next()
+                        else -> requireNotNull(round.play(round.moves().random(random)))
                     }
                 }
 

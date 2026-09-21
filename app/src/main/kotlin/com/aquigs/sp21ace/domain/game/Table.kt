@@ -25,19 +25,8 @@ data class Table(
     val resultStep: Int = 0,
     val hinted: Boolean = false,
 ) : Serializable {
-    /**
-     * The chips the player owns. Chips riding on a round still count until it's settled, so a round cut short by a restart gives
-     * back its bets rather than losing them. A hand the dealer's cards can't change counts as settled, though: a bust has lost
-     * its bet, and a blackjack waiting on an insurance answer has won. Insurance taken on a round still going has lost.
-     */
-    val chips: Long
-        get() = when {
-            round == null -> bankroll + bet
-            round.settled -> round.bankroll
-            else -> round.bankroll + round.hands.sumOf { hand ->
-                if (hand.finish == Finish.BUSTED || hand.isBlackjack) hand.wager + hand.settle(round.dealer).net else hand.wager
-            }
-        }
+    /** The chips the player owns: between rounds the bankroll and the bet, and once a round is dealt, [Round.chips]. */
+    val chips: Long get() = round?.chips ?: (bankroll + bet)
 
     /** The chips off the table, which the bankroll shows. A settled round's payout waits for the dealer's last card, as its result does. */
     val available: Long
@@ -95,10 +84,9 @@ data class Table(
         return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe.forNextRound(random), insurance))
     }
 
-    /** Whether the round waits on an answer to insurance, before anything else. */
-    val offeringInsurance: Boolean get() = round?.insurance == Insurance.OFFERED
+    val offeringInsurance: Boolean get() = round?.offeringInsurance == true
 
-    /** Takes or declines the insurance offered. Blackjack Ace doesn't grade it or warn before taking it. */
+    /** As in Blackjack Ace, the answer isn't graded and draws no warning. */
     fun insure(take: Boolean): Table? = round?.insure(take)?.let { copy(round = it) }
 
     /** The move the hint shows, once asked for, until a move is made. */

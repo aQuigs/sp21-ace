@@ -54,6 +54,7 @@ import com.aquigs.sp21ace.domain.game.Bonus
 import com.aquigs.sp21ace.domain.game.CHIPS
 import com.aquigs.sp21ace.domain.game.Finish
 import com.aquigs.sp21ace.domain.game.HandResult
+import com.aquigs.sp21ace.domain.game.INSURANCE_ODDS
 import com.aquigs.sp21ace.domain.game.Odds
 import com.aquigs.sp21ace.domain.game.Outcome
 import com.aquigs.sp21ace.domain.game.PlayerHand
@@ -332,7 +333,7 @@ private fun Band(table: Table, modifier: Modifier = Modifier) {
         hand != null && result != null -> stringResource(result.headline(hand))
         else -> null
     }
-    val details = result?.let { resultDetails(it, insuranceWon = requireNotNull(table.round).insuranceNet > 0) }
+    val details = result?.let { resultDetails(it, insuranceWon = requireNotNull(table.round).insuranceWon) }
     val spoken = listOfNotNull(message, details).joinToString(". ")
 
     // A live region speaks when its words change, so it's this box, there between messages too, that speaks each one
@@ -379,7 +380,7 @@ private fun HandResult.headline(hand: PlayerHand): Int = when {
 private fun resultDetails(result: HandResult, insuranceWon: Boolean): String? = listOfNotNull(
     result.bonus?.let { stringResource(R.string.bonus_pays, stringResource(it.displayName), odds(it.odds)) },
     result.superBonus.takeIf { it > 0 }?.let { stringResource(R.string.super_bonus, chipsText(it)) },
-    stringResource(R.string.bonus_pays, stringResource(R.string.insurance), odds(Odds.TWO_TO_ONE)).takeIf { insuranceWon },
+    if (insuranceWon) stringResource(R.string.bonus_pays, stringResource(R.string.insurance), odds(INSURANCE_ODDS)) else null,
     result.net.takeIf { it != 0L }?.let(::netText),
 ).joinToString(" · ").ifEmpty { null }
 
