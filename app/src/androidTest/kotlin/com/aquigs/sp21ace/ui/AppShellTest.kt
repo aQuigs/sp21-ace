@@ -25,6 +25,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.Sp21AceApp
 import com.aquigs.sp21ace.data.HandCustomizationStore
+import com.aquigs.sp21ace.data.PlayHistoryStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
@@ -41,6 +42,7 @@ import com.aquigs.sp21ace.domain.dealing.type
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.settings.Settings
+import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -48,8 +50,8 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
-import com.aquigs.sp21ace.ui.accuracy.cardTexts
 import com.aquigs.sp21ace.ui.accuracy.square
+import com.aquigs.sp21ace.ui.statistics.strategyCardTexts
 import com.aquigs.sp21ace.ui.hands.handTypeSwitch
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -76,6 +78,7 @@ class AppShellTest {
     private val settingsStore by lazy { SettingsStore(compose.activity, "settings_app_shell_test") }
     private val historyStore by lazy { PracticeHistoryStore(File(compose.activity.filesDir, "practice_history_app_shell_test.txt")) }
     private val tableStore by lazy { TableStore(compose.activity, "table_app_shell_test") }
+    private val playHistoryStore by lazy { PlayHistoryStore(File(compose.activity.filesDir, "play_history_app_shell_test.txt")) }
 
     private var handsDealt = 0
     private val played = mutableListOf<Boolean>()
@@ -99,11 +102,13 @@ class AppShellTest {
         // Light whatever the emulator's own theme, as the drawer's status bar check expects
         settingsStore.save(Settings(colorTheme = ColorTheme.LIGHT))
         historyStore.clear()
+        playHistoryStore.clear()
 
         compose.setContent {
             Sp21AceApp(
                 store,
                 historyStore,
+                playHistoryStore,
                 handsStore,
                 settingsStore,
                 tableStore,
@@ -122,6 +127,7 @@ class AppShellTest {
         handsStore.save(HandCustomization())
         settingsStore.save(Settings())
         historyStore.clear()
+        playHistoryStore.clear()
     }
 
     private fun openFromDrawer(title: Int) {
@@ -236,6 +242,28 @@ class AppShellTest {
 
         val screen = compose.onRoot().captureToImage().toPixelMap()
         assertTrue(screen[screen.width / 10, 0].luminance() < 0.5f)
+    }
+
+    @Test
+    fun aSettledRoundsHandsJoinThePlayHistoryAndShowInStatistics() {
+        openFromDrawer(R.string.play_spanish_21)
+        compose.onNodeWithContentDescription(string(R.string.bet_chip, "25")).performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithContentDescription(string(R.string.deal)).performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        // 18 stands against a 4
+        compose.onNodeWithContentDescription(string(R.string.move_stand)).performClick()
+
+        assertEquals(listOf(StrategyGrade.CORRECT), playHistoryStore.history.value?.map { it.grade })
+
+        openFromDrawer(R.string.statistics)
+
+        appBarTitle(R.string.statistics).assertIsDisplayed()
+        compose.onNodeWithText(string(R.string.hands_played)).performScrollTo()
+        assertEquals(
+            compose.activity.strategyCardTexts(1, 1 to "100%", 0 to "0%", 0 to "0%", 0 to "0%"),
+            compose.cardTexts(string(R.string.strategy), string(R.string.hands_played)),
+        )
     }
 
     @Test

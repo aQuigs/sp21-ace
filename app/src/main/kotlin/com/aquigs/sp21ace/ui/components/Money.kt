@@ -1,4 +1,4 @@
-package com.aquigs.sp21ace.ui.play
+package com.aquigs.sp21ace.ui.components
 
 import java.text.NumberFormat
 import kotlin.math.abs
@@ -13,5 +13,8 @@ fun chipsText(cents: Long): String {
     return format.format(cents / 100.0)
 }
 
+/** A profit or loss as Statistics writes it: 25, or −37.50. */
+fun profitText(cents: Long): String = (if (cents < 0) "−" else "") + chipsText(abs(cents))
+
 /** What a hand won or lost: +37.50 or −25. */
-fun netText(cents: Long): String = (if (cents >= 0) "+" else "−") + chipsText(abs(cents))
+fun netText(cents: Long): String = (if (cents >= 0) "+" else "") + profitText(cents)

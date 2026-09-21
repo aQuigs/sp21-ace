@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.domain.game
 
 import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.domain.history.playedHands
 import com.aquigs.sp21ace.serializedAndBack
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -10,6 +11,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
 import kotlin.random.Random
 
 class TableTest {
@@ -129,10 +131,49 @@ class TableTest {
     }
 
     @Test
-    fun noHintOnceTheRoundIsSettled() {
+    fun eachMoveIsGradedOnItsHandAndHelpCountsAsBlackjackAceCountsIt() {
+        // 16 vs 6 stands, and the Q to come busts whoever draws it
         val dealt = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(RuleSet.S17, random))
+        fun grade(table: Table?) = requireNotNull(table?.round).playedHands(Instant.EPOCH).single().grade
 
-        assertNull(requireNotNull(dealt.play(Move.STAND)).showHint())
+        assertEquals(StrategyGrade.CORRECT, grade(dealt.play(Move.STAND)))
+        assertEquals(StrategyGrade.INCORRECT, grade(dealt.play(Move.HIT)))
+        assertEquals(StrategyGrade.CORRECT_WITH_HINTS, grade(dealt.showHint()?.play(Move.STAND)))
+        // Backing out of a move the warning questioned
+        assertEquals(StrategyGrade.CORRECT_WITH_HINTS, grade(dealt.heedWarning()?.play(Move.STAND)))
+        assertEquals(StrategyGrade.INCORRECT, grade(dealt.showHint()?.play(Move.HIT)))
+        // A blackjack settles at the deal, with nothing to decide
+        assertEquals(StrategyGrade.NO_ACTION_REQUIRED, grade(table("Ac 6s Kd 9h").betting(2_500).deal(RuleSet.S17, random)))
+    }
+
+    @Test
+    fun aSplitsDecisionStaysWithTheFirstOfItsHands() {
+        // K-Q vs 6 stands, so the split is wrong. The first hand draws a 9 to stand on, and the second an A, making 21 by itself
+        val dealt = requireNotNull(table("Kc 6s Qd Kh 9s Ad 5h").betting(2_500).deal(RuleSet.S17, random))
+        val played = requireNotNull(dealt.play(Move.SPLIT)?.play(Move.STAND))
+
+        assertEquals(
+            listOf(StrategyGrade.INCORRECT, StrategyGrade.NO_ACTION_REQUIRED),
+            requireNotNull(played.round).playedHands(Instant.EPOCH).map { it.grade },
+        )
+    }
+
+    @Test
+    fun theHintGoesWithTheMoveButTheHelpStaysWithTheHand() {
+        // 12 vs 2 hits, and the 3 it draws makes 15, a decision of its own
+        val dealt = requireNotNull(table("Kc 2s 2d Kh 3s Qs").betting(2_500).deal(RuleSet.S17, random))
+        val helped = requireNotNull(dealt.showHint()?.play(Move.HIT))
+
+        assertFalse(helped.hinted)
+        assertTrue(requireNotNull(helped.round?.activeHand).strategy.helped)
+    }
+
+    @Test
+    fun noHelpOnceTheRoundIsSettled() {
+        val settled = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(RuleSet.S17, random)?.play(Move.STAND))
+
+        assertNull(settled.showHint())
+        assertNull(settled.heedWarning())
     }
 
     @Test

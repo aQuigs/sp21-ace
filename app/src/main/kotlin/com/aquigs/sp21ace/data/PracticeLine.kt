@@ -11,12 +11,11 @@ import java.time.Instant
 /**
  * One practice history line: named fields, such as
  * `at=1789000000000 rules=S17 player=9c,7d upcard=As doubled=false answer=HIT correctMove=HIT`.
- * Every card keeps its rank and suit, however many the hand holds, for card-count and bonus exceptions. Fields are found by
- * name, so a later one can join without breaking the lines already saved. `doubled` joined that way, and a line without it
- * predates doubled hands, so it was no doubled hand.
+ * Every card keeps its rank and suit, however many the hand holds, for card-count and bonus exceptions. `doubled` joined later,
+ * and a line without it predates doubled hands, so it was no doubled hand.
  */
 internal object PracticeLine {
-    fun print(answer: PracticeAnswer): String = listOf(
+    fun print(answer: PracticeAnswer): String = LineFields.print(
         "at" to answer.answeredAt.toEpochMilli(),
         "rules" to answer.ruleSet.name,
         "player" to answer.hand.player.joinToString(",") { it.code },
@@ -24,25 +23,22 @@ internal object PracticeLine {
         "doubled" to answer.hand.doubled,
         "answer" to answer.answer.name,
         "correctMove" to answer.correctMove.name,
-    ).joinToString(" ") { (key, value) -> "$key=$value" }
+    )
 
     /** Null for a line it can't read, such as one cut short when the app was killed mid-write. */
     fun parse(line: String): PracticeAnswer? = try {
-        val fields = line.split(' ').groupBy({ it.substringBefore('=') }, { it.substringAfter('=') })
-        // A field named twice, as in a cut-short line run on into the next, leaves no telling which answer is meant
-        fun field(key: String) = fields.getValue(key).single()
-        fun fieldIfSaved(key: String) = fields[key]?.single()
+        val fields = LineFields(line)
 
         PracticeAnswer(
-            answeredAt = Instant.ofEpochMilli(field("at").toLong()),
-            ruleSet = RuleSet.valueOf(field("rules")),
+            answeredAt = Instant.ofEpochMilli(fields["at"].toLong()),
+            ruleSet = RuleSet.valueOf(fields["rules"]),
             hand = TrainerHand(
-                field("player").split(',').map(::card),
-                card(field("upcard")),
-                doubled = fieldIfSaved("doubled")?.toBooleanStrict() ?: false,
+                fields["player"].split(',').map(::card),
+                card(fields["upcard"]),
+                doubled = fields.ifSaved("doubled")?.toBooleanStrict() ?: false,
             ),
-            answer = Move.valueOf(field("answer")),
-            correctMove = Move.valueOf(field("correctMove")),
+            answer = Move.valueOf(fields["answer"]),
+            correctMove = Move.valueOf(fields["correctMove"]),
         )
     } catch (e: RuntimeException) {
         null

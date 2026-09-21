@@ -3,7 +3,6 @@ package com.aquigs.sp21ace.ui.accuracy
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.captureToImage
@@ -11,10 +10,6 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollTo
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.ui.texts
-
-/** The texts of the card holding every one of [holding], in order: the title, then each figure before its label. */
-fun SemanticsNodeInteractionsProvider.cardTexts(vararg holding: String): List<String> = onNode(holding.map(::hasText).reduce(SemanticsMatcher::and)).texts()
 
 /** The texts an accuracy card titled [title] reads when it shows [accuracy], [correct] and [incorrect]. */
 fun Context.accuracyCardTexts(title: Int, accuracy: String, correct: Int, incorrect: Int): List<String> =

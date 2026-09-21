@@ -7,6 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.hasScrollToKeyAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.text.TextLayoutResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -40,6 +41,9 @@ val SemanticsNodeInteractionsProvider.onScreen: SemanticsNodeInteractionsProvide
 
 /** A node's texts in reading order. A merged row or card is one item for a screen reader, so they come title first. */
 fun SemanticsNodeInteraction.texts(): List<String> = fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
+
+/** The texts of the card holding every one of [holding], in order: the title, then each figure before its label. */
+fun SemanticsNodeInteractionsProvider.cardTexts(vararg holding: String): List<String> = onNode(holding.map(::hasText).reduce(SemanticsMatcher::and)).texts()
 
 /** The layout of a text node, which the unmerged tree holds even for text a control hides from a screen reader. */
 fun SemanticsNode.textLayout(): TextLayoutResult =

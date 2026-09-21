@@ -22,6 +22,7 @@ import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.ui.cardTexts
 import com.aquigs.sp21ace.ui.onScreen
 import com.aquigs.sp21ace.ui.swipeToNextTab
 import com.aquigs.sp21ace.ui.swipeToPreviousTab

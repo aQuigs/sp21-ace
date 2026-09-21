@@ -20,10 +20,16 @@ enum class Finish { STOOD, BUSTED, SURRENDERED, RESCUED }
 
 /**
  * One of the player's hands and the [wager] on it in cents, which every double doubles. A [split] hand can't be a blackjack or
- * surrendered, and earns no Super Bonus.
+ * surrendered, and earns no Super Bonus. [strategy] is how its decisions measured up to the chart.
  */
-data class PlayerHand(val cards: List<Card>, val wager: Long, val doubles: Int = 0, val split: Boolean = false, val finish: Finish? = null) :
-    Serializable {
+data class PlayerHand(
+    val cards: List<Card>,
+    val wager: Long,
+    val doubles: Int = 0,
+    val split: Boolean = false,
+    val finish: Finish? = null,
+    val strategy: StrategyRecord = StrategyRecord(),
+) : Serializable {
     val total: HandTotal get() = cards.total()
     val doubled: Boolean get() = doubles > 0
     val isBlackjack: Boolean get() = !split && cards.isBlackjack()
@@ -75,11 +81,11 @@ data class Round(
         )
     }
 
-    /** The round after the active hand makes [move], or null where it can't. */
+    /** The round after the active hand makes [move], graded against the chart on that hand, or null where it can't. */
     fun play(move: Move): Round? {
         if (move !in moves()) return null
 
-        val hand = hands[active]
+        val hand = hands[active].let { it.copy(strategy = it.strategy.withDecision(correct = move == correctMove())) }
         return when (move) {
             Move.HIT -> dealTo(hand)
             Move.STAND -> replaceActive(hand.copy(finish = Finish.STOOD))
@@ -87,11 +93,16 @@ data class Round(
             Move.RESCUE -> replaceActive(hand.copy(finish = Finish.RESCUED))
             Move.DOUBLE, Move.REDOUBLE -> copy(bankroll = bankroll - hand.wager).dealTo(hand.copy(wager = hand.wager * 2, doubles = hand.doubles + 1))
             Move.SPLIT -> {
-                val halves = hand.cards.map { PlayerHand(listOf(it), bet, split = true) }
+                val (first, second) = hand.cards
+                // The split's decision stays with the first of its hands, which takes the split hand's place
+                val halves = listOf(PlayerHand(listOf(first), bet, split = true, strategy = hand.strategy), PlayerHand(listOf(second), bet, split = true))
                 copy(bankroll = bankroll - bet, hands = hands.take(active) + halves + hands.drop(active + 1))
             }
         }.advance()
     }
+
+    /** The round with help counted on the active hand, as the hint or a warning backed out of gives it, or null once it's settled. */
+    fun withHelp(): Round? = activeHand?.let { replaceActive(it.copy(strategy = it.strategy.copy(helped = true))) }
 
     // Draws a card into the active hand, which stands on 21 and ends on a bust
     private fun dealTo(hand: PlayerHand): Round {

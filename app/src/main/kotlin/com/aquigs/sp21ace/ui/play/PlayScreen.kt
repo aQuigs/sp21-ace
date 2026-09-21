@@ -77,7 +77,9 @@ import com.aquigs.sp21ace.ui.components.MoveButton
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
 import com.aquigs.sp21ace.ui.components.appBarColors
+import com.aquigs.sp21ace.ui.components.chipsText
 import com.aquigs.sp21ace.ui.components.displayName
+import com.aquigs.sp21ace.ui.components.netText
 import com.aquigs.sp21ace.ui.components.rememberArmed
 import com.aquigs.sp21ace.ui.theme.DISABLED_ALPHA
 import kotlinx.coroutines.delay
@@ -178,7 +180,10 @@ fun PlayScreen(
                 questioned = null
                 onUpdate { it.play(move) }
             },
-            onDismiss = { questioned = null },
+            onDismiss = {
+                questioned = null
+                onUpdate { it.heedWarning() }
+            },
         )
     }
 }

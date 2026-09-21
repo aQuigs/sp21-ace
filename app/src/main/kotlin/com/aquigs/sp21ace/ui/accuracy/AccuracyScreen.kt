@@ -2,8 +2,6 @@ package com.aquigs.sp21ace.ui.accuracy
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,25 +9,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.history.Accuracy
 import com.aquigs.sp21ace.domain.history.HandFilter
@@ -40,16 +30,19 @@ import com.aquigs.sp21ace.domain.history.accuracy
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.ui.chart.tabTitle
+import com.aquigs.sp21ace.ui.components.Count
+import com.aquigs.sp21ace.ui.components.CountRow
 import com.aquigs.sp21ace.ui.components.DoubledTabbedPages
+import com.aquigs.sp21ace.ui.components.Figure
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
+import com.aquigs.sp21ace.ui.components.StatCard
+import com.aquigs.sp21ace.ui.components.StatCards
+import com.aquigs.sp21ace.ui.components.StatPage
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.components.percentText
-import kotlinx.coroutines.delay
+import com.aquigs.sp21ace.ui.components.rememberNow
 import java.time.Instant
-import kotlin.time.Duration.Companion.minutes
-
-private val TextInset = 32.dp
 
 /**
  * How often the trainer's answers were right over a period, for one kind of hand or all those not yet doubled or all those
@@ -69,19 +62,7 @@ fun AccuracyScreen(
     val tabs = remember(chart) { HandFilter.entries.filter { it.table == null || it.table in chart.tables } }
     // One period for every tab, as in Blackjack Ace, though each page has its own chips to slide in with it
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
-    val currentNow by rememberUpdatedState(now)
-    var asOf by remember { mutableStateOf(now()) }
-
-    // Nothing else changes with time, so without these a screen left open, or reopened hours later, keeps counting answers
-    // that have aged out of the period
-    LifecycleResumeEffect(Unit) {
-        asOf = currentNow()
-        onPauseOrDispose {}
-    }
-    LaunchedEffect(asOf) {
-        delay(1.minutes)
-        asOf = currentNow()
-    }
+    val asOf = rememberNow(now)
 
     SubPage(title = stringResource(R.string.accuracy), onBack = onBack, modifier = modifier) { padding ->
         DoubledTabbedPages(
@@ -93,14 +74,7 @@ fun AccuracyScreen(
             val accuracy = remember(history, asOf, period, hands) { history.accuracy(period, hands, asOf) }
 
             // The grid spreads wider than the chips and cards, as in Blackjack Ace, so its squares stay as large as the chart's
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                PeriodChips(selected = period, onSelect = { period = it }, modifier = Modifier.padding(horizontal = TextInset))
+            StatPage(period = period, onPeriod = { period = it }, modifier = Modifier.fillMaxWidth()) {
                 hands.table?.let { table ->
                     AccuracyHeatmap(
                         rules = rules,
@@ -109,43 +83,19 @@ fun AccuracyScreen(
                         modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp).widthIn(max = MaxContentWidth),
                     )
                 }
-                Cards(
-                    accuracy,
-                    hands,
-                    Modifier.padding(start = TextInset, top = 32.dp, end = TextInset, bottom = 16.dp).widthIn(max = MaxContentWidth).fillMaxWidth(),
-                )
+                Cards(accuracy, hands)
             }
         }
     }
 }
 
 @Composable
-private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit, modifier: Modifier = Modifier) {
-    // Wraps rather than running off a narrow screen at a large font size
-    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-        Period.entries.forEach { period ->
-            FilterChip(selected = period == selected, onClick = { onSelect(period) }, label = { Text(stringResource(period.title)) })
-        }
-    }
-}
-
-@Composable
-private fun Cards(accuracy: Accuracy, hands: HandFilter, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(48.dp)) {
+private fun Cards(accuracy: Accuracy, hands: HandFilter) {
+    StatCards {
         // Only All has the Streak card, as in Blackjack Ace, since the streak runs over every answer whatever the tab or period
         if (hands.table == null) StreakCard(longest = accuracy.longestStreak)
         AccuracyCard(title = stringResource(R.string.overall), tally = accuracy.overall)
         hands.moves.forEach { AccuracyCard(title = stringResource(it.displayName), tally = accuracy.byMove.getValue(it)) }
-    }
-}
-
-/** A titled block of figures, which a screen reader reads as one item, each figure before its label. */
-@Composable
-private fun StatCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
-        Text(text = title, style = MaterialTheme.typography.headlineSmall)
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
-        content()
     }
 }
 
@@ -164,37 +114,9 @@ private fun AccuracyCard(title: String, tally: Tally) {
             label = stringResource(R.string.accuracy),
             color = MaterialTheme.colorScheme.primary,
         )
-        Row(modifier = Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Count(count = tally.correct, label = stringResource(R.string.correct), modifier = Modifier.weight(1f))
-            Count(count = tally.incorrect, label = stringResource(R.string.incorrect), modifier = Modifier.weight(1f))
+        CountRow {
+            Count(value = tally.correct.toString(), label = stringResource(R.string.correct), modifier = Modifier.weight(1f))
+            Count(value = tally.incorrect.toString(), label = stringResource(R.string.incorrect), modifier = Modifier.weight(1f))
         }
     }
 }
-
-/** A large figure over its label, or "--" in plain text when there is nothing to count. */
-@Composable
-private fun Figure(value: String?, label: String, color: Color) {
-    Text(
-        text = value ?: stringResource(R.string.no_data),
-        color = if (value == null) MaterialTheme.colorScheme.onSurface else color,
-        style = MaterialTheme.typography.displaySmall,
-    )
-    Text(text = label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-}
-
-@Composable
-private fun Count(count: Int, label: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
-        Text(text = count.toString(), style = MaterialTheme.typography.titleMedium)
-        Text(text = label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-private val Period.title: Int
-    get() = when (this) {
-        Period.TODAY -> R.string.today
-        Period.WEEK -> R.string.week
-        Period.MONTH -> R.string.month
-        Period.ALL_TIME -> R.string.all_time
-    }

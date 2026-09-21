@@ -34,6 +34,7 @@ class SettingsScreenTest {
 
     private var settings by mutableStateOf(Settings())
     private var clears = 0
+    private var playClears = 0
 
     private fun string(id: Int) = compose.activity.getString(id)
 
@@ -46,6 +47,7 @@ class SettingsScreenTest {
                     onOpenColorTheme = onOpenColorTheme,
                     onOpenButtonLocation = onOpenButtonLocation,
                     onClearHistory = { clears++ },
+                    onClearPlayHistory = { playClears++ },
                     onBack = {},
                 )
             }
@@ -155,10 +157,24 @@ class SettingsScreenTest {
         compose.onNodeWithText(string(R.string.clear_history_message)).assertIsDisplayed()
         assertEquals(0, clears)
 
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
         compose.onNodeWithText(string(R.string.cancel)).performClick()
 
         compose.onNodeWithText(string(R.string.clear_history_message)).assertDoesNotExist()
         assertEquals(0, clears)
+    }
+
+    @Test
+    fun clearingThePlayHistoryAsksFirstAndClearsOnlyIt() {
+        showSettings()
+        compose.onNodeWithText(string(R.string.clear_play_history)).performScrollTo().performClick()
+        compose.onNodeWithText(string(R.string.clear_play_history_message)).assertIsDisplayed()
+
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.clear)).performClick()
+
+        compose.onNodeWithText(string(R.string.clear_play_history_message)).assertDoesNotExist()
+        assertEquals(listOf(0, 1), listOf(clears, playClears))
     }
 
     @Test
@@ -168,6 +184,6 @@ class SettingsScreenTest {
         compose.onNodeWithText(string(R.string.clear)).performClick()
 
         compose.onNodeWithText(string(R.string.clear_history_message)).assertDoesNotExist()
-        assertEquals(1, clears)
+        assertEquals(listOf(1, 0), listOf(clears, playClears))
     }
 }

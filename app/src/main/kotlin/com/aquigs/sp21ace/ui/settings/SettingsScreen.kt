@@ -21,7 +21,7 @@ import com.aquigs.sp21ace.ui.components.SettingsHeader
 import com.aquigs.sp21ace.ui.components.SettingsPage
 import com.aquigs.sp21ace.ui.components.SwitchRow
 
-/** Blackjack Ace's Settings, less what this app has nothing for yet: the discard tray and the play history. */
+/** Blackjack Ace's Settings, less the discard tray, which this app has nothing for yet. */
 @Composable
 fun SettingsScreen(
     settings: Settings,
@@ -29,10 +29,11 @@ fun SettingsScreen(
     onOpenColorTheme: () -> Unit,
     onOpenButtonLocation: () -> Unit,
     onClearHistory: () -> Unit,
+    onClearPlayHistory: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var confirmingClear by rememberSaveable { mutableStateOf(false) }
+    var confirmingClear by rememberSaveable { mutableStateOf<History?>(null) }
 
     SettingsPage(title = stringResource(R.string.settings), onBack = onBack, modifier = modifier) {
         ChoiceRow(title = stringResource(R.string.color_theme), value = stringResource(settings.colorTheme.title), onClick = onOpenColorTheme)
@@ -49,7 +50,7 @@ fun SettingsScreen(
 
         SettingsHeader(stringResource(R.string.practice))
         VisibilityRow(R.string.streak_meter, settings.streakMeter) { onChange(settings.copy(streakMeter = it)) }
-        ActionRow(title = stringResource(R.string.clear_practice_history), onClick = { confirmingClear = true })
+        ActionRow(title = stringResource(R.string.clear_practice_history), onClick = { confirmingClear = History.PRACTICE })
         HorizontalDivider()
 
         SettingsHeader(stringResource(R.string.play))
@@ -60,21 +61,30 @@ fun SettingsScreen(
             onCheckedChange = { onChange(settings.copy(warnOnIncorrectMove = it)) },
         )
         VisibilityRow(R.string.hint_button, settings.hintButton) { onChange(settings.copy(hintButton = it)) }
+        ActionRow(title = stringResource(R.string.clear_play_history), onClick = { confirmingClear = History.PLAY })
     }
 
     // Asks first, as Blackjack Ace does, because nothing brings a cleared history back
-    if (confirmingClear) {
+    confirmingClear?.let { history ->
         ConfirmDialog(
             title = stringResource(R.string.clear_history_title),
-            message = stringResource(R.string.clear_history_message),
+            message = stringResource(history.message),
             confirmLabel = stringResource(R.string.clear),
             onConfirm = {
-                confirmingClear = false
-                onClearHistory()
+                confirmingClear = null
+                when (history) {
+                    History.PRACTICE -> onClearHistory()
+                    History.PLAY -> onClearPlayHistory()
+                }
             },
-            onDismiss = { confirmingClear = false },
+            onDismiss = { confirmingClear = null },
         )
     }
+}
+
+private enum class History(@StringRes val message: Int) {
+    PRACTICE(R.string.clear_history_message),
+    PLAY(R.string.clear_play_history_message),
 }
 
 @Composable

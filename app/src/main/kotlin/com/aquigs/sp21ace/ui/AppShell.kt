@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
 import com.aquigs.sp21ace.domain.game.Table
+import com.aquigs.sp21ace.domain.history.PlayedHand
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
@@ -50,6 +51,7 @@ import com.aquigs.sp21ace.ui.rules.TableRulesScreen
 import com.aquigs.sp21ace.ui.settings.ButtonLocationScreen
 import com.aquigs.sp21ace.ui.settings.ColorThemeScreen
 import com.aquigs.sp21ace.ui.settings.SettingsScreen
+import com.aquigs.sp21ace.ui.statistics.PlayStatisticsScreen
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
 
@@ -63,6 +65,7 @@ enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     CustomizeHands(R.string.customize_hands, isRoot = false),
     HandsDealt(R.string.hands_dealt, isRoot = false),
     Accuracy(R.string.accuracy, isRoot = false),
+    PlayStatistics(R.string.statistics, isRoot = false),
     Settings(R.string.settings, isRoot = false),
     ColorTheme(R.string.color_theme, isRoot = false),
     ButtonLocation(R.string.button_location, isRoot = false),
@@ -78,8 +81,8 @@ private val BASIC_STRATEGY_ITEMS = listOf(
     Destination.Accuracy to R.drawable.ic_accuracy,
 )
 
-// Blackjack Ace's Play section also lists its own Table Rules and Strategy Chart, but here the table plays by the trainer's
-private val PLAY_ITEMS = listOf(Destination.Play to R.drawable.ic_home)
+// Blackjack Ace's Play section also lists its own Table Rules and Strategy Chart, but here the table plays by the trainer's.
+private val PLAY_ITEMS = listOf(Destination.Play to R.drawable.ic_home, Destination.PlayStatistics to R.drawable.ic_accuracy)
 
 // Blackjack Ace's drawer leaves about a third of the screen uncovered; Material's 360dp default covers almost all of it.
 private val DrawerWidth = 280.dp
@@ -92,6 +95,7 @@ fun AppShell(
     customization: HandCustomization,
     settings: Settings,
     history: List<PracticeAnswer>,
+    playHistory: List<PlayedHand>,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onTableUpdate: ((Table) -> Table?) -> Unit,
     onDeal: () -> Unit,
@@ -99,6 +103,7 @@ fun AppShell(
     onCustomizationChange: (HandCustomization) -> Unit,
     onSettingsChange: (Settings) -> Unit,
     onClearHistory: () -> Unit,
+    onClearPlayHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A root screen, then the sub-pages opened over it, so Back retraces the way in
@@ -177,12 +182,14 @@ fun AppShell(
             )
             Destination.HandsDealt -> HandsDealtScreen(customization, onCustomizationChange, onBack = { back() })
             Destination.Accuracy -> AccuracyScreen(history, rules.ruleSet, onBack = { back() })
+            Destination.PlayStatistics -> PlayStatisticsScreen(playHistory, onBack = { back() })
             Destination.Settings -> SettingsScreen(
                 settings,
                 onSettingsChange,
                 onOpenColorTheme = { open(Destination.ColorTheme) },
                 onOpenButtonLocation = { open(Destination.ButtonLocation) },
                 onClearHistory = onClearHistory,
+                onClearPlayHistory = onClearPlayHistory,
                 onBack = { back() },
             )
             Destination.ColorTheme -> ColorThemeScreen(settings, onSettingsChange, onBack = { back() })

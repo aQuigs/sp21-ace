@@ -85,8 +85,13 @@ data class Table(
     /** Whether a decision is waiting that the hint hasn't yet been shown for. */
     val canHint: Boolean get() = !hinted && round?.activeHand != null
 
-    fun showHint(): Table? = if (canHint) copy(hinted = true) else null
+    /** Shows the hint, which counts as help on the hand, as Blackjack Ace counts it. */
+    fun showHint(): Table? = if (canHint) round?.withHelp()?.let { copy(round = it, hinted = true) } else null
 
+    /** Backs out of a move the warning questioned, which Blackjack Ace counts as help, as it does the hint. */
+    fun heedWarning(): Table? = round?.withHelp()?.let { copy(round = it) }
+
+    /** Makes [move] on the hand waiting, which the round grades against the chart. */
     fun play(move: Move): Table? = round?.play(move)?.let { copy(round = it, hinted = false) }
 
     fun revealDealerCard(): Table? = if (round?.settled == true && !revealed) copy(dealerDrawsShown = dealerDrawsShown + 1) else null
