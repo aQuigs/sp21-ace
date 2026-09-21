@@ -4,6 +4,10 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -19,6 +23,7 @@ import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Rule
 import org.junit.Test
@@ -38,13 +43,17 @@ class PlayScreenTest {
     private fun stacked(deal: String, ruleSet: RuleSet = RuleSet.S17): Table =
         requireNotNull(Table(STARTING_BANKROLL, Shoe(cards(deal))).addChip(2_500)?.deal(ruleSet, Random(1)))
 
-    private fun show(start: Table) {
+    // 16 against a 6, which stands, and the next card is a Q, which busts whoever draws it
+    private val sixteenVsSix get() = stacked("Kc 6s 6d Kh Qs")
+
+    // Most tests play whatever move they need, so the warning is off unless a test is about it
+    private fun show(start: Table, settings: Settings = Settings(warnOnIncorrectMove = false)) {
         table = start
         compose.setContent {
             Sp21AceTheme {
                 PlayScreen(
                     table = table,
-                    settings = Settings(),
+                    settings = settings,
                     onUpdate = { change -> change(table)?.let { table = it } },
                     onDeal = { table = requireNotNull(table.deal(RuleSet.S17, Random(1))) },
                     onOpenDrawer = {},
@@ -121,8 +130,7 @@ class PlayScreenTest {
 
     @Test
     fun theResultAndPayoutWaitForTheDealersLastCardThenTheSameBetGoesDownAgain() {
-        // 16 stands against a 6 and K, which draws a Q and busts
-        show(stacked("Kc 6s 6d Kh Qs"))
+        show(sixteenVsSix)
 
         tap(R.string.move_stand)
         band(R.string.result_win).assertDoesNotExist()
@@ -166,6 +174,74 @@ class PlayScreenTest {
         tap(R.string.ok)
 
         band(R.string.place_your_bet).assertIsDisplayed()
+    }
+
+    @Test
+    fun theBulbRingsTheCorrectMoveThenGoesUntilTheNextDecision() {
+        // 12 vs 2 hits, and the 3 it draws makes 15, a decision of its own
+        show(stacked("Kc 2s 2d Kh 3s"))
+
+        button(R.string.show_hint).performClick()
+
+        button(R.string.move_hit)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, string(R.string.hint_correct_move)))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        button(R.string.move_stand).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+        button(R.string.show_hint).assertDoesNotExist()
+
+        tap(R.string.move_hit)
+
+        button(R.string.show_hint).assertIsDisplayed()
+        button(R.string.move_stand).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+    }
+
+    @Test
+    fun theHintButtonSettingHidesTheBulb() {
+        show(sixteenVsSix, Settings(hintButton = false))
+
+        button(R.string.show_hint).assertDoesNotExist()
+    }
+
+    @Test
+    fun aMoveTheStrategyDoesntMakeAsksFirst() {
+        show(sixteenVsSix, Settings())
+        val question = string(R.string.incorrect_move_message, string(R.string.move_hit))
+
+        tap(R.string.move_hit)
+        compose.onNodeWithText(question).assertIsDisplayed()
+        compose.onNodeWithText(string(R.string.cancel)).performClick()
+
+        compose.onNodeWithText(question).assertDoesNotExist()
+        compose.onNodeWithContentDescription(string(R.string.card_name, string(R.string.queen), string(R.string.spades))).assertDoesNotExist()
+
+        tap(R.string.move_hit)
+        // The dialog opens under the finger, so the second tap of a double tap doesn't confirm it
+        compose.onNodeWithText(string(R.string.play_move)).performClick()
+        compose.onNodeWithText(question).assertIsDisplayed()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.play_move)).performClick()
+
+        band(R.string.result_bust).assertIsDisplayed()
+    }
+
+    @Test
+    fun theCorrectMovePlaysWithoutAsking() {
+        show(sixteenVsSix, Settings())
+
+        tap(R.string.move_stand)
+
+        compose.onNodeWithText(string(R.string.incorrect_move_title)).assertDoesNotExist()
+        button(R.string.move_stand).assertDoesNotExist()
+    }
+
+    @Test
+    fun withTheWarningOffAMoveTheStrategyDoesntMakePlaysWithoutAsking() {
+        show(sixteenVsSix, Settings(warnOnIncorrectMove = false))
+
+        tap(R.string.move_hit)
+
+        compose.onNodeWithText(string(R.string.incorrect_move_title)).assertDoesNotExist()
+        band(R.string.result_bust).assertIsDisplayed()
     }
 
     @Test

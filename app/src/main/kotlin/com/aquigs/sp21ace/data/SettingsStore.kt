@@ -16,6 +16,8 @@ class SettingsStore(context: Context, name: String = "settings") {
         chartButton = prefs.getBoolean(CHART_BUTTON, defaults.chartButton),
         soundEffects = prefs.getBoolean(SOUND_EFFECTS, defaults.soundEffects),
         streakMeter = prefs.getBoolean(STREAK_METER, defaults.streakMeter),
+        warnOnIncorrectMove = prefs.getBoolean(WARN_ON_INCORRECT_MOVE, defaults.warnOnIncorrectMove),
+        hintButton = prefs.getBoolean(HINT_BUTTON, defaults.hintButton),
     )
 
     fun save(settings: Settings) {
@@ -26,6 +28,8 @@ class SettingsStore(context: Context, name: String = "settings") {
             putBoolean(CHART_BUTTON, settings.chartButton)
             putBoolean(SOUND_EFFECTS, settings.soundEffects)
             putBoolean(STREAK_METER, settings.streakMeter)
+            putBoolean(WARN_ON_INCORRECT_MOVE, settings.warnOnIncorrectMove)
+            putBoolean(HINT_BUTTON, settings.hintButton)
         }
     }
 
@@ -36,5 +40,7 @@ class SettingsStore(context: Context, name: String = "settings") {
         const val CHART_BUTTON = "chart_button"
         const val SOUND_EFFECTS = "sound_effects"
         const val STREAK_METER = "streak_meter"
+        const val WARN_ON_INCORRECT_MOVE = "warn_on_incorrect_move"
+        const val HINT_BUTTON = "hint_button"
     }
 }

@@ -24,11 +24,21 @@ fun EdgeRow(buttonsOnLeft: Boolean, parts: List<@Composable RowScope.() -> Unit>
     }
 }
 
-/** The chart tile, when [chartTile] is on, over the [buttons] down the screen's edge. As wide as a button, the tile takes no room from the cards. */
+/**
+ * The chart tile, when [chartTile] is on, and whatever goes [underTile], over the [buttons] down the screen's edge. As wide as a
+ * button, the tile takes no room from the cards.
+ */
 @Composable
-fun EdgeControls(buttonsOnLeft: Boolean, chartTile: Boolean, onOpenChart: () -> Unit, buttons: @Composable ColumnScope.() -> Unit) {
+fun EdgeControls(
+    buttonsOnLeft: Boolean,
+    chartTile: Boolean,
+    onOpenChart: () -> Unit,
+    underTile: @Composable () -> Unit = {},
+    buttons: @Composable ColumnScope.() -> Unit,
+) {
     Column(modifier = Modifier.fillMaxHeight(), horizontalAlignment = if (buttonsOnLeft) AbsoluteAlignment.Left else AbsoluteAlignment.Right) {
         if (chartTile) ChartTile(onClick = onOpenChart, modifier = Modifier.size(CircleButtonSize))
+        underTile()
         // Holds the buttons at the bottom whether or not the tile shows
         Spacer(Modifier.weight(1f))
         ProvideDefaultFontScale {

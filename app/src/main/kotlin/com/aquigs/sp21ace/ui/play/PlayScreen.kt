@@ -35,7 +35,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,6 +59,7 @@ import com.aquigs.sp21ace.domain.game.PlayerHand
 import com.aquigs.sp21ace.domain.game.Round
 import com.aquigs.sp21ace.domain.game.TOP_UPS
 import com.aquigs.sp21ace.domain.game.Table
+import com.aquigs.sp21ace.domain.game.correctMove
 import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
@@ -67,6 +67,8 @@ import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.totalLabel
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.CircleButton
+import com.aquigs.sp21ace.ui.components.CircleButtonSize
+import com.aquigs.sp21ace.ui.components.ConfirmDialog
 import com.aquigs.sp21ace.ui.components.DissolvingHand
 import com.aquigs.sp21ace.ui.components.EdgeControls
 import com.aquigs.sp21ace.ui.components.EdgeRow
@@ -75,19 +77,20 @@ import com.aquigs.sp21ace.ui.components.MoveButton
 import com.aquigs.sp21ace.ui.components.OverlappingCards
 import com.aquigs.sp21ace.ui.components.PlayingCard
 import com.aquigs.sp21ace.ui.components.appBarColors
+import com.aquigs.sp21ace.ui.components.displayName
+import com.aquigs.sp21ace.ui.components.rememberArmed
 import com.aquigs.sp21ace.ui.theme.DISABLED_ALPHA
 import kotlinx.coroutines.delay
 
 // About as long as Blackjack Ace's dealer takes over each card it turns or draws
 internal const val DEALER_CARD_MILLIS = 500L
 
-// Android's double-tap timeout
-internal const val TAP_GUARD_MILLIS = 300L
-
 /**
  * Blackjack Ace's Play table: the bankroll in the app bar, the dealer's cards over yours, a band across the middle that asks for
- * a bet and gives each result, and a tray of chips to bet with. Only the moves the hand can make have buttons. [onUpdate] is
- * handed a change to apply to whichever table is current, so a second tap before the screen redraws can't undo the first.
+ * a bet and gives each result, and a tray of chips to bet with. Only the moves the hand can make have buttons. As [settings]
+ * choose, a bulb under the chart tile rings the correct move, and a move that isn't asks to be confirmed. [onUpdate] is handed a
+ * change to apply to whichever table is current, so a second tap before the screen redraws can't undo the first, and a move is
+ * checked against the hand it lands on.
  */
 @Composable
 fun PlayScreen(
@@ -102,6 +105,18 @@ fun PlayScreen(
     val round = table.round
     val buttonsOnLeft = settings.buttonLocation == ButtonLocation.LEFT
     var addingChips by rememberSaveable { mutableStateOf(false) }
+    var questioned by rememberSaveable { mutableStateOf<Move?>(null) }
+    val play: (Move) -> Unit = { move ->
+        onUpdate { current ->
+            val next = current.play(move)
+            if (next != null && settings.warnOnIncorrectMove && move != current.round?.correctMove()) {
+                questioned = move
+                null
+            } else {
+                next
+            }
+        }
+    }
 
     // The hole card turns over as the round settles, then each card the dealer drew in turn
     LaunchedEffect(round?.settled, table.dealerCardsShown) {
@@ -133,8 +148,16 @@ fun PlayScreen(
             }
         }
         val controls: @Composable RowScope.() -> Unit = {
-            EdgeControls(buttonsOnLeft, settings.chartButton, onOpenChart) {
-                TableButtons(table, onDeal = onDeal, onMove = { move -> onUpdate { it.play(move) } }, onNext = { onUpdate { it.next() } })
+            EdgeControls(
+                buttonsOnLeft,
+                settings.chartButton,
+                onOpenChart,
+                underTile = {
+                    // As in Blackjack Ace, the bulb goes once it has shown the move, until the next decision
+                    if (settings.hintButton && table.canHint) HintBulb(onClick = { onUpdate { it.showHint() } })
+                },
+            ) {
+                TableButtons(table, onDeal = onDeal, onMove = play, onNext = { onUpdate { it.next() } })
             }
         }
 
@@ -145,6 +168,32 @@ fun PlayScreen(
     }
 
     if (addingChips) AddChipsDialog(onTopUp = { amount -> onUpdate { it.topUp(amount) } }, onDismiss = { addingChips = false })
+    // Blackjack Ace's check before a move the strategy doesn't make. It doesn't say which move is right; the hint does
+    questioned?.let { move ->
+        ConfirmDialog(
+            title = stringResource(R.string.incorrect_move_title),
+            message = stringResource(R.string.incorrect_move_message, stringResource(move.displayName)),
+            confirmLabel = stringResource(R.string.play_move),
+            onConfirm = {
+                questioned = null
+                onUpdate { it.play(move) }
+            },
+            onDismiss = { questioned = null },
+        )
+    }
+}
+
+/** Blackjack Ace's hint bulb, as wide as the chart tile over it. */
+@Composable
+private fun HintBulb(onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.size(CircleButtonSize)) {
+        Icon(
+            painterResource(R.drawable.ic_lightbulb),
+            contentDescription = stringResource(R.string.show_hint),
+            modifier = Modifier.size(40.dp),
+            tint = MaterialTheme.colorScheme.tertiary,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -242,14 +291,13 @@ private fun ColumnScope.TableButtons(table: Table, onDeal: () -> Unit, onMove: (
         table.revealed -> R.string.ok
         else -> null
     }
-    var armed by remember(moves, action) { mutableStateOf(false) }
+    // The bulb going can move the buttons up into its place on a short screen
+    val armed by rememberArmed(moves, action, table.hinted)
 
-    LaunchedEffect(moves, action) {
-        delay(TAP_GUARD_MILLIS)
-        armed = true
+    val hint = table.hint
+    moves.forEach { move ->
+        MoveButton(move, onClick = { if (armed) onMove(move) }, modifier = Modifier.weight(1f, fill = false), hinted = move == hint)
     }
-
-    moves.forEach { move -> MoveButton(move, onClick = { if (armed) onMove(move) }, modifier = Modifier.weight(1f, fill = false)) }
     action?.let { name -> CircleButton(name = stringResource(name), onClick = { if (armed) if (round == null) onDeal() else onNext() }) }
 }
 

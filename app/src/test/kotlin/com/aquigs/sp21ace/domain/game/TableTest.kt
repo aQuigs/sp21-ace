@@ -114,6 +114,28 @@ class TableTest {
     }
 
     @Test
+    fun aHintShowsTheCorrectMoveUntilAMoveIsMade() {
+        // 12 vs 2 hits, and the 3 it draws makes 15, a decision of its own
+        val dealt = requireNotNull(table("Kc 2s 2d Kh 3s").betting(2_500).deal(RuleSet.S17, random))
+        assertNull(dealt.hint)
+
+        val hinted = requireNotNull(dealt.showHint())
+        assertEquals(Move.HIT, hinted.hint)
+        assertNull(hinted.showHint())
+
+        val played = requireNotNull(hinted.play(Move.HIT))
+        assertNull(played.hint)
+        assertEquals(Move.STAND, played.showHint()?.hint)
+    }
+
+    @Test
+    fun noHintOnceTheRoundIsSettled() {
+        val dealt = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(RuleSet.S17, random))
+
+        assertNull(requireNotNull(dealt.play(Move.STAND)).showHint())
+    }
+
+    @Test
     fun aTableMidRoundComesBackFromItsSavedState() {
         val doubled = requireNotNull(table("5c 6s 6d Kh 2c").betting(2_500).deal(RuleSet.S17, random)?.play(Move.DOUBLE))
 

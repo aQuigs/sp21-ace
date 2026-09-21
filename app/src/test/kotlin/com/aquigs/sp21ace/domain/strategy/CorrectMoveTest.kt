@@ -62,18 +62,24 @@ class CorrectMoveTest {
     }
 
     @Test
-    fun aDoubledHandRedoublesOnlyWithRedoublingAndStandsWhereDoubleDownRescuePrintsNoRescue() {
+    fun aDoubledHandRedoublesOnlyWithRedoublingAndOtherwiseStandsOrRescuesAsDoubleDownRescuesSixteenDoes() {
         val redouble = StrategyCharts.forRules(RuleSet.H17_REDOUBLE)
         val hard16 = HandTotal(16, soft = false)
         val soft18 = HandTotal(18, soft = true)
 
         // Doubled hard 16 vs 10 is a rescue under every rule set
         RuleSet.entries.forEach { assertEquals("$it", Move.RESCUE, StrategyCharts.forRules(it).correctMoveAfterDoubling(hard16, Upcard.TEN)) }
-        // Hard 10 vs 5 and soft 18 vs 4 redouble with redoubling, and stand without, where no row prints them
+        // Hard 10 vs 5 and soft 18 vs 4 redouble with redoubling. Without, no row prints them: 10 stands as 16 does against a 5,
+        // and soft 18 stands
         assertEquals(Move.REDOUBLE, redouble.correctMoveAfterDoubling(HandTotal(10, soft = false), Upcard.FIVE))
         assertEquals(Move.REDOUBLE, redouble.correctMoveAfterDoubling(soft18, Upcard.FOUR))
         assertEquals(Move.STAND, h17.correctMoveAfterDoubling(HandTotal(10, soft = false), Upcard.FIVE))
         assertEquals(Move.STAND, h17.correctMoveAfterDoubling(soft18, Upcard.FOUR))
+        // Hard 9 and soft 15 rescue against a 9 as 16 does, and soft 17 against an A as hard 17 does
+        assertEquals(Move.RESCUE, h17.correctMoveAfterDoubling(HandTotal(9, soft = false), Upcard.NINE))
+        assertEquals(Move.RESCUE, s17.correctMoveAfterDoubling(HandTotal(15, soft = true), Upcard.NINE))
+        assertEquals(Move.RESCUE, h17.correctMoveAfterDoubling(HandTotal(17, soft = true), Upcard.ACE))
+        assertEquals(Move.STAND, h17.correctMoveAfterDoubling(HandTotal(17, soft = true), Upcard.TEN))
         // Hard 16 vs 6 is a stand whether the dealer hits soft 17 or stands
         assertEquals(Play(Action.STAND), h17.afterDoublingPlay(hard16, Upcard.SIX))
         assertEquals(Play(Action.STAND), s17.afterDoublingPlay(hard16, Upcard.SIX))
@@ -184,8 +190,10 @@ class CorrectMoveTest {
                 val hand = if (total.soft) "A-${total.value - 11}" else "${total.value}"
                 upcards.mapNotNull { upcard ->
                     val square = listOf(if (total.soft) "AFTER_DOUBLE_SOFT" else "AFTER_DOUBLE_HARD", hand, label(upcard.rank.value))
-                    // Double Down Rescue prints no row where the doubled hand stands
-                    val code = if (ruleSet.redoubling) codes.getValue(square) else codes[square] ?: "S"
+                    // Double Down Rescue prints hard 12 to 17 only. Standing, a soft total does as the hard one, and one under 17
+                    // as 16, since each wins only when the dealer busts. Past 17 the hand stands
+                    val standing = listOf("AFTER_DOUBLE_HARD", "${maxOf(total.value, 16)}", label(upcard.rank.value)).takeIf { total.value <= 17 }
+                    val code = if (ruleSet.redoubling) codes.getValue(square) else codes[square] ?: standing?.let(codes::getValue) ?: "S"
                     val expected = when (code.first()) {
                         'S' -> Move.STAND
                         'D' -> Move.REDOUBLE

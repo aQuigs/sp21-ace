@@ -12,8 +12,9 @@ const val STARTING_BANKROLL = 100_000L
 
 /**
  * The table between rounds and through one. Until a round is dealt, [bankroll] is the chips off the table and [bet] the ones in
- * the betting spot; a dealt [round] keeps its own. Once it's settled the dealer turns over [dealerDrawsShown] of the cards it drew,
- * then the table shows one hand's result at a time, [resultIndex], as Blackjack Ace steps through split hands.
+ * the betting spot; a dealt [round] keeps its own. [hinted] is whether the player asked for a hint on the decision waiting. Once
+ * the round is settled the dealer turns over [dealerDrawsShown] of the cards it drew, then the table shows one hand's result at a
+ * time, [resultIndex], as Blackjack Ace steps through split hands.
  */
 data class Table(
     val bankroll: Long,
@@ -22,6 +23,7 @@ data class Table(
     val round: Round? = null,
     val dealerDrawsShown: Int = 0,
     val resultIndex: Int = 0,
+    val hinted: Boolean = false,
 ) : Serializable {
     /**
      * The chips the player owns. Chips riding on a round still count until it's settled, so a round cut short by a restart gives
@@ -77,7 +79,15 @@ data class Table(
         return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe.forNextRound(random)))
     }
 
-    fun play(move: Move): Table? = round?.play(move)?.let { copy(round = it) }
+    /** The move the hint shows, once asked for, until a move is made. */
+    val hint: Move? get() = if (hinted) round?.correctMove() else null
+
+    /** Whether a decision is waiting that the hint hasn't yet been shown for. */
+    val canHint: Boolean get() = !hinted && round?.activeHand != null
+
+    fun showHint(): Table? = if (canHint) copy(hinted = true) else null
+
+    fun play(move: Move): Table? = round?.play(move)?.let { copy(round = it, hinted = false) }
 
     fun revealDealerCard(): Table? = if (round?.settled == true && !revealed) copy(dealerDrawsShown = dealerDrawsShown + 1) else null
 

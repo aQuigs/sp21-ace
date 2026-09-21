@@ -161,7 +161,11 @@ fun AppShell(
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenChart = { open(Destination.StrategyChart) },
             )
-            Destination.StrategyChart -> StrategyChartScreen(rules.ruleSet, onBack = { back() })
+            // Over the table, the rules the round was dealt under, which a change mid-round leaves in play
+            Destination.StrategyChart -> StrategyChartScreen(
+                table.round?.ruleSet?.takeIf { backStack.first() == Destination.Play } ?: rules.ruleSet,
+                onBack = { back() },
+            )
             Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = { back() })
             Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = { back() })
             Destination.CustomizeHands -> CustomizeHandsScreen(

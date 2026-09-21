@@ -35,6 +35,10 @@
     <string name="practice">Practice</string>
     <string name="streak_meter">Streak meter</string>
     <string name="clear_practice_history">Clear practice history</string>
+    <string name="warn_on_incorrect_move">Warn on incorrect move</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="hint_button">Hint button</string>
     <string name="clear_history_title">Clear history</string>
     <string name="clear_history_message">Are you sure you want to clear your practice history? This resets everything built on it: Accuracy and its heatmap, the accuracy shown in Customize Hands, which hands Prioritize worse hands favors, and the streak meter.</string>
     <string name="cancel">Cancel</string>
@@ -69,7 +73,7 @@
     <string name="not_doubled">Not doubled</string>
     <string name="already_doubled">Already doubled</string>
     <string name="doubled_moves">Once doubled, a hand can only stand or rescue. A rescue takes back the double and gives up the original bet.</string>
-    <string name="doubled_moves_redoubling">Once doubled, a hand can only stand, redouble or rescue. A rescue takes back the double and gives up the original bet.</string>
+    <string name="doubled_moves_redoubling">Once doubled, a hand can only stand, redouble or rescue. A rescue takes back the last double and gives up the rest, half the hand\'s bet.</string>
     <string name="rules_dealer_stands_soft_17">Dealer stands on soft 17</string>
     <string name="rules_dealer_hits_soft_17">Dealer hits soft 17</string>
     <string name="rules_redoubling">Redoubling allowed</string>
@@ -116,6 +120,11 @@
     <string name="diamonds">diamonds</string>
     <string name="clubs">clubs</string>
     <string name="play">Play</string>
+    <string name="show_hint">Show the correct move</string>
+    <string name="hint_correct_move">The correct move</string>
+    <string name="incorrect_move_title">Are you sure?</string>
+    <string name="incorrect_move_message">%1$s is not the correct move according to the strategy. Do you still want to play it?</string>
+    <string name="play_move">Play</string>
     <string name="play_spanish_21">Play Spanish 21</string>
     <string name="place_your_bet">Place Your Bet</string>
     <string name="deal">Deal</string>
