@@ -157,6 +157,7 @@ class SettingsScreenTest {
         compose.onNodeWithText(string(R.string.clear_history_message)).assertIsDisplayed()
         assertEquals(0, clears)
 
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
         compose.onNodeWithText(string(R.string.cancel)).performClick()
 
         compose.onNodeWithText(string(R.string.clear_history_message)).assertDoesNotExist()

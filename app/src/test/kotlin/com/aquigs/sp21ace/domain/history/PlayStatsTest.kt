@@ -6,12 +6,14 @@ import com.aquigs.sp21ace.domain.game.Round
 import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
 import com.aquigs.sp21ace.domain.game.Shoe
 import com.aquigs.sp21ace.domain.game.StrategyGrade
+import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Duration
 import java.time.Instant
+import kotlin.random.Random
 
 class PlayStatsTest {
     private val now = Instant.parse("2026-09-20T12:00:00Z")
@@ -30,14 +32,35 @@ class PlayStatsTest {
 
     @Test
     fun aSettledRoundsHandsArePlayedApartWithTheirResults() {
-        // 8-8 vs 6 splits, each 8 draws a K to stand on, and the dealer's 6-K draws a 2 for 18
+        // 8-8 vs 6 splits, each 8 draws a K to stand on, as the chart does, and the dealer's 6-K draws a 2 for 18
         val round = Round.deal(RuleSet.S17, 2_500, STARTING_BANKROLL, Shoe(cards("8c 6s 8d Kh Ks Kd 2h")))
         val settled = requireNotNull(round.play(Move.SPLIT)?.play(Move.STAND)?.play(Move.STAND))
 
         assertEquals(
-            listOf(PlayedHand(now, RuleSet.S17, Outcome.PUSH, 0, StrategyGrade.NO_ACTION_REQUIRED)).let { it + it },
+            listOf(PlayedHand(now, RuleSet.S17, Outcome.PUSH, 0, StrategyGrade.CORRECT)).let { it + it },
             settled.playedHands(now),
         )
+    }
+
+    @Test
+    fun aTablesRoundIsPlayedOnceAsItSettlesByAMoveOrOnTheDeal() {
+        // 16 vs 6 stands, and the dealer's 6-K draws a Q to bust
+        val betting = requireNotNull(Table(STARTING_BANKROLL, Shoe(cards("Kc 6s 6d Kh Qs"))).addChip(2_500))
+        val dealt = requireNotNull(betting.deal(RuleSet.S17, Random(1)))
+        val settled = requireNotNull(dealt.play(Move.STAND))
+        val revealed = requireNotNull(settled.revealDealerCard())
+
+        assertEquals(emptyList<PlayedHand>(), dealt.playedHandsSince(betting, now))
+        assertEquals(listOf(Outcome.WIN), settled.playedHandsSince(dealt, now).map { it.outcome })
+        // Nothing after the settlement plays it again
+        assertEquals(emptyList<PlayedHand>(), revealed.playedHandsSince(settled, now))
+        assertEquals(emptyList<PlayedHand>(), settled.topUp(10_000).playedHandsSince(settled, now))
+        assertEquals(emptyList<PlayedHand>(), requireNotNull(revealed.next()).playedHandsSince(revealed, now))
+
+        // A blackjack settles on the deal
+        val blackjack = requireNotNull(Table(STARTING_BANKROLL, Shoe(cards("Ac 6s Kd 9h"))).addChip(2_500))
+        val paid = requireNotNull(blackjack.deal(RuleSet.S17, Random(1))).playedHandsSince(blackjack, now)
+        assertEquals(listOf(StrategyGrade.NO_ACTION_REQUIRED), paid.map { it.grade })
     }
 
     @Test
@@ -53,19 +76,11 @@ class PlayStatsTest {
     }
 
     @Test
-    fun countsEachStrategyGradeWithNoneLeftOut() {
+    fun countsEachStrategyGrade() {
         val stats = listOf(hand(2_500, grade = StrategyGrade.INCORRECT), hand(-2_500, grade = StrategyGrade.INCORRECT), hand(0))
             .playStats(Period.ALL_TIME, now)
 
-        assertEquals(
-            mapOf(
-                StrategyGrade.CORRECT to 1,
-                StrategyGrade.CORRECT_WITH_HINTS to 0,
-                StrategyGrade.INCORRECT to 2,
-                StrategyGrade.NO_ACTION_REQUIRED to 0,
-            ),
-            stats.grades,
-        )
+        assertEquals(mapOf(StrategyGrade.INCORRECT to 2, StrategyGrade.CORRECT to 1), stats.grades)
     }
 
     @Test
@@ -84,6 +99,6 @@ class PlayStatsTest {
 
         assertEquals(0, stats.hands)
         assertEquals(listOf(0L), stats.profits)
-        assertEquals(StrategyGrade.entries.associateWith { 0 }, stats.grades)
+        assertEquals(emptyMap<StrategyGrade, Int>(), stats.grades)
     }
 }

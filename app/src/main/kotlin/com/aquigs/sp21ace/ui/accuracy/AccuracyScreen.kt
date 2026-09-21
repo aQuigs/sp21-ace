@@ -31,18 +31,18 @@ import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.ui.chart.tabTitle
 import com.aquigs.sp21ace.ui.components.Count
+import com.aquigs.sp21ace.ui.components.CountRow
 import com.aquigs.sp21ace.ui.components.DoubledTabbedPages
 import com.aquigs.sp21ace.ui.components.Figure
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
-import com.aquigs.sp21ace.ui.components.PeriodChips
 import com.aquigs.sp21ace.ui.components.StatCard
+import com.aquigs.sp21ace.ui.components.StatCards
+import com.aquigs.sp21ace.ui.components.StatPage
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.components.percentText
 import com.aquigs.sp21ace.ui.components.rememberNow
 import java.time.Instant
-
-private val TextInset = 32.dp
 
 /**
  * How often the trainer's answers were right over a period, for one kind of hand or all those not yet doubled or all those
@@ -74,14 +74,7 @@ fun AccuracyScreen(
             val accuracy = remember(history, asOf, period, hands) { history.accuracy(period, hands, asOf) }
 
             // The grid spreads wider than the chips and cards, as in Blackjack Ace, so its squares stay as large as the chart's
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                PeriodChips(selected = period, onSelect = { period = it }, modifier = Modifier.padding(horizontal = TextInset))
+            StatPage(period = period, onPeriod = { period = it }, modifier = Modifier.fillMaxWidth()) {
                 hands.table?.let { table ->
                     AccuracyHeatmap(
                         rules = rules,
@@ -90,19 +83,15 @@ fun AccuracyScreen(
                         modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp).widthIn(max = MaxContentWidth),
                     )
                 }
-                Cards(
-                    accuracy,
-                    hands,
-                    Modifier.padding(start = TextInset, top = 32.dp, end = TextInset, bottom = 16.dp).widthIn(max = MaxContentWidth).fillMaxWidth(),
-                )
+                Cards(accuracy, hands)
             }
         }
     }
 }
 
 @Composable
-private fun Cards(accuracy: Accuracy, hands: HandFilter, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(48.dp)) {
+private fun Cards(accuracy: Accuracy, hands: HandFilter) {
+    StatCards {
         // Only All has the Streak card, as in Blackjack Ace, since the streak runs over every answer whatever the tab or period
         if (hands.table == null) StreakCard(longest = accuracy.longestStreak)
         AccuracyCard(title = stringResource(R.string.overall), tally = accuracy.overall)
@@ -125,7 +114,7 @@ private fun AccuracyCard(title: String, tally: Tally) {
             label = stringResource(R.string.accuracy),
             color = MaterialTheme.colorScheme.primary,
         )
-        Row(modifier = Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        CountRow {
             Count(value = tally.correct.toString(), label = stringResource(R.string.correct), modifier = Modifier.weight(1f))
             Count(value = tally.incorrect.toString(), label = stringResource(R.string.incorrect), modifier = Modifier.weight(1f))
         }

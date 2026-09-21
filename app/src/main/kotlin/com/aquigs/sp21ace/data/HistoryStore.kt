@@ -1,5 +1,6 @@
 package com.aquigs.sp21ace.data
 
+import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +46,8 @@ open class HistoryStore<T> internal constructor(
 
     /** Adds [added] to the history at once and writes them on the background thread. */
     fun append(added: List<T>) {
+        if (added.isEmpty()) return
+
         update { records = records + added }
         // A newline before each, so a line cut short when the app was killed stays on a line of its own and reads as nothing
         write { file.appendText(added.joinToString("") { "\n" + print(it) }) }
@@ -77,5 +80,15 @@ open class HistoryStore<T> internal constructor(
     internal companion object {
         // One thread for every store, so lines land in the order given, and a new store loads after the writes queued before it
         val IO: Executor = Executors.newSingleThreadExecutor()
+    }
+}
+
+/** Holds the app's own store of a history in [fileName], one a process, so a recreated activity finds it loaded instead of reading the file again. */
+abstract class AppStore<S : Any>(private val fileName: String, private val create: (File) -> S) {
+    @Volatile
+    private var app: S? = null
+
+    fun forApp(context: Context): S = app ?: synchronized(this) {
+        app ?: create(File(context.applicationContext.filesDir, fileName)).also { app = it }
     }
 }

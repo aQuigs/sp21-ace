@@ -14,6 +14,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.cards.cards
@@ -210,12 +211,16 @@ class PlayScreenTest {
 
         tap(R.string.move_hit)
         compose.onNodeWithText(question).assertIsDisplayed()
+        // The second tap of a double tap, landing outside the dialog or on Back, doesn't back out of it unread
+        Espresso.pressBack()
+        compose.onNodeWithText(question).assertIsDisplayed()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
         compose.onNodeWithText(string(R.string.cancel)).performClick()
 
         compose.onNodeWithText(question).assertDoesNotExist()
         compose.onNodeWithContentDescription(string(R.string.card_name, string(R.string.queen), string(R.string.spades))).assertDoesNotExist()
         // Backing out counts as help, as Blackjack Ace counts it
-        assertTrue(table.warned)
+        assertTrue(requireNotNull(table.round?.activeHand).strategy.helped)
 
         tap(R.string.move_hit)
         // The dialog opens under the finger, so the second tap of a double tap doesn't confirm it

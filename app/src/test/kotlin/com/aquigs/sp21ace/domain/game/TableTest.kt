@@ -159,19 +159,21 @@ class TableTest {
     }
 
     @Test
-    fun theHelpGoesWithTheMove() {
+    fun theHintGoesWithTheMoveButTheHelpStaysWithTheHand() {
+        // 12 vs 2 hits, and the 3 it draws makes 15, a decision of its own
         val dealt = requireNotNull(table("Kc 2s 2d Kh 3s Qs").betting(2_500).deal(RuleSet.S17, random))
-        val helped = requireNotNull(dealt.showHint()?.heedWarning()?.play(Move.HIT))
+        val helped = requireNotNull(dealt.showHint()?.play(Move.HIT))
 
         assertFalse(helped.hinted)
-        assertFalse(helped.warned)
+        assertTrue(requireNotNull(helped.round?.activeHand).strategy.helped)
     }
 
     @Test
-    fun noHintOnceTheRoundIsSettled() {
-        val dealt = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(RuleSet.S17, random))
+    fun noHelpOnceTheRoundIsSettled() {
+        val settled = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(RuleSet.S17, random)?.play(Move.STAND))
 
-        assertNull(requireNotNull(dealt.play(Move.STAND)).showHint())
+        assertNull(settled.showHint())
+        assertNull(settled.heedWarning())
     }
 
     @Test

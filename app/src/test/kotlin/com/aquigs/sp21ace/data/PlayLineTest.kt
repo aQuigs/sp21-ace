@@ -16,7 +16,7 @@ class PlayLineTest {
     fun aHandPrintsAsNamedFieldsAndReadsBackTheSame() {
         val line = PlayLine.print(hand)
 
-        assertEquals("at=1789000000000 rules=H17_REDOUBLE outcome=LOSE net=-3750 strategy=CORRECT_WITH_HINTS", line)
+        assertEquals("at=1789000000000 rules=H17_REDOUBLE net=-3750 strategy=CORRECT_WITH_HINTS outcome=LOSE", line)
         assertEquals(hand, PlayLine.parse(line))
     }
 
@@ -28,6 +28,9 @@ class PlayLineTest {
     @Test
     fun aLineCutShortOrRunOnReadsAsNothing() {
         assertNull(PlayLine.parse("at=1789000000000 rules=H17_REDOUBLE outc"))
+        // Cut short anywhere in the last field
+        val line = PlayLine.print(hand)
+        (line.lastIndexOf(' ') + 1 until line.length).forEach { assertNull(line.take(it), PlayLine.parse(line.take(it))) }
         assertNull(PlayLine.parse(PlayLine.print(hand) + PlayLine.print(hand)))
         assertNull(PlayLine.parse(""))
     }

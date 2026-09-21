@@ -5,8 +5,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -51,9 +55,39 @@ fun rememberNow(now: () -> Instant): Instant {
     return asOf
 }
 
+private val TextInset = 32.dp
+
+/** A stats screen's scrolling page: Blackjack Ace's period chips over [content]. */
+@Composable
+fun StatPage(period: Period, onPeriod: (Period) -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()).padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        PeriodChips(selected = period, onSelect = onPeriod, modifier = Modifier.padding(horizontal = TextInset))
+        content()
+    }
+}
+
+/** A stats page's cards, one under another. */
+@Composable
+fun StatCards(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier.padding(start = TextInset, top = 32.dp, end = TextInset, bottom = 16.dp).widthIn(max = MaxContentWidth).fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(48.dp),
+        content = content,
+    )
+}
+
+/** Counts side by side under a card's figure. */
+@Composable
+fun CountRow(content: @Composable RowScope.() -> Unit) {
+    Row(modifier = Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), content = content)
+}
+
 /** Blackjack Ace's Today, Week, Month and All Time chips. */
 @Composable
-fun PeriodChips(selected: Period, onSelect: (Period) -> Unit, modifier: Modifier = Modifier) {
+private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit, modifier: Modifier = Modifier) {
     // Wraps rather than running off a narrow screen at a large font size
     FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
         Period.entries.forEach { period ->

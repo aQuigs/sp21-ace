@@ -68,18 +68,24 @@ fun SettingsScreen(
     confirmingClear?.let { history ->
         ConfirmDialog(
             title = stringResource(R.string.clear_history_title),
-            message = stringResource(if (history == History.PRACTICE) R.string.clear_history_message else R.string.clear_play_history_message),
+            message = stringResource(history.message),
             confirmLabel = stringResource(R.string.clear),
             onConfirm = {
                 confirmingClear = null
-                if (history == History.PRACTICE) onClearHistory() else onClearPlayHistory()
+                when (history) {
+                    History.PRACTICE -> onClearHistory()
+                    History.PLAY -> onClearPlayHistory()
+                }
             },
             onDismiss = { confirmingClear = null },
         )
     }
 }
 
-private enum class History { PRACTICE, PLAY }
+private enum class History(@StringRes val message: Int) {
+    PRACTICE(R.string.clear_history_message),
+    PLAY(R.string.clear_play_history_message),
+}
 
 @Composable
 fun ColorThemeScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {

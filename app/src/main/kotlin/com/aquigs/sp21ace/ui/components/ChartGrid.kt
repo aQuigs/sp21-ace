@@ -183,9 +183,9 @@ private fun AxisCaption(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-// Laid out as tall as the text is wide, then turned a quarter to read up the side
-private fun Modifier.readingUp(): Modifier = layout { measurable, _ ->
-    val text = measurable.measure(Constraints())
+// Laid out as tall as the text is wide, wrapping where it's wider than the height allows, then turned a quarter to read up the side
+internal fun Modifier.readingUp(): Modifier = layout { measurable, constraints ->
+    val text = measurable.measure(Constraints(maxWidth = constraints.maxHeight))
 
     layout(text.height, text.width) {
         text.placeWithLayer((text.height - text.width) / 2, (text.width - text.height) / 2) { rotationZ = -90f }

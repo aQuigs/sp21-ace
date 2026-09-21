@@ -50,8 +50,8 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
-import com.aquigs.sp21ace.ui.accuracy.cardTexts
 import com.aquigs.sp21ace.ui.accuracy.square
+import com.aquigs.sp21ace.ui.statistics.strategyCardTexts
 import com.aquigs.sp21ace.ui.hands.handTypeSwitch
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -259,9 +259,11 @@ class AppShellTest {
         openFromDrawer(R.string.statistics)
 
         appBarTitle(R.string.statistics).assertIsDisplayed()
-        compose.onNode(hasText(string(R.string.strategy)) and hasText(string(R.string.hands_played)) and hasText("100%"))
-            .performScrollTo()
-            .assertIsDisplayed()
+        compose.onNodeWithText(string(R.string.hands_played)).performScrollTo()
+        assertEquals(
+            compose.activity.strategyCardTexts(1, 1 to "100%", 0 to "0%", 0 to "0%", 0 to "0%"),
+            compose.cardTexts(string(R.string.strategy), string(R.string.hands_played)),
+        )
     }
 
     @Test

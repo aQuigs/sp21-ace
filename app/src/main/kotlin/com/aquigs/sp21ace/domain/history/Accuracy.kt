@@ -22,10 +22,13 @@ fun Period.start(now: Instant): Instant? = when (this) {
 }
 
 /**
- * Whether a record stamped [at] counts in the period as of [now]. One stamped after [now], as when the device's clock was set
- * ahead and then put back, counts only under All Time.
+ * Whether a record stamped at a given time counts in the period as of [now]. One stamped after [now], as when the device's clock
+ * was set ahead and then put back, counts only under All Time.
  */
-fun Period.counts(at: Instant, now: Instant): Boolean = start(now)?.let { at > it && at <= now } ?: true
+fun Period.counter(now: Instant): (Instant) -> Boolean {
+    val start = start(now) ?: return { true }
+    return { at -> at > start && at <= now }
+}
 
 /**
  * The hands a tab counts: the ones filed under one chart table, or every hand [doubled] or every one not, as the chart splits
@@ -79,6 +82,7 @@ data class Accuracy(val byMove: Map<Move, Tally>, val bySquare: Map<ChartSquare,
  * cards, so it stays in that square whatever rules graded it and whatever rules the chart now shows.
  */
 fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, now: Instant): Accuracy {
+    val counts = period.counter(now)
     val byMove = TallyCounter<Move>()
     val bySquare = TallyCounter<ChartSquare>()
     var streak = 0
@@ -88,7 +92,7 @@ fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, now: Instan
         streak = nextStreak(streak, answer.isCorrect)
         longestStreak = maxOf(longestStreak, streak)
 
-        if (!period.counts(answer.answeredAt, now)) continue
+        if (!counts(answer.answeredAt)) continue
         if (!hands.counts(answer.square.row.table)) continue
 
         byMove.add(answer.correctMove, answer.isCorrect)

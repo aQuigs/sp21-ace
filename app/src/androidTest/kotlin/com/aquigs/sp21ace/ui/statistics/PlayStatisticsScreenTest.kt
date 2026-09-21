@@ -2,7 +2,6 @@ package com.aquigs.sp21ace.ui.statistics
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -13,7 +12,9 @@ import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.history.PlayedHand
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.ui.cardTexts
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +29,10 @@ class PlayStatisticsScreenTest {
     private val now = Instant.parse("2026-09-20T12:00:00Z")
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
+
+    private fun chart(hands: Int, end: String, lowest: String, highest: String) = compose.onNode(
+        hasContentDescription(compose.activity.resources.getQuantityString(R.plurals.profit_chart_description, hands, hands, end, lowest, highest)),
+    )
 
     private fun hand(net: Long, grade: StrategyGrade = StrategyGrade.CORRECT, daysAgo: Long = 0) = PlayedHand(
         now.minus(Duration.ofDays(daysAgo)),
@@ -57,16 +62,19 @@ class PlayStatisticsScreenTest {
     private fun hands(won: Int, wonShare: String, pushed: Int, pushedShare: String, lost: Int, lostShare: String) =
         compose.onNode(hasContentDescription(string(R.string.hands_description, won, wonShare, pushed, pushedShare, lost, lostShare)))
 
+    private fun bankrollCard() = compose.cardTexts(string(R.string.bankroll))
+
+    private fun strategyCard() = compose.cardTexts(string(R.string.strategy), string(R.string.hands_played))
+
     @Test
     fun todayCountsTheHandsWonPushedAndLostWhatTheyCameToAndHowTheyWerePlayed() {
         show(history)
 
         hands(1, "25%", 1, "25%", 2, "50%").assertExists()
-        compose.onNode(hasText(string(R.string.profit_loss)) and hasText("−50") and hasText("25") and hasText("75")).assertExists()
+        assertEquals(compose.activity.bankrollCardTexts("−50", "25", "75"), bankrollCard())
         // From 0 up to 25, level for the push, then down to −50
-        compose.onNode(hasContentDescription(string(R.string.profit_chart_description, 4, "−50", "−50", "25"))).assertExists()
-        compose.onNode(hasText(string(R.string.hands_played)) and hasText("4") and hasText("25%") and hasText(string(R.string.no_action_required)))
-            .assertExists()
+        chart(4, "−50", "−50", "25").assertExists()
+        assertEquals(compose.activity.strategyCardTexts(4, 1 to "25%", 1 to "25%", 1 to "25%", 1 to "25%"), strategyCard())
     }
 
     @Test
@@ -76,7 +84,7 @@ class PlayStatisticsScreenTest {
         compose.onNodeWithText(string(R.string.all_time)).performClick()
 
         hands(2, "40%", 1, "20%", 2, "40%").assertExists()
-        compose.onNode(hasText(string(R.string.profit_loss)) and hasText("50") and hasText("125") and hasText("75")).assertExists()
+        assertEquals(compose.activity.bankrollCardTexts("50", "125", "75"), bankrollCard())
     }
 
     @Test
@@ -84,7 +92,8 @@ class PlayStatisticsScreenTest {
         show(emptyList())
 
         hands(0, "--", 0, "--", 0, "--").assertExists()
-        compose.onNode(hasText(string(R.string.profit_loss)) and hasText("0")).assertExists()
-        compose.onNode(hasContentDescription(string(R.string.profit_chart_description, 0, "0", "0", "0"))).assertExists()
+        assertEquals(compose.activity.bankrollCardTexts("0", "0", "0"), bankrollCard())
+        chart(0, "0", "0", "0").assertExists()
+        assertEquals(compose.activity.strategyCardTexts(0, 0 to "--", 0 to "--", 0 to "--", 0 to "--"), strategyCard())
     }
 }

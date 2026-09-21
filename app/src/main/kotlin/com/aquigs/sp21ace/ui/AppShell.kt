@@ -82,7 +82,6 @@ private val BASIC_STRATEGY_ITEMS = listOf(
 )
 
 // Blackjack Ace's Play section also lists its own Table Rules and Strategy Chart, but here the table plays by the trainer's.
-// Its Statistics has the same icon as Accuracy.
 private val PLAY_ITEMS = listOf(Destination.Play to R.drawable.ic_home, Destination.PlayStatistics to R.drawable.ic_accuracy)
 
 // Blackjack Ace's drawer leaves about a third of the screen uncovered; Material's 360dp default covers almost all of it.

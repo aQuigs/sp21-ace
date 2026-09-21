@@ -29,7 +29,7 @@ import com.aquigs.sp21ace.domain.dealing.record
 import com.aquigs.sp21ace.domain.game.Shoe
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
-import com.aquigs.sp21ace.domain.history.playedHands
+import com.aquigs.sp21ace.domain.history.playedHandsSince
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
@@ -85,8 +85,7 @@ internal fun Sp21AceApp(
 
     fun seat(next: Table) {
         if (next.chips != table.chips) tableStore.saveChips(next.chips)
-        // Its hands join the play history as the round settles, once, since no later change unsettles it
-        next.round?.takeIf { it.settled && table.round?.settled != true }?.let { playHistoryStore.append(it.playedHands(Instant.now())) }
+        playHistoryStore.append(next.playedHandsSince(table, Instant.now()))
         table = next
     }
     val dark = settings.colorTheme.isDark()

@@ -169,7 +169,10 @@
     <string name="amount_won">Amount Won</string>
     <string name="amount_lost">Amount Lost</string>
     <string name="hands_played">Hands Played</string>
-    <string name="profit_chart_description">Profit or loss over %1$d hands played: %2$s at the end, %3$s at the lowest and %4$s at the highest</string>
+    <plurals name="profit_chart_description">
+        <item quantity="one">Profit or loss over %1$d hand played: %2$s at the end, %3$s at the lowest and %4$s at the highest</item>
+        <item quantity="other">Profit or loss over %1$d hands played: %2$s at the end, %3$s at the lowest and %4$s at the highest</item>
+    </plurals>
     <string name="correct_with_hints">Correct (with hints)</string>
     <string name="no_action_required">No Action Required</string>
     <string name="clear_play_history">Clear play history</string>

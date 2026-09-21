@@ -12,10 +12,9 @@ const val STARTING_BANKROLL = 100_000L
 
 /**
  * The table between rounds and through one. Until a round is dealt, [bankroll] is the chips off the table and [bet] the ones in
- * the betting spot; a dealt [round] keeps its own. [hinted] is whether the player asked for a hint on the decision waiting, and
- * [warned] whether they backed out of a move the warning questioned, either of which counts as help on it. Once the round is
- * settled the dealer turns over [dealerDrawsShown] of the cards it drew, then the table shows one hand's result at a time,
- * [resultIndex], as Blackjack Ace steps through split hands.
+ * the betting spot; a dealt [round] keeps its own. [hinted] is whether the player asked for a hint on the decision waiting. Once
+ * the round is settled the dealer turns over [dealerDrawsShown] of the cards it drew, then the table shows one hand's result at a
+ * time, [resultIndex], as Blackjack Ace steps through split hands.
  */
 data class Table(
     val bankroll: Long,
@@ -25,7 +24,6 @@ data class Table(
     val dealerDrawsShown: Int = 0,
     val resultIndex: Int = 0,
     val hinted: Boolean = false,
-    val warned: Boolean = false,
 ) : Serializable {
     /**
      * The chips the player owns. Chips riding on a round still count until it's settled, so a round cut short by a restart gives
@@ -87,24 +85,14 @@ data class Table(
     /** Whether a decision is waiting that the hint hasn't yet been shown for. */
     val canHint: Boolean get() = !hinted && round?.activeHand != null
 
-    fun showHint(): Table? = if (canHint) copy(hinted = true) else null
+    /** Shows the hint, which counts as help on the hand, as Blackjack Ace counts it. */
+    fun showHint(): Table? = if (canHint) round?.withHelp()?.let { copy(round = it, hinted = true) } else null
 
     /** Backs out of a move the warning questioned, which Blackjack Ace counts as help, as it does the hint. */
-    fun heedWarning(): Table? = if (round?.activeHand != null) copy(warned = true) else null
+    fun heedWarning(): Table? = round?.withHelp()?.let { copy(round = it) }
 
-    /**
-     * Makes [move] on the hand waiting, and records on that hand whether the chart makes it and whether it had help. A split's
-     * decision stays with the first of its hands, which takes the split hand's place.
-     */
-    fun play(move: Move): Table? {
-        val round = round ?: return null
-        val hand = round.activeHand ?: return null
-        val next = round.play(move) ?: return null
-        val strategy = hand.strategy.withDecision(correct = move == round.correctMove(), helped = hinted || warned)
-        val graded = next.hands.toMutableList().apply { set(round.active, get(round.active).copy(strategy = strategy)) }
-
-        return copy(round = next.copy(hands = graded), hinted = false, warned = false)
-    }
+    /** Makes [move] on the hand waiting, which the round grades against the chart. */
+    fun play(move: Move): Table? = round?.play(move)?.let { copy(round = it, hinted = false) }
 
     fun revealDealerCard(): Table? = if (round?.settled == true && !revealed) copy(dealerDrawsShown = dealerDrawsShown + 1) else null
 

@@ -6,7 +6,7 @@ import java.time.Instant
 
 /**
  * Blackjack Ace's Play Statistics over a period, in cents: how many hands were won, pushed and lost, what the wins came to and
- * the losses cost, and how many hands earned each strategy grade. [profits] is the profit after each hand in the order played,
+ * the losses cost, and how many hands earned each strategy grade, which leaves out a grade none earned. [profits] is the profit after each hand in the order played,
  * from the 0 before the first, which the chart draws.
  */
 data class PlayStats(
@@ -24,7 +24,8 @@ data class PlayStats(
 
 /** Counts the hands played within [period] of [now], in the order given. */
 fun List<PlayedHand>.playStats(period: Period, now: Instant): PlayStats {
-    val hands = filter { period.counts(it.playedAt, now) }
+    val counts = period.counter(now)
+    val hands = filter { counts(it.playedAt) }
     val outcomes = hands.groupingBy { it.outcome }.eachCount()
 
     return PlayStats(
@@ -34,6 +35,6 @@ fun List<PlayedHand>.playStats(period: Period, now: Instant): PlayStats {
         amountWon = hands.sumOf { maxOf(it.net, 0) },
         amountLost = hands.sumOf { maxOf(-it.net, 0) },
         profits = hands.runningFold(0L) { profit, hand -> profit + hand.net },
-        grades = hands.groupingBy { it.grade }.eachCount().let { counts -> StrategyGrade.entries.associateWith { counts[it] ?: 0 } },
+        grades = hands.groupingBy { it.grade }.eachCount(),
     )
 }
