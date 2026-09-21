@@ -46,6 +46,8 @@ class SettingsStoreTest {
             defaults.copy(chartButton = false),
             defaults.copy(soundEffects = true),
             defaults.copy(streakMeter = false),
+            defaults.copy(warnOnIncorrectMove = false),
+            defaults.copy(hintButton = false),
         )
 
         for (settings in eachChanged + defaults) {

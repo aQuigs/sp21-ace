@@ -45,6 +45,8 @@ class StrategyChart(private val squares: Map<ChartTable, Map<String, Map<Upcard,
 
     fun printsRow(table: ChartTable, hand: String): Boolean = squares[table]?.containsKey(hand) == true
 
+    fun printsRow(row: ChartRow): Boolean = printsRow(row.table, row.hand)
+
     fun play(table: ChartTable, hand: String, upcard: Upcard): Play? = squares[table]?.get(hand)?.get(upcard)
 
     /** Every square [table] prints, row by row, which is every upcard of every row. */

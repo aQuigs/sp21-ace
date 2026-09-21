@@ -13,24 +13,36 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import com.aquigs.sp21ace.ui.theme.disabledContent
 
 val CircleButtonSize = 64.dp
 
 /**
  * Blackjack Ace's round outlined button, at most [CircleButtonSize] across. [label] is for the eye, such as capitals or SURR.,
- * and a screen reader says [name].
+ * and a screen reader says [name]. [ringColor] recolours the ring alone, as a hint does.
  */
 @Composable
-fun CircleButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifier, label: String = name.uppercase(), enabled: Boolean = true) {
+fun CircleButton(
+    name: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    label: String = name.uppercase(),
+    enabled: Boolean = true,
+    ringColor: Color? = null,
+) {
     val color = MaterialTheme.colorScheme.primary
     // An outlined button greys out its label but not its border
     val disabledColor = MaterialTheme.colorScheme.disabledContent
@@ -44,7 +56,7 @@ fun CircleButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifie
         enabled = enabled,
         shape = CircleShape,
         colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
-        border = BorderStroke(3.dp, if (enabled) color else disabledColor),
+        border = BorderStroke(3.dp, ringColor ?: if (enabled) color else disabledColor),
         // The ring is drawn inside the circle in the label's colour, so the label is fitted inside the ring rather than across it
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
@@ -61,16 +73,26 @@ fun CircleButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifie
     }
 }
 
-/** A [CircleButton] for [move], SURR. to the eye for a surrender. */
+/** A [CircleButton] for [move], SURR. to the eye for a surrender, and ringed in green as the correct move when [hinted]. */
 @Composable
-fun MoveButton(move: Move, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun MoveButton(move: Move, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, hinted: Boolean = false) {
     val name = stringResource(move.displayName)
+    val hint = stringResource(R.string.hint_correct_move)
 
     CircleButton(
         name = name,
         onClick = onClick,
-        modifier = modifier,
+        // Tapping the bulb takes it away from under TalkBack's focus, so the ringed move says itself
+        modifier = if (hinted) {
+            modifier.semantics {
+                stateDescription = hint
+                liveRegion = LiveRegionMode.Polite
+            }
+        } else {
+            modifier
+        },
         label = if (move == Move.SURRENDER) stringResource(R.string.surrender_short) else name.uppercase(),
         enabled = enabled,
+        ringColor = Sp21AceTheme.colors.correct.takeIf { hinted },
     )
 }

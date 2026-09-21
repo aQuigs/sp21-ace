@@ -19,6 +19,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
+import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -91,6 +92,25 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun thePlaySectionComesLastAndWarnsOnIncorrectMovesAndShowsTheHintButtonAsBlackjackAceDoes() {
+        showSettings()
+
+        switch(R.string.warn_on_incorrect_move).performScrollTo().assertIsOn()
+        summary(R.string.warn_on_incorrect_move, R.string.yes).assertIsDisplayed()
+        assertTrue(
+            compose.onNodeWithText(string(R.string.clear_practice_history)).getBoundsInRoot().bottom <=
+                compose.onNodeWithText(string(R.string.play)).getBoundsInRoot().top,
+        )
+
+        switch(R.string.warn_on_incorrect_move).performClick()
+        switch(R.string.hint_button).performScrollTo().assertIsOn().performClick()
+
+        assertEquals(Settings(warnOnIncorrectMove = false, hintButton = false), settings)
+        summary(R.string.warn_on_incorrect_move, R.string.no).assertIsDisplayed()
+        summary(R.string.hint_button, R.string.hidden).assertIsDisplayed()
+    }
+
+    @Test
     fun theChoiceRowsShowTheirValuesAndOpenTheirPages() {
         var opened = listOf<Int>()
         showSettings(onOpenColorTheme = { opened += R.string.color_theme }, onOpenButtonLocation = { opened += R.string.button_location })
@@ -144,6 +164,7 @@ class SettingsScreenTest {
     @Test
     fun confirmingClearsTheHistoryAndClosesTheDialog() {
         openClearDialog()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
         compose.onNodeWithText(string(R.string.clear)).performClick()
 
         compose.onNodeWithText(string(R.string.clear_history_message)).assertDoesNotExist()

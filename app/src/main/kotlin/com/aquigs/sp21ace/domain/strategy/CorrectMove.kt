@@ -28,11 +28,18 @@ fun chartRow(hand: List<Card>): ChartRow =
 /** The row a hand is read from by its total alone. */
 fun totalRow(hand: List<Card>): ChartRow = hand.total().row
 
-/** The row a total is read from: soft 18 from the soft table as "A-7", and hard 16 from the hard table as "16". */
+/**
+ * The row a total is read from: soft 18 from the soft table as "A-7", and hard 16 from the hard table as "16". Only a pair of aces
+ * makes soft 12, so the soft table prints it as "A-A".
+ */
 val HandTotal.row: ChartRow
     get() {
         require(value <= 21) { "A busted hand has no chart row" }
-        return if (soft) ChartRow(ChartTable.SOFT, "A-${value - 11}") else ChartRow(ChartTable.HARD, "$value")
+        return when {
+            !soft -> ChartRow(ChartTable.HARD, "$value")
+            value == 12 -> ChartRow(ChartTable.SOFT, "A-A")
+            else -> ChartRow(ChartTable.SOFT, "A-${value - 11}")
+        }
     }
 
 /**
@@ -45,13 +52,22 @@ val HandTotal.afterDoublingRow: ChartRow
     get() = row.let { ChartRow(if (it.table == ChartTable.SOFT) ChartTable.AFTER_DOUBLE_SOFT else ChartTable.AFTER_DOUBLE_HARD, it.hand) }
 
 /** The row the chart prints a doubled [total] in, or null where it prints none, as Double Down Rescue prints no soft or hard 18. */
-fun StrategyChart.doubledRow(total: HandTotal): ChartRow? = total.afterDoublingRow.takeIf { printsRow(it.table, it.hand) }
+fun StrategyChart.doubledRow(total: HandTotal): ChartRow? = total.afterDoublingRow.takeIf(::printsRow)
 
-// A total Double Down Rescue prints no row for means no rescue: stand on the doubled hand
+// Past 17 a doubled hand stands, since standing beats giving up half the bet
 private val NO_RESCUE_PLAY = Play(Action.STAND)
 
-/** The square a doubled [total] is read from, where D is a redouble and R a rescue. */
-fun StrategyChart.afterDoublingPlay(total: HandTotal, upcard: Upcard): Play = doubledRow(total)?.let { play(it, upcard) } ?: NO_RESCUE_PLAY
+/**
+ * The square a doubled [total] is read from, where D is a redouble and R a rescue. Where the chart prints no row, as Double Down
+ * Rescue prints only hard 12 to 17, the hand can only stand or rescue, and standing, only its total counts: a soft total does as
+ * the hard one does, and any total under 17 wins only when the dealer busts, as 16 does. So it's read from the row for 16, or 17,
+ * and past 17 it stands.
+ */
+fun StrategyChart.afterDoublingPlay(total: HandTotal, upcard: Upcard): Play =
+    (doubledRow(total) ?: standingRow(total))?.let { play(it, upcard) } ?: NO_RESCUE_PLAY
+
+private fun StrategyChart.standingRow(total: HandTotal): ChartRow? =
+    total.value.takeIf { it <= 17 }?.let { ChartRow(ChartTable.AFTER_DOUBLE_HARD, "${maxOf(it, 16)}") }?.takeIf(::printsRow)
 
 /** The chart's answer to a doubled hand by its [total] alone, since no card count or bonus applies once it's doubled. */
 fun StrategyChart.correctMoveAfterDoubling(total: HandTotal, upcard: Upcard): Move = afterDoublingPlay(total, upcard).afterDoublingMove
@@ -73,9 +89,16 @@ fun StrategyChart.play(row: ChartRow, upcard: Upcard): Play = requireNotNull(pla
  * The chart's answer to a hand not yet doubled. A bonus exception turns the play into a hit while its bonus hand can still be
  * made, which only two cards can.
  */
-fun StrategyChart.correctMove(hand: List<Card>, upcard: Card): Move {
-    val play = play(hand, upcard)
-    return if (play.bonusException?.canStillMake(hand, upcard.upcard) == true) Move.HIT else play.move(cards = hand.size)
+fun StrategyChart.correctMove(hand: List<Card>, upcard: Card): Move = correctMove(chartRow(hand), hand, upcard, split = false)
+
+/**
+ * The chart's answer to [hand] read from [row], which for a pair can be its total's row rather than the pairs table's. A [split]
+ * hand earns no Super Bonus, so a suited 7-7 against a 7 has no reason to hit for one.
+ */
+internal fun StrategyChart.correctMove(row: ChartRow, hand: List<Card>, upcard: Card, split: Boolean): Move {
+    val play = play(row, upcard.upcard)
+    val bonus = play.bonusException?.takeUnless { split && it == BonusException.SUITED_777 }
+    return if (bonus?.canStillMake(hand, upcard.upcard) == true) Move.HIT else play.move(cards = hand.size)
 }
 
 /**

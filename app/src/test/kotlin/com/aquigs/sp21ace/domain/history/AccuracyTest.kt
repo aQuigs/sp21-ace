@@ -17,6 +17,7 @@ import com.aquigs.sp21ace.domain.strategy.afterDoublingRow
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.correctMove
 import com.aquigs.sp21ace.domain.strategy.correctMoveAfterDoubling
+import com.aquigs.sp21ace.domain.strategy.doubledRow
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import org.junit.Assert.assertEquals
@@ -293,7 +294,10 @@ class AccuracyTest {
         val upcards = deck.filter { it.suit == Suit.SPADES }
         val called = RuleSet.entries.map(StrategyCharts::forRules).flatMap { chart ->
             hands.flatMap { hand -> upcards.map { upcard -> chartRow(hand).table to chart.correctMove(hand, upcard) } } +
-                Fixtures.doubledTotals.flatMap { total -> upcards.map { total.afterDoublingRow.table to chart.correctMoveAfterDoubling(total, it.upcard) } }
+                // Only the doubled hands the chart prints, as the trainer deals
+                Fixtures.doubledTotals.filter { chart.doubledRow(it) != null }.flatMap { total ->
+                    upcards.map { total.afterDoublingRow.table to chart.correctMoveAfterDoubling(total, it.upcard) }
+                }
         }.groupBy({ it.first }, { it.second })
 
         for (tab in HandFilter.entries) {

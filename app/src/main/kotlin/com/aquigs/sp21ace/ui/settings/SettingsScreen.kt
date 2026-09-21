@@ -1,10 +1,7 @@
 package com.aquigs.sp21ace.ui.settings
 
 import androidx.annotation.StringRes
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,11 +16,12 @@ import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.ui.components.ActionRow
 import com.aquigs.sp21ace.ui.components.ChoicePage
 import com.aquigs.sp21ace.ui.components.ChoiceRow
+import com.aquigs.sp21ace.ui.components.ConfirmDialog
 import com.aquigs.sp21ace.ui.components.SettingsHeader
 import com.aquigs.sp21ace.ui.components.SettingsPage
 import com.aquigs.sp21ace.ui.components.SwitchRow
 
-/** Blackjack Ace's Settings, less what this app has nothing for yet: the Play section. */
+/** Blackjack Ace's Settings, less what this app has nothing for yet: the discard tray and the play history. */
 @Composable
 fun SettingsScreen(
     settings: Settings,
@@ -52,23 +50,29 @@ fun SettingsScreen(
         SettingsHeader(stringResource(R.string.practice))
         VisibilityRow(R.string.streak_meter, settings.streakMeter) { onChange(settings.copy(streakMeter = it)) }
         ActionRow(title = stringResource(R.string.clear_practice_history), onClick = { confirmingClear = true })
+        HorizontalDivider()
+
+        SettingsHeader(stringResource(R.string.play))
+        SwitchRow(
+            title = stringResource(R.string.warn_on_incorrect_move),
+            summary = stringResource(if (settings.warnOnIncorrectMove) R.string.yes else R.string.no),
+            checked = settings.warnOnIncorrectMove,
+            onCheckedChange = { onChange(settings.copy(warnOnIncorrectMove = it)) },
+        )
+        VisibilityRow(R.string.hint_button, settings.hintButton) { onChange(settings.copy(hintButton = it)) }
     }
 
     // Asks first, as Blackjack Ace does, because nothing brings a cleared history back
     if (confirmingClear) {
-        AlertDialog(
-            onDismissRequest = { confirmingClear = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmingClear = false
-                        onClearHistory()
-                    },
-                ) { Text(stringResource(R.string.clear)) }
+        ConfirmDialog(
+            title = stringResource(R.string.clear_history_title),
+            message = stringResource(R.string.clear_history_message),
+            confirmLabel = stringResource(R.string.clear),
+            onConfirm = {
+                confirmingClear = false
+                onClearHistory()
             },
-            dismissButton = { TextButton(onClick = { confirmingClear = false }) { Text(stringResource(R.string.cancel)) } },
-            title = { Text(stringResource(R.string.clear_history_title)) },
-            text = { Text(stringResource(R.string.clear_history_message)) },
+            onDismiss = { confirmingClear = false },
         )
     }
 }

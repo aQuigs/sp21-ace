@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
@@ -33,7 +34,7 @@ import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
 import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
-import com.aquigs.sp21ace.ui.play.TAP_GUARD_MILLIS
+import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.HandType
 import com.aquigs.sp21ace.domain.dealing.type
@@ -175,6 +176,9 @@ class AppShellTest {
         compose.onNodeWithContentDescription(string(R.string.deal)).performClick()
         compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
         compose.onNodeWithContentDescription(string(R.string.move_surrender)).performClick()
+        // 18 stands against a 4, so the surrender asks first
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNode(hasText(string(R.string.play_move)) and hasClickAction()).performClick()
 
         assertEquals(STARTING_BANKROLL - 1_250, tableStore.loadChips())
     }
@@ -203,6 +207,7 @@ class AppShellTest {
 
         openFromDrawer(R.string.settings)
         compose.onNodeWithText(string(R.string.clear_practice_history)).performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
         compose.onNodeWithText(string(R.string.clear)).performClick()
         compose.onNodeWithContentDescription(string(R.string.back)).performClick()
 
@@ -231,6 +236,27 @@ class AppShellTest {
 
         val screen = compose.onRoot().captureToImage().toPixelMap()
         assertTrue(screen[screen.width / 10, 0].luminance() < 0.5f)
+    }
+
+    @Test
+    fun overTheTableTheChartKeepsTheRulesTheRoundWasDealtUnder() {
+        openFromDrawer(R.string.play_spanish_21)
+        compose.onNodeWithContentDescription(string(R.string.bet_chip, "25")).performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithContentDescription(string(R.string.deal)).performClick()
+
+        openFromDrawer(R.string.table_rules)
+        chooseDealerHits()
+        Espresso.pressBack()
+        compose.onNodeWithContentDescription(string(R.string.open_strategy_chart)).performClick()
+
+        compose.onScreen.onNodeWithText("Dealer stands on soft 17 · 6 decks").assertIsDisplayed()
+
+        Espresso.pressBack()
+        openFromDrawer(R.string.strategy_trainer)
+        compose.onNodeWithContentDescription(string(R.string.open_strategy_chart)).performClick()
+
+        compose.onScreen.onNodeWithText("Dealer hits soft 17 · 6 decks").assertIsDisplayed()
     }
 
     @Test
