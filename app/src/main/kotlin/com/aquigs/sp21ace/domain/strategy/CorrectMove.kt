@@ -3,7 +3,10 @@ package com.aquigs.sp21ace.domain.strategy
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.Rank
-import com.aquigs.sp21ace.domain.cards.Suit
+import com.aquigs.sp21ace.domain.cards.SIX_SEVEN_EIGHT
+import com.aquigs.sp21ace.domain.cards.allSpades
+import com.aquigs.sp21ace.domain.cards.isPair
+import com.aquigs.sp21ace.domain.cards.suited
 import com.aquigs.sp21ace.domain.cards.total
 
 /**
@@ -20,7 +23,7 @@ val Card.upcard: Upcard get() = if (rank.value == 10) Upcard.TEN else Upcard.fro
 
 /** The row a hand is read from: a two-card pair from the pairs table, any other hand by its [totalRow]. */
 fun chartRow(hand: List<Card>): ChartRow =
-    if (hand.size == 2 && hand[0].upcard == hand[1].upcard) hand[0].upcard.label.let { ChartRow(ChartTable.PAIRS, "$it-$it") } else totalRow(hand)
+    if (hand.isPair) hand[0].upcard.label.let { ChartRow(ChartTable.PAIRS, "$it-$it") } else totalRow(hand)
 
 /** The row a hand is read from by its total alone. */
 fun totalRow(hand: List<Card>): ChartRow = hand.total().row
@@ -104,8 +107,6 @@ internal fun Play.move(cards: Int): Move {
     }
 }
 
-private val SIX_SEVEN_EIGHT = setOf(Rank.SIX, Rank.SEVEN, Rank.EIGHT)
-
 private fun BonusException.ranksCanMake(hand: List<Card>, upcard: Upcard): Boolean = when (this) {
     BonusException.ANY_678, BonusException.SUITED_678, BonusException.SPADED_678 ->
         hand.all { it.rank in SIX_SEVEN_EIGHT } && hand.distinctBy { it.rank }.size == hand.size
@@ -114,6 +115,6 @@ private fun BonusException.ranksCanMake(hand: List<Card>, upcard: Upcard): Boole
 
 private fun BonusException.canStillMake(hand: List<Card>, upcard: Upcard): Boolean = ranksCanMake(hand, upcard) && when (this) {
     BonusException.ANY_678 -> true
-    BonusException.SUITED_678, BonusException.SUITED_777 -> hand.all { it.suit == hand[0].suit }
-    BonusException.SPADED_678 -> hand.all { it.suit == Suit.SPADES }
+    BonusException.SUITED_678, BonusException.SUITED_777 -> hand.suited
+    BonusException.SPADED_678 -> hand.allSpades
 }

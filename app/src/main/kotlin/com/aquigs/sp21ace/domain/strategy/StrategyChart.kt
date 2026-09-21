@@ -1,6 +1,9 @@
 package com.aquigs.sp21ace.domain.strategy
 
-/** The rule combinations with published charts, all for six decks. Casinos only offer redoubling where the dealer hits soft 17. */
+/** The shoe size every chart is published for. */
+const val DECKS = 6
+
+/** The rule combinations with published charts, all for [DECKS] decks. Casinos only offer redoubling where the dealer hits soft 17. */
 enum class RuleSet(val dealerHitsSoft17: Boolean, val redoubling: Boolean) {
     H17_REDOUBLE(dealerHitsSoft17 = true, redoubling = true),
     H17(dealerHitsSoft17 = true, redoubling = false),

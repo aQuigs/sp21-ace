@@ -1,5 +1,6 @@
 package com.aquigs.sp21ace.domain.trainer
 
+import com.aquigs.sp21ace.serializedAndBack
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.strategy.Action
@@ -14,9 +15,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.ByteArrayOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
 
 class TrainerTest {
     private val s17 = StrategyCharts.forRules(RuleSet.S17)
@@ -140,8 +138,6 @@ class TrainerTest {
         // A right answer from a streak and a doubled hand dealt next, so neither field lost in transit can hide behind its default.
         val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true) }
 
-        val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(state) } }.toByteArray()
-
-        assertEquals(state, ObjectInputStream(bytes.inputStream()).use { it.readObject() })
+        assertEquals(state, state.serializedAndBack())
     }
 }
