@@ -7,6 +7,7 @@ import com.aquigs.sp21ace.domain.cards.plusCard
 import com.aquigs.sp21ace.domain.cards.spanishShoe
 import com.aquigs.sp21ace.domain.cards.total
 import com.aquigs.sp21ace.domain.strategy.ChartRow
+import com.aquigs.sp21ace.domain.strategy.DECKS
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
@@ -24,9 +25,6 @@ import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.correctMove
 import kotlin.random.Random
-
-// Six decks, the shoe size every chart is published for
-private const val DECKS = 6
 
 private val SHOE: List<Card> = spanishShoe(DECKS)
 
