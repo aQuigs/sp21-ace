@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
@@ -35,6 +34,7 @@ import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.domain.strategy.legend
 import com.aquigs.sp21ace.ui.components.ChartGrid
 import com.aquigs.sp21ace.ui.components.CodeSquare
+import com.aquigs.sp21ace.ui.components.CodeText
 import com.aquigs.sp21ace.ui.components.DoubledTabbedPages
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
 import com.aquigs.sp21ace.ui.components.SubPage
@@ -69,8 +69,8 @@ fun StrategyChartScreen(rules: RuleSet, onBack: () -> Unit, modifier: Modifier =
                     hands = chart.hands(table),
                     footerCodes = footerCodes,
                     modifier = Modifier.widthIn(max = MaxContentWidth),
-                    square = { square, play, codeStyle, squareModifier -> Square(square, play, codeStyle, squareModifier) },
-                    footer = { swatchSize, _, codeStyle -> Legend(legends.getValue(table), swatchSize, codeStyle) },
+                    square = { square, play, codes, squareModifier -> Square(square, play, codes, squareModifier) },
+                    footer = { swatchSize, _, codes -> Legend(legends.getValue(table), swatchSize, codes) },
                 )
             }
         }
@@ -96,26 +96,26 @@ private fun rulesCaption(rules: RuleSet): String = listOfNotNull(
 ).map { stringResource(it) }.joinToString(" · ")
 
 @Composable
-private fun Square(square: ChartSquare, play: Play, codeStyle: TextStyle, modifier: Modifier) {
+private fun Square(square: ChartSquare, play: Play, codes: CodeText, modifier: Modifier) {
     val description = stringResource(R.string.square_description, square.row.hand, square.upcard.label, square.inPlainWords(play))
 
     // In words, because a screen reader can't see the row and column a code sits in, or the legend that explains it
     ActionSquare(
         code = play.code,
         fill = play.action,
-        style = codeStyle,
+        codes = codes,
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = description },
     )
 }
 
 /** A code on its action's colour, or a mark on its own. */
 @Composable
-private fun ActionSquare(code: String, fill: Action?, style: TextStyle, modifier: Modifier = Modifier) {
-    CodeSquare(code, style, if (fill != null) modifier.actionFill(fill, Sp21AceTheme.colors.chart) else modifier)
+private fun ActionSquare(code: String, fill: Action?, codes: CodeText, modifier: Modifier = Modifier) {
+    CodeSquare(code, codes, if (fill != null) modifier.actionFill(fill, Sp21AceTheme.colors.chart) else modifier)
 }
 
 @Composable
-private fun Legend(entries: List<LegendEntry>, swatchSize: Dp, codeStyle: TextStyle) {
+private fun Legend(entries: List<LegendEntry>, swatchSize: Dp, codes: CodeText) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         entries.forEach { entry ->
             // One item for a screen reader: the symbol, then what it means
@@ -124,7 +124,7 @@ private fun Legend(entries: List<LegendEntry>, swatchSize: Dp, codeStyle: TextSt
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ActionSquare(entry.symbol, entry.fill, codeStyle, Modifier.size(swatchSize))
+                ActionSquare(entry.symbol, entry.fill, codes, Modifier.size(swatchSize))
                 Text(text = entry.meaning, style = MaterialTheme.typography.bodyMedium)
             }
         }

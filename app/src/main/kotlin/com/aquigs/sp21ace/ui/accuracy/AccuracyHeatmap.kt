@@ -15,7 +15,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.dealing.dealtRows
@@ -30,6 +29,7 @@ import com.aquigs.sp21ace.domain.strategy.code
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.ui.components.ChartGrid
 import com.aquigs.sp21ace.ui.components.CodeSquare
+import com.aquigs.sp21ace.ui.components.CodeText
 import com.aquigs.sp21ace.ui.theme.HeatmapColors
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 
@@ -53,15 +53,15 @@ fun AccuracyHeatmap(rules: RuleSet, table: ChartTable, bySquare: Map<ChartSquare
         hands = chart.hands(table).filter { ChartRow(table, it) in rows },
         footerCodes = SCALE,
         modifier = modifier,
-        square = { square, play, codeStyle, squareModifier ->
-            HeatSquare(square, play, bySquare[square], colors, codeStyle, squareModifier)
+        square = { square, play, codes, squareModifier ->
+            HeatSquare(square, play, bySquare[square], colors, codes, squareModifier)
         },
-        footer = { swatchSize, gap, codeStyle -> Scale(colors, swatchSize, gap, codeStyle) },
+        footer = { swatchSize, gap, codes -> Scale(colors, swatchSize, gap, codes) },
     )
 }
 
 @Composable
-private fun HeatSquare(square: ChartSquare, play: Play, tally: Tally?, colors: HeatmapColors, codeStyle: TextStyle, modifier: Modifier) {
+private fun HeatSquare(square: ChartSquare, play: Play, tally: Tally?, colors: HeatmapColors, codes: CodeText, modifier: Modifier) {
     val hand = square.row.hand
     val upcard = square.upcard.label
     val words = square.inPlainWords(play)
@@ -75,7 +75,7 @@ private fun HeatSquare(square: ChartSquare, play: Play, tally: Tally?, colors: H
     // In words, because a screen reader can't see the row and column a square sits in, or its colour
     CodeSquare(
         code = play.code,
-        style = codeStyle,
+        codes = codes,
         modifier = modifier
             .then(if (permille == null) Modifier else Modifier.heat(colors.at(permille / 1000f), MaterialTheme.colorScheme.outlineVariant))
             .semantics(mergeDescendants = true) { contentDescription = description },
@@ -84,7 +84,7 @@ private fun HeatSquare(square: ChartSquare, play: Play, tally: Tally?, colors: H
 }
 
 @Composable
-private fun Scale(colors: HeatmapColors, swatchSize: Dp, gap: Dp, codeStyle: TextStyle) {
+private fun Scale(colors: HeatmapColors, swatchSize: Dp, gap: Dp, codes: CodeText) {
     val outline = MaterialTheme.colorScheme.outlineVariant
 
     // For the eye only, since every square already says in words how often it was right
@@ -93,7 +93,7 @@ private fun Scale(colors: HeatmapColors, swatchSize: Dp, gap: Dp, codeStyle: Tex
         horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
     ) {
         SCALE.forEachIndexed { step, label ->
-            CodeSquare(label, codeStyle, Modifier.size(swatchSize).heat(colors.at(step / SCALE.lastIndex.toFloat()), outline))
+            CodeSquare(label, codes, Modifier.size(swatchSize).heat(colors.at(step / SCALE.lastIndex.toFloat()), outline))
         }
     }
 }

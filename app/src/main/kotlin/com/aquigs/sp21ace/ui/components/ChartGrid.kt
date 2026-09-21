@@ -5,21 +5,31 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.getTextLayoutResult
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -27,7 +37,9 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.roundToIntSize
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toOffset
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.ChartSquare
@@ -59,13 +71,16 @@ internal fun ChartGrid(
     hands: List<String>,
     footerCodes: List<String>,
     modifier: Modifier = Modifier,
-    square: @Composable (square: ChartSquare, play: Play, codeStyle: TextStyle, modifier: Modifier) -> Unit,
-    footer: @Composable (squareSize: Dp, gap: Dp, codeStyle: TextStyle) -> Unit,
+    square: @Composable (square: ChartSquare, play: Play, codes: CodeText, modifier: Modifier) -> Unit,
+    footer: @Composable (squareSize: Dp, gap: Dp, codes: CodeText) -> Unit,
 ) {
     val codeStyle = MaterialTheme.typography.labelLarge.copy(fontSize = MaxCodeSize)
     val labelStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
     val measurer = rememberTextMeasurer()
     val widest = rememberWidestText(chart, footerCodes, measurer, codeStyle, labelStyle)
+    // Kept from one measure to the next, so a grid measured again at the same size hands its squares the same codes, and a
+    // square with nothing else changed skips recomposing
+    val codeTexts = remember(measurer) { HashMap<Pair<TextStyle, Constraints>, CodeText>() }
 
     SubcomposeLayout(modifier) { constraints ->
         val caption = subcompose(GridPart.Caption) {
@@ -76,7 +91,11 @@ internal fun ChartGrid(
 
         // Every square is as wide as the next, so one size fits the widest text of each kind. Each square searching for
         // its own size costs a handful of text layouts apiece, and at a minimum size it silently cuts the text short.
-        val codes = shrunkToFit(measurer, widest.code, codeStyle, squareWidth - (CodePadding * 2).roundToPx())
+        val codeWidth = (squareWidth - (CodePadding * 2).roundToPx()).coerceAtLeast(0)
+        val codeFit = shrunkToFit(measurer, widest.code, codeStyle, codeWidth)
+        // As tall as a square too, so a code's layout says whether it overflows the square, as a Text's did
+        val codeBounds = Constraints(maxWidth = codeWidth, maxHeight = squareWidth)
+        val codes = codeTexts.getOrPut(codeFit to codeBounds) { CodeText(measurer, codeFit, codeBounds) }
         val upcards = shrunkToFit(measurer, widest.upcard, labelStyle, squareWidth)
         val handLabels = shrunkToFit(measurer, widest.hand, labelStyle, (RowLabelWidth - RowLabelPadding).roundToPx())
 
@@ -125,7 +144,7 @@ private fun rememberWidestText(
     labelStyle: TextStyle,
 ): WidestText = remember(chart, footerCodes, measurer, codeStyle, labelStyle) {
     fun widest(texts: List<String>, style: TextStyle) =
-        texts.distinct().maxBy { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width }
+        texts.distinct().maxBy { measurer.measureLine(it, style).size.width }
 
     val codes = footerCodes + chart.tables.flatMap(chart::plays).map { it.code }
 
@@ -140,15 +159,18 @@ private fun rememberWidestText(
 // don't narrow in exact proportion to the size
 private fun Density.shrunkToFit(measurer: TextMeasurer, text: String, style: TextStyle, width: Int): TextStyle {
     var fitted = style
-    var textWidth = measurer.measure(text, fitted, softWrap = false, maxLines = 1).size.width
+    var textWidth = measurer.measureLine(text, fitted).size.width
 
     while (textWidth > width) {
         val ratio = width.coerceAtLeast(0).toFloat() / textWidth
         fitted = fitted.copy(fontSize = (fitted.fontSize.toPx() * ratio).toSp(), lineHeight = (fitted.lineHeight.toPx() * ratio).toSp())
-        textWidth = measurer.measure(text, fitted, softWrap = false, maxLines = 1).size.width
+        textWidth = measurer.measureLine(text, fitted).size.width
     }
     return fitted
 }
+
+private fun TextMeasurer.measureLine(text: String, style: TextStyle, constraints: Constraints = Constraints()): TextLayoutResult =
+    measure(text, style, softWrap = false, maxLines = 1, constraints = constraints)
 
 @Composable
 private fun AxisCaption(text: String, modifier: Modifier = Modifier) {
@@ -180,10 +202,29 @@ private fun GridRow(label: String?, labelStyle: TextStyle, squares: @Composable 
     }
 }
 
-/** A code centred over whatever [modifier] draws, padded as the grid's one code size allows for. */
+/** The grid's codes at the one size that fits a square, each laid out once, since a table prints the same few codes over and over. */
+internal class CodeText(private val measurer: TextMeasurer, private val style: TextStyle, private val constraints: Constraints) {
+    private val layouts = HashMap<String, TextLayoutResult>()
+
+    fun layout(code: String): TextLayoutResult = layouts.getOrPut(code) { measurer.measureLine(code, style, constraints) }
+}
+
+/**
+ * A code centred over whatever [modifier] draws, as large as [modifier] makes it, since it has no content to size it. Drawn rather than composed as a Text, since a table has over a hundred squares
+ * and a Text apiece made each tab take several frames to open. Its semantics are a Text's, for a screen reader and for tests.
+ */
 @Composable
-internal fun CodeSquare(code: String, style: TextStyle, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Text(text = code, modifier = Modifier.padding(horizontal = CodePadding), color = color, softWrap = false, maxLines = 1, style = style)
-    }
+internal fun CodeSquare(code: String, codes: CodeText, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
+    val layout = codes.layout(code)
+    val textColor = color.takeOrElse { LocalContentColor.current }
+
+    Spacer(
+        modifier = modifier
+            .semantics {
+                text = AnnotatedString(code)
+                getTextLayoutResult { it.add(layout) }
+            }
+            // Whole pixels, as a Box centres its content, since a half-pixel offset blurs the letters' edges
+            .drawBehind { drawText(layout, textColor, Alignment.Center.align(layout.size, size.roundToIntSize(), layoutDirection).toOffset()) },
+    )
 }
