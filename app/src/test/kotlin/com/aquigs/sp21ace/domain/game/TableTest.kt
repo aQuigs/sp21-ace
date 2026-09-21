@@ -119,42 +119,34 @@ class TableTest {
     fun aFinishedSplitHandStaysOnShowUntilNextThenTheNextHandPlays() {
         // 8-8 splits against a 7: the first hand draws 3 and K to 21, and the second draws Q to 18 and stands
         val split = requireNotNull(table("8c 7s 8d Kh 3h Ks Qd").betting(2_500).deal(RuleSet.S17, random)?.play(Move.SPLIT))
-        assertFalse(split.paused)
+        assertFalse(split.hasNext)
 
-        val paused = requireNotNull(split.play(Move.HIT))
-        assertTrue(paused.paused)
-        assertEquals(cards("8c 3h Ks"), paused.shownHand?.cards)
-        assertEquals(emptySet<Move>(), paused.moves)
-        assertFalse(paused.canHint)
-        assertNull(paused.play(Move.STAND))
-        assertNull(paused.showHint())
+        val finished = requireNotNull(split.play(Move.HIT))
+        assertTrue(finished.hasNext)
+        assertEquals(cards("8c 3h Ks"), finished.shownHand?.cards)
+        assertFalse(finished.canHint)
+        assertNull(finished.showHint())
+        assertNull(finished.shownResult)
+        assertEquals(1, finished.dealerCardsShown)
 
-        val second = requireNotNull(paused.next())
-        assertFalse(second.paused)
+        val second = requireNotNull(finished.next())
+        assertFalse(second.hasNext)
         assertEquals(cards("8d Qd"), second.shownHand?.cards)
-        assertTrue(Move.STAND in second.moves)
         assertTrue(second.canHint)
 
-        // The last hand goes straight to the dealer
-        val stood = requireNotNull(second.play(Move.STAND))
-        assertFalse(stood.paused)
-        assertTrue(stood.revealed)
+        assertTrue(requireNotNull(second.play(Move.STAND)).revealed)
     }
 
     @Test
-    fun aRoundThatSettlesWhileTheTableStaysOnAHandKeepsTheDealersCardsAndThePayoutUntilNext() {
+    fun aSplitHandThatMakes21ByItselfIsPlayedOnlyOnceTheTableMovesOnToIt() {
         // K-Q splits against a 6: the first hand draws a 9 and stands on 19, the second an A to 21 by itself, and the dealer's
         // 6-K draws a 5 to 21
         val dealt = requireNotNull(table("Kc 6s Qd Kh 9s Ad 5h").betting(2_500).deal(RuleSet.S17, random))
-        val paused = requireNotNull(dealt.play(Move.SPLIT)?.play(Move.STAND))
-        assertTrue(requireNotNull(paused.round).settled)
-        assertTrue(paused.paused)
-        assertEquals(1, paused.dealerCardsShown)
-        assertNull(paused.revealDealerCard())
-        assertNull(paused.shownResult)
-        assertEquals(STARTING_BANKROLL - 5_000, paused.available)
+        val stood = requireNotNull(dealt.play(Move.SPLIT)?.play(Move.STAND))
+        assertFalse(requireNotNull(stood.round).settled)
+        assertEquals(cards("Qd"), stood.round?.hands?.get(1)?.cards)
 
-        val last = requireNotNull(paused.next())
+        val last = requireNotNull(stood.next())
         assertEquals(cards("Qd Ad"), last.shownHand?.cards)
         assertEquals(2, last.dealerCardsShown)
 
@@ -164,12 +156,13 @@ class TableTest {
     }
 
     @Test
-    fun aSplitHandShownBustingDoesntShowItsResultAgain() {
+    fun aSplitHandThatBustsShowsItAndLosesItsBetAtOnceThenItsResultIsntShownAgain() {
         // 8-8 splits against a 7: the first hand draws 5 and K to bust, and the second a 9 to 17, which pushes the dealer's 17
         val split = requireNotNull(table("8c 7s 8d Kh 5h Ks 9d").betting(2_500).deal(RuleSet.S17, random)?.play(Move.SPLIT))
         val busted = requireNotNull(split.play(Move.HIT))
-        assertTrue(busted.paused)
-        assertEquals(Finish.BUSTED, busted.shownHand?.finish)
+        assertTrue(busted.hasNext)
+        assertEquals(HandResult(Outcome.LOSE, -2_500), busted.shownResult)
+        assertEquals(STARTING_BANKROLL - 2_500, busted.chips)
 
         val settled = requireNotNull(busted.next()?.play(Move.STAND))
         assertTrue(settled.revealed)
@@ -213,7 +206,7 @@ class TableTest {
     fun aSplitsDecisionStaysWithTheFirstOfItsHands() {
         // K-Q vs 6 stands, so the split is wrong. The first hand draws a 9 to stand on, and the second an A, making 21 by itself
         val dealt = requireNotNull(table("Kc 6s Qd Kh 9s Ad 5h").betting(2_500).deal(RuleSet.S17, random))
-        val played = requireNotNull(dealt.play(Move.SPLIT)?.play(Move.STAND))
+        val played = requireNotNull(dealt.play(Move.SPLIT)?.play(Move.STAND)?.next())
 
         assertEquals(
             listOf(StrategyGrade.INCORRECT, StrategyGrade.NO_ACTION_REQUIRED),

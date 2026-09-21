@@ -38,7 +38,8 @@ data class PlayerHand(
 /**
  * A round from the deal to the settlement, in cents. [bankroll] is the chips off the table: the bet, each double and each split
  * move chips from it onto a hand, and the settlement pays back what the hands return. The dealer's second card stays face down
- * until the round is [settled]. [active] is the hand being played, and once the round is settled it is past the last hand.
+ * until the round is [settled]. [active] is the hand being played, and once the round is settled it is past the last hand. As in
+ * Blackjack Ace, a split hand that finishes before the last stays active, with nothing to decide, until [nextHand] moves on.
  */
 data class Round(
     val ruleSet: RuleSet,
@@ -53,8 +54,13 @@ data class Round(
     val upcard: Card get() = dealer.first()
     val settled: Boolean get() = results != null
 
-    /** The hand waiting on a decision, or null once the round is settled. */
-    val activeHand: PlayerHand? get() = if (settled) null else hands[active]
+    /** The hand waiting on a decision, or null while a finished split hand waits for the next and once the round is settled. */
+    val activeHand: PlayerHand? get() = if (settled) null else hands[active].takeIf { it.finish == null }
+
+    val waitingForNextHand: Boolean get() = !settled && hands[active].finish != null
+
+    /** The round moved on from a finished split hand to the next, or null unless one waits. */
+    fun nextHand(): Round? = if (waitingForNextHand) copy(active = active + 1).advance() else null
 
     /** What the round won or lost, once it's settled. */
     val net: Long? get() = results?.sumOf { it.net }
@@ -112,18 +118,14 @@ data class Round(
 
     private fun replaceActive(hand: PlayerHand): Round = copy(hands = hands.toMutableList().apply { set(active, hand) })
 
-    // Moves past finished hands, dealing a split hand its second card once it's reached, and after the last the dealer plays
+    // Deals a split hand its second card once it's reached, and once the last hand is finished the dealer plays
     private fun advance(): Round {
-        var round = this
-        while (round.active < round.hands.size) {
-            val hand = round.hands[round.active]
-            round = when {
-                hand.cards.size == 1 -> round.dealTo(hand)
-                hand.finish == null -> return round
-                else -> round.copy(active = round.active + 1)
-            }
+        val hand = hands[active]
+        return when {
+            hand.cards.size == 1 -> dealTo(hand).advance()
+            hand.finish == null || active < hands.lastIndex -> this
+            else -> dealerPlays()
         }
-        return round.dealerPlays()
     }
 
     // The dealer only draws while a hand waits on the dealer's total

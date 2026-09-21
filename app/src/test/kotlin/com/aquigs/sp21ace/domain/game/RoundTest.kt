@@ -25,6 +25,8 @@ private fun deal(player: String, dealer: String, draws: String = "", ruleSet: Ru
 
 private fun Round.then(vararg moves: Move): Round = moves.fold(this) { round, move -> requireNotNull(round.play(move)) { "Can't $move" } }
 
+private fun Round.next(): Round = requireNotNull(nextHand()) { "No hand waits" }
+
 private fun Round.outcomes() = requireNotNull(results).map { it.outcome to it.net }
 
 private fun Round.result(hand: Int = 0) = requireNotNull(results)[hand]
@@ -95,7 +97,7 @@ class RoundTest {
     @Test
     fun aPlayer21BeatsADealer21() {
         // The hand left standing on 18 makes the dealer draw to 21
-        val round = deal("8c 8d", "Ks 5h", draws = "3c Kh Qd 6c").then(Move.SPLIT, Move.HIT, Move.STAND)
+        val round = deal("8c 8d", "Ks 5h", draws = "3c Kh Qd 6c").then(Move.SPLIT, Move.HIT).next().then(Move.STAND)
 
         assertEquals(cards("Ks 5h 6c"), round.dealer)
         assertEquals(listOf(Outcome.WIN to BET, Outcome.LOSE to -BET), round.outcomes())
@@ -172,17 +174,30 @@ class RoundTest {
     }
 
     @Test
-    fun aSplitPlaysEachHandInTurnDrawingItsSecondCardWhenItsReached() {
+    fun aSplitPlaysEachHandInTurnWaitingOnEachFinishedOneButTheLastAndDrawingTheNextOnesSecondCardWhenItsReached() {
         val split = deal("8c 8d", "7s Kh", draws = "3h Ks Qd").then(Move.SPLIT)
         assertEquals(listOf(cards("8c 3h"), cards("8d")), split.hands.map { it.cards })
         assertEquals(BANKROLL - 2 * BET, split.bankroll)
         assertEquals(setOf(Move.HIT, Move.STAND, Move.DOUBLE), split.moves())
+        assertNull(split.nextHand())
 
-        val second = split.then(Move.HIT)
+        // The first hand draws a K to 21 and waits, with nothing to decide
+        val finished = split.then(Move.HIT)
+        assertTrue(finished.waitingForNextHand)
+        assertEquals(0, finished.active)
+        assertNull(finished.activeHand)
+        assertEquals(emptySet<Move>(), finished.moves())
+        assertNull(finished.play(Move.STAND))
+        assertEquals(cards("8d"), finished.hands[1].cards)
+
+        val second = finished.next()
+        assertFalse(second.waitingForNextHand)
         assertEquals(1, second.active)
         assertEquals(cards("8d Qd"), second.hands[1].cards)
 
+        // The last hand goes straight to the dealer
         val done = second.then(Move.STAND)
+        assertTrue(done.settled)
         assertEquals(listOf(Outcome.WIN to BET, Outcome.WIN to BET), done.outcomes())
         assertEquals(BANKROLL + 2 * BET, done.bankroll)
     }
@@ -203,7 +218,7 @@ class RoundTest {
 
     @Test
     fun splitAcesDrawAndA21FromThemIsPaidEvenMoneyNotAsABlackjack() {
-        val round = deal("As Ad", "7s Kh", draws = "Kc 5c 2d").then(Move.SPLIT, Move.HIT, Move.STAND)
+        val round = deal("As Ad", "7s Kh", draws = "Kc 5c 2d").then(Move.SPLIT).next().then(Move.HIT, Move.STAND)
 
         assertEquals(listOf(cards("As Kc"), cards("Ad 5c 2d")), round.hands.map { it.cards })
         assertEquals(listOf(Outcome.WIN to BET, Outcome.WIN to BET), round.outcomes())
@@ -246,7 +261,7 @@ class RoundTest {
 
     @Test
     fun aSplitHandEarnsItsBonusButNotTheSuperBonus() {
-        val round = deal("7h 7h", "7s Kc", draws = "7h 7h Ks").then(Move.SPLIT, Move.HIT, Move.STAND)
+        val round = deal("7h 7h", "7s Kc", draws = "7h 7h Ks").then(Move.SPLIT, Move.HIT).next().then(Move.STAND)
 
         assertEquals(HandResult(Outcome.WIN, 5_000, bonus = Bonus.SUITED_777), round.result())
     }
@@ -282,7 +297,10 @@ class RoundTest {
     fun splitAcesResplitAndTwoThatDrawTenValueCardsSettleWithNoDecision() {
         assertTrue(Move.SPLIT in deal("As Ad", "7s Kh", draws = "Ah").then(Move.SPLIT).moves())
 
-        val both21 = deal("As Ad", "7s Kh", draws = "Kc Qd").then(Move.SPLIT)
+        val first21 = deal("As Ad", "7s Kh", draws = "Kc Qd").then(Move.SPLIT)
+        assertTrue(first21.waitingForNextHand)
+
+        val both21 = first21.next()
         assertEquals(listOf(Outcome.WIN to BET, Outcome.WIN to BET), both21.outcomes())
         assertEquals(cards("7s Kh"), both21.dealer)
     }
@@ -290,7 +308,7 @@ class RoundTest {
     @Test
     fun aSplitHandCanDoubleAndThenRescue() {
         // 8-3 doubles onto a 2 and is rescued, and 8-Q stands on 18 against the dealer's 19
-        val round = deal("8c 8d", "Ks 9h", draws = "3h 2c Qd").then(Move.SPLIT, Move.DOUBLE, Move.RESCUE, Move.STAND)
+        val round = deal("8c 8d", "Ks 9h", draws = "3h 2c Qd").then(Move.SPLIT, Move.DOUBLE, Move.RESCUE).next().then(Move.STAND)
 
         assertEquals(listOf(Outcome.LOSE to -BET, Outcome.LOSE to -BET), round.outcomes())
         assertEquals(BANKROLL - 2 * BET, round.bankroll)
@@ -338,8 +356,13 @@ class RoundTest {
                 shoe = shoe.forNextRound(random)
                 var round = Round.deal(ruleSet, BET, bankroll, shoe)
                 while (!round.settled) {
-                    assertTrue(round.activeHand != null && round.moves().isNotEmpty())
-                    round = requireNotNull(round.play(round.moves().random(random)))
+                    round = if (round.waitingForNextHand) {
+                        assertEquals(emptySet<Move>(), round.moves())
+                        round.next()
+                    } else {
+                        assertTrue(round.activeHand != null && round.moves().isNotEmpty())
+                        requireNotNull(round.play(round.moves().random(random)))
+                    }
                 }
 
                 assertEquals(emptySet<Move>(), round.moves())
