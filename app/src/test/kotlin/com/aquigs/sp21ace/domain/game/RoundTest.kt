@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.domain.game
 
 import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.serializedAndBack
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import org.junit.Assert.assertEquals
@@ -9,9 +10,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.ByteArrayOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
 import kotlin.random.Random
 
 private const val BET = 2_500L
@@ -28,6 +26,8 @@ private fun deal(player: String, dealer: String, draws: String = "", ruleSet: Ru
 private fun Round.then(vararg moves: Move): Round = moves.fold(this) { round, move -> requireNotNull(round.play(move)) { "Can't $move" } }
 
 private fun Round.outcomes() = requireNotNull(results).map { it.outcome to it.net }
+
+private fun Round.result(hand: Int = 0) = requireNotNull(results)[hand]
 
 class RoundTest {
     @Test
@@ -47,7 +47,7 @@ class RoundTest {
             val round = deal("As Kd", dealer)
 
             assertEquals(listOf(Outcome.WIN to 3_750L), round.outcomes())
-            assertTrue(requireNotNull(round.results).single().blackjack)
+            assertTrue(round.result().blackjack)
             assertEquals(BANKROLL + 3_750, round.bankroll)
         }
     }
@@ -207,7 +207,7 @@ class RoundTest {
 
         assertEquals(listOf(cards("As Kc"), cards("Ad 5c 2d")), round.hands.map { it.cards })
         assertEquals(listOf(Outcome.WIN to BET, Outcome.WIN to BET), round.outcomes())
-        assertFalse(requireNotNull(round.results).first().blackjack)
+        assertFalse(round.result().blackjack)
     }
 
     @Test
@@ -221,12 +221,12 @@ class RoundTest {
 
         val doubled = deal("2c 3d", "Ks 7h", draws = "4h 5s 7c").then(Move.HIT, Move.HIT, Move.DOUBLE)
         assertEquals(listOf(Outcome.WIN to 2 * BET), doubled.outcomes())
-        assertNull(requireNotNull(doubled.results).single().bonus)
+        assertNull(doubled.result().bonus)
     }
 
     @Test
     fun paysTheSuitBonusesOnAThreeCard678Or777() {
-        fun bonusOf(player: String, draw: String) = requireNotNull(deal(player, "Ks 7h", draws = draw).then(Move.HIT).results).single()
+        fun bonusOf(player: String, draw: String) = deal(player, "Ks 7h", draws = draw).then(Move.HIT).result()
 
         assertEquals(HandResult(Outcome.WIN, 3_750, bonus = Bonus.MIXED_678), bonusOf("6c 7d", "8h"))
         assertEquals(HandResult(Outcome.WIN, 5_000, bonus = Bonus.SUITED_678), bonusOf("6h 7h", "8h"))
@@ -236,7 +236,7 @@ class RoundTest {
 
     @Test
     fun aSuited777AgainstA7WinsTheSuperBonusByTheSizeOfTheBet() {
-        fun superBonus(bet: Long, upcard: String = "7s") = requireNotNull(deal("7h 7h", "$upcard Kc", draws = "7h", bet = bet).then(Move.HIT).results).single()
+        fun superBonus(bet: Long, upcard: String = "7s") = deal("7h 7h", "$upcard Kc", draws = "7h", bet = bet).then(Move.HIT).result()
 
         assertEquals(HandResult(Outcome.WIN, 1_000 + 100_000, bonus = Bonus.SUITED_777, superBonus = 100_000), superBonus(500))
         assertEquals(HandResult(Outcome.WIN, 5_000 + 500_000, bonus = Bonus.SUITED_777, superBonus = 500_000), superBonus(2_500))
@@ -248,7 +248,7 @@ class RoundTest {
     fun aSplitHandEarnsItsBonusButNotTheSuperBonus() {
         val round = deal("7h 7h", "7s Kc", draws = "7h 7h Ks").then(Move.SPLIT, Move.HIT, Move.STAND)
 
-        assertEquals(HandResult(Outcome.WIN, 5_000, bonus = Bonus.SUITED_777), requireNotNull(round.results).first())
+        assertEquals(HandResult(Outcome.WIN, 5_000, bonus = Bonus.SUITED_777), round.result())
     }
 
     @Test
@@ -262,16 +262,14 @@ class RoundTest {
     fun survivesSerialization() {
         val round = deal("8c 8d", "7s Kh", draws = "3h Ks Qd").then(Move.SPLIT)
 
-        val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(round) } }.toByteArray()
-        assertEquals(round, ObjectInputStream(bytes.inputStream()).use { it.readObject() })
+        assertEquals(round, round.serializedAndBack())
     }
 
     @Test
     fun aSettledRoundFromAFullShoeSurvivesSerialization() {
         val round = Round.deal(RuleSet.S17, BET, BANKROLL, Shoe.shuffled(Random(3))).let { it.play(Move.STAND) ?: it }
 
-        val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(round) } }.toByteArray()
-        assertEquals(round, ObjectInputStream(bytes.inputStream()).use { it.readObject() })
+        assertEquals(round, round.serializedAndBack())
     }
 
     @Test
@@ -309,17 +307,17 @@ class RoundTest {
 
     @Test
     fun aDoubled678Or777PaysEvenMoneyAndNoSuperBonus() {
-        assertEquals(HandResult(Outcome.WIN, 2 * BET), requireNotNull(deal("6c 7d", "Ks 7h", draws = "8h").then(Move.DOUBLE).results).single())
-        assertEquals(HandResult(Outcome.WIN, 2 * BET), requireNotNull(deal("7h 7h", "7s Kc", draws = "7h").then(Move.DOUBLE).results).single())
+        assertEquals(HandResult(Outcome.WIN, 2 * BET), deal("6c 7d", "Ks 7h", draws = "8h").then(Move.DOUBLE).result())
+        assertEquals(HandResult(Outcome.WIN, 2 * BET), deal("7h 7h", "7s Kc", draws = "7h").then(Move.DOUBLE).result())
     }
 
     @Test
     fun aSpaded777AgainstA7PaysThreeToOneAndTheSuperBonusWhoseTopTierStartsAt25() {
         assertEquals(
             HandResult(Outcome.WIN, 7_500 + 500_000, bonus = Bonus.SPADED_777, superBonus = 500_000),
-            requireNotNull(deal("7s 7s", "7d Kc", draws = "7s").then(Move.HIT).results).single(),
+            deal("7s 7s", "7d Kc", draws = "7s").then(Move.HIT).result(),
         )
-        assertEquals(100_000L, requireNotNull(deal("7s 7s", "7d Kc", draws = "7s", bet = 2_498).then(Move.HIT).results).single().superBonus)
+        assertEquals(100_000L, deal("7s 7s", "7d Kc", draws = "7s", bet = 2_498).then(Move.HIT).result().superBonus)
     }
 
     @Test
@@ -337,7 +335,7 @@ class RoundTest {
             var shoe = Shoe.shuffled(random)
             var bankroll = 1_000_000_000L
             repeat(3_000) {
-                if (shoe.pastCutCard) shoe = Shoe.shuffled(random)
+                shoe = shoe.forNextRound(random)
                 var round = Round.deal(ruleSet, BET, bankroll, shoe)
                 while (!round.settled) {
                     assertTrue(round.activeHand != null && round.moves().isNotEmpty())

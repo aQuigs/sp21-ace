@@ -3,6 +3,7 @@ package com.aquigs.sp21ace.domain.game
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.isBlackjack
+import com.aquigs.sp21ace.domain.cards.isPair
 import com.aquigs.sp21ace.domain.cards.total
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -65,12 +66,11 @@ data class Round(
             return setOfNotNull(Move.STAND, Move.REDOUBLE.takeIf { redouble }, Move.RESCUE)
         }
 
-        val pair = hand.cards.size == 2 && hand.cards[0].rank.value == hand.cards[1].rank.value
         return setOfNotNull(
             Move.HIT,
             Move.STAND,
             Move.DOUBLE.takeIf { covered },
-            Move.SPLIT.takeIf { pair && hands.size < MAX_HANDS && covered },
+            Move.SPLIT.takeIf { hand.cards.isPair && hands.size < MAX_HANDS && covered },
             Move.SURRENDER.takeIf { hands.size == 1 && hand.cards.size == 2 },
         )
     }
@@ -81,46 +81,52 @@ data class Round(
 
         val hand = hands[active]
         return when (move) {
-            Move.HIT -> draw { card -> replaceActive(hand.copy(cards = hand.cards + card).finishedAt21()) }
+            Move.HIT -> dealTo(hand)
             Move.STAND -> replaceActive(hand.copy(finish = Finish.STOOD))
             Move.SURRENDER -> replaceActive(hand.copy(finish = Finish.SURRENDERED))
             Move.RESCUE -> replaceActive(hand.copy(finish = Finish.RESCUED))
-            Move.DOUBLE, Move.REDOUBLE -> copy(bankroll = bankroll - hand.wager).draw { card ->
-                replaceActive(hand.copy(cards = hand.cards + card, wager = hand.wager * 2, doubles = hand.doubles + 1).finishedAt21())
-            }
+            Move.DOUBLE, Move.REDOUBLE -> copy(bankroll = bankroll - hand.wager).dealTo(hand.copy(wager = hand.wager * 2, doubles = hand.doubles + 1))
             Move.SPLIT -> {
-                val (first, second) = hand.cards
-                val halves = listOf(PlayerHand(listOf(first), bet, split = true), PlayerHand(listOf(second), bet, split = true))
-                copy(bankroll = bankroll - bet, hands = hands.take(active) + halves + hands.drop(active + 1)).nextHand()
+                val halves = hand.cards.map { PlayerHand(listOf(it), bet, split = true) }
+                copy(bankroll = bankroll - bet, hands = hands.take(active) + halves + hands.drop(active + 1))
             }
-        }.nextIfFinished()
+        }.advance()
     }
 
-    private fun draw(then: Round.(Card) -> Round): Round = shoe.draw().let { (card, rest) -> copy(shoe = rest).then(card) }
+    // Draws a card into the active hand, which stands on 21 and ends on a bust
+    private fun dealTo(hand: PlayerHand): Round {
+        val (card, rest) = shoe.draw()
+        return copy(shoe = rest).replaceActive(hand.copy(cards = hand.cards + card).finishedAt21())
+    }
 
     private fun replaceActive(hand: PlayerHand): Round = copy(hands = hands.toMutableList().apply { set(active, hand) })
 
-    private fun nextIfFinished(): Round = if (!settled && hands[active].finish != null) copy(active = active + 1).nextHand() else this
-
-    // A split hand draws its second card once it's the one being played, and any hand that reaches 21 stands on it
-    private fun nextHand(): Round {
-        if (active == hands.size) return dealerPlays()
-
-        val hand = hands[active]
-        val dealt = if (hand.cards.size == 1) draw { card -> replaceActive(hand.copy(cards = hand.cards + card).finishedAt21()) } else this
-        return dealt.nextIfFinished()
-    }
-
-    // The dealer only draws while a hand still standing below 21 has to be beaten, and settles every hand once done
-    private fun dealerPlays(): Round {
-        val beatable = hands.any { it.finish == Finish.STOOD && it.total.value < 21 }
+    // Moves past finished hands, dealing a split hand its second card once it's reached, and after the last the dealer plays
+    private fun advance(): Round {
         var round = this
-        while (beatable && round.dealer.total().dealerHits(ruleSet)) round = round.draw { card -> copy(dealer = dealer + card) }
-        return round.settle()
+        while (round.active < round.hands.size) {
+            val hand = round.hands[round.active]
+            round = when {
+                hand.cards.size == 1 -> round.dealTo(hand)
+                hand.finish == null -> return round
+                else -> round.copy(active = round.active + 1)
+            }
+        }
+        return round.dealerPlays()
     }
 
-    private fun settle(): Round {
-        val results = hands.map { settle(it, dealer) }
+    // The dealer only draws while a hand waits on the dealer's total
+    private fun dealerPlays(): Round {
+        var round = this
+        while (hands.any { it.awaitsDealer } && round.dealer.total().dealerHits(ruleSet)) {
+            val (card, rest) = round.shoe.draw()
+            round = round.copy(shoe = rest, dealer = round.dealer + card)
+        }
+        return round.payOut()
+    }
+
+    private fun payOut(): Round {
+        val results = hands.map { it.settle(dealer) }
         val returned = hands.zip(results).sumOf { (hand, result) -> hand.wager + result.net }
         return copy(active = hands.size, bankroll = bankroll + returned, results = results)
     }
@@ -137,13 +143,11 @@ data class Round(
             require(bet % 2 == 0L) { "A bet of $bet cents has no exact half" }
             require(!shoe.pastCutCard) { "The cut card is out, so the shoe needs shuffling" }
 
-            val (first, afterFirst) = shoe.draw()
-            val (upcard, afterUpcard) = afterFirst.draw()
-            val (second, afterSecond) = afterUpcard.draw()
-            val (hole, rest) = afterSecond.draw()
+            val (cards, rest) = shoe.draw(4)
+            val (first, upcard, second, hole) = cards
             val round = Round(ruleSet, bet, bankroll - bet, rest, listOf(upcard, hole), listOf(PlayerHand(listOf(first, second), bet)))
 
-            return if (round.hands[0].isBlackjack || round.dealer.isBlackjack()) round.settle() else round
+            return if (round.hands[0].isBlackjack || round.dealer.isBlackjack()) round.payOut() else round
         }
     }
 }

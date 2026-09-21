@@ -2,8 +2,10 @@ package com.aquigs.sp21ace.domain.game
 
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.Rank
-import com.aquigs.sp21ace.domain.cards.Suit
+import com.aquigs.sp21ace.domain.cards.SIX_SEVEN_EIGHT
+import com.aquigs.sp21ace.domain.cards.allSpades
 import com.aquigs.sp21ace.domain.cards.isBlackjack
+import com.aquigs.sp21ace.domain.cards.suited
 import com.aquigs.sp21ace.domain.cards.total
 import java.io.Serializable
 
@@ -37,68 +39,62 @@ enum class Outcome { WIN, PUSH, LOSE }
 data class HandResult(val outcome: Outcome, val net: Long, val blackjack: Boolean = false, val bonus: Bonus? = null, val superBonus: Long = 0) :
     Serializable
 
-private val SIX_SEVEN_EIGHT = setOf(Rank.SIX, Rank.SEVEN, Rank.EIGHT)
+/** A hand still standing below 21 waits on the dealer's total. A 21 wins whatever the dealer makes. */
+internal val PlayerHand.awaitsDealer: Boolean get() = finish == Finish.STOOD && total.value < 21
 
-/** The bonus a 21 of these cards pays, if any. */
-fun bonus(cards: List<Card>): Bonus? {
-    val suits = when {
-        cards.all { it.suit == Suit.SPADES } -> 2
-        cards.all { it.suit == cards[0].suit } -> 1
-        else -> 0
-    }
+/**
+ * Settles the hand against the dealer's finished [dealer] cards. A player blackjack beats a dealer's, and any other 21 beats any
+ * dealer 21 but a blackjack, which the dealer peeks for, so only a hand dealt nothing more than its first two cards can meet one.
+ */
+internal fun PlayerHand.settle(dealer: List<Card>): HandResult {
+    val dealerTotal = dealer.total().value
+
     return when {
-        cards.size >= 7 -> Bonus.SEVEN_CARD_21
-        cards.size == 6 -> Bonus.SIX_CARD_21
-        cards.size == 5 -> Bonus.FIVE_CARD_21
-        cards.size == 3 && cards.map { it.rank }.toSet() == SIX_SEVEN_EIGHT -> listOf(Bonus.MIXED_678, Bonus.SUITED_678, Bonus.SPADED_678)[suits]
-        cards.size == 3 && cards.all { it.rank == Rank.SEVEN } -> listOf(Bonus.MIXED_777, Bonus.SUITED_777, Bonus.SPADED_777)[suits]
-        else -> null
+        finish == Finish.SURRENDERED || finish == Finish.RESCUED -> HandResult(Outcome.LOSE, -wager / 2)
+        finish == Finish.BUSTED -> HandResult(Outcome.LOSE, -wager)
+        isBlackjack -> HandResult(Outcome.WIN, Odds.THREE_TO_TWO.on(wager), blackjack = true)
+        dealer.isBlackjack() -> HandResult(Outcome.LOSE, -wager)
+        total.value == 21 -> twentyOne(dealer.first())
+        dealerTotal > 21 || total.value > dealerTotal -> HandResult(Outcome.WIN, wager)
+        total.value == dealerTotal -> HandResult(Outcome.PUSH, 0)
+        else -> HandResult(Outcome.LOSE, -wager)
     }
+}
+
+// A doubled 21 still wins, but only at even money
+private fun PlayerHand.twentyOne(upcard: Card): HandResult {
+    if (doubled) return HandResult(Outcome.WIN, wager)
+
+    val bonus = bonus(cards)
+    val superBonus = if (split) 0 else superBonus(bonus, upcard, wager)
+    return HandResult(Outcome.WIN, (bonus?.odds ?: Odds.EVEN).on(wager) + superBonus, bonus = bonus, superBonus = superBonus)
+}
+
+private fun bonus(cards: List<Card>): Bonus? = when {
+    cards.size >= 7 -> Bonus.SEVEN_CARD_21
+    cards.size == 6 -> Bonus.SIX_CARD_21
+    cards.size == 5 -> Bonus.FIVE_CARD_21
+    cards.size == 3 && cards.map { it.rank }.toSet() == SIX_SEVEN_EIGHT -> cards.bySuits(Bonus.MIXED_678, Bonus.SUITED_678, Bonus.SPADED_678)
+    cards.size == 3 && cards.all { it.rank == Rank.SEVEN } -> cards.bySuits(Bonus.MIXED_777, Bonus.SUITED_777, Bonus.SPADED_777)
+    else -> null
+}
+
+private fun List<Card>.bySuits(mixed: Bonus, oneSuit: Bonus, spades: Bonus): Bonus = when {
+    allSpades -> spades
+    suited -> oneSuit
+    else -> mixed
 }
 
 private const val FIVE_DOLLARS = 500L
 private const val TWENTY_FIVE_DOLLARS = 2_500L
 
 /**
- * The Super Bonus a hand of [cards] against [upcard] earns on a [wager] in cents: a suited 7-7-7 against any 7 wins $1,000 on a
- * bet of $5 to $24.99 and $5,000 from $25, on top of its 7-7-7 bonus. The regulations set no prize below $5. Split and doubled
- * hands never earn it.
+ * The Super Bonus for a suited 7-7-7 against any 7, on top of its 7-7-7 bonus: $1,000 on a [wager] of $5 to $24.99 and $5,000
+ * from $25. The regulations set no prize below $5.
  */
-fun superBonus(cards: List<Card>, upcard: Card, wager: Long): Long {
-    val suited777 = cards.size == 3 && cards.all { it.rank == Rank.SEVEN && it.suit == cards[0].suit }
-    return when {
-        !suited777 || upcard.rank != Rank.SEVEN -> 0
-        wager >= TWENTY_FIVE_DOLLARS -> 500_000
-        wager >= FIVE_DOLLARS -> 100_000
-        else -> 0
-    }
-}
-
-/**
- * Settles [hand] against the dealer's finished [dealer] cards. A player blackjack beats a dealer's, and any other 21 beats any
- * dealer 21 but a blackjack, which the dealer peeks for, so only a hand dealt nothing more than its first two cards can meet one.
- */
-internal fun settle(hand: PlayerHand, dealer: List<Card>): HandResult {
-    val total = hand.total.value
-    val dealerTotal = dealer.total().value
-
-    return when {
-        hand.finish == Finish.SURRENDERED || hand.finish == Finish.RESCUED -> HandResult(Outcome.LOSE, -hand.wager / 2)
-        hand.finish == Finish.BUSTED -> HandResult(Outcome.LOSE, -hand.wager)
-        hand.isBlackjack -> HandResult(Outcome.WIN, Odds.THREE_TO_TWO.on(hand.wager), blackjack = true)
-        dealer.isBlackjack() -> HandResult(Outcome.LOSE, -hand.wager)
-        total == 21 -> twentyOne(hand, dealer.first())
-        dealerTotal > 21 || total > dealerTotal -> HandResult(Outcome.WIN, hand.wager)
-        total == dealerTotal -> HandResult(Outcome.PUSH, 0)
-        else -> HandResult(Outcome.LOSE, -hand.wager)
-    }
-}
-
-// A doubled 21 still wins, but only at even money
-private fun twentyOne(hand: PlayerHand, upcard: Card): HandResult {
-    if (hand.doubled) return HandResult(Outcome.WIN, hand.wager)
-
-    val bonus = bonus(hand.cards)
-    val superBonus = if (hand.split) 0 else superBonus(hand.cards, upcard, hand.wager)
-    return HandResult(Outcome.WIN, (bonus?.odds ?: Odds.EVEN).on(hand.wager) + superBonus, bonus = bonus, superBonus = superBonus)
+private fun superBonus(bonus: Bonus?, upcard: Card, wager: Long): Long = when {
+    (bonus != Bonus.SUITED_777 && bonus != Bonus.SPADED_777) || upcard.rank != Rank.SEVEN -> 0
+    wager >= TWENTY_FIVE_DOLLARS -> 500_000
+    wager >= FIVE_DOLLARS -> 100_000
+    else -> 0
 }

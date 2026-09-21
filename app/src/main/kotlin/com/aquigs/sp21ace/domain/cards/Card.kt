@@ -22,8 +22,10 @@ enum class Rank(val label: String, val value: Int) {
 
 data class Card(val rank: Rank, val suit: Suit) : Serializable
 
-/** [decks] Spanish decks of 48 cards each, unshuffled. */
-fun spanishShoe(decks: Int): List<Card> = List(decks) { Rank.entries.flatMap { rank -> Suit.entries.map { Card(rank, it) } } }.flatten()
+private val SPANISH_DECK: List<Card> = Rank.entries.flatMap { rank -> Suit.entries.map { Card(rank, it) } }
+
+/** [decks] Spanish decks of 48 cards each, unshuffled. Every deck shares its cards, so a saved shoe writes each card once. */
+fun spanishShoe(decks: Int): List<Card> = List(decks) { SPANISH_DECK }.flatten()
 
 /** A card written as its rank label and suit letter, such as "7h" or "Kc". */
 val Card.code: String get() = "${rank.label}${suit.letter}"
@@ -51,3 +53,14 @@ fun HandTotal.plusCard(points: Int): HandTotal {
 }
 
 fun List<Card>.isBlackjack(): Boolean = size == 2 && total().value == 21
+
+/** Two cards of one value, so any two ten-value cards pair. */
+val List<Card>.isPair: Boolean get() = size == 2 && this[0].rank.value == this[1].rank.value
+
+/** Every card one suit, which spades count as. */
+val List<Card>.suited: Boolean get() = all { it.suit == first().suit }
+
+val List<Card>.allSpades: Boolean get() = all { it.suit == Suit.SPADES }
+
+/** The ranks of a 6-7-8, which the bonuses and the charts' exceptions both look for. */
+val SIX_SEVEN_EIGHT: Set<Rank> = setOf(Rank.SIX, Rank.SEVEN, Rank.EIGHT)

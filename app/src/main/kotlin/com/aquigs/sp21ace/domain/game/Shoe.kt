@@ -16,6 +16,11 @@ data class Shoe(val cards: List<Card>, val dealt: Int = 0) : Serializable {
 
     fun draw(): Pair<Card, Shoe> = cards[dealt] to copy(dealt = dealt + 1)
 
+    fun draw(count: Int): Pair<List<Card>, Shoe> = cards.subList(dealt, dealt + count).toList() to copy(dealt = dealt + count)
+
+    /** This shoe, or a fresh shuffle once the cut card is out. */
+    fun forNextRound(random: Random): Shoe = if (pastCutCard) shuffled(random) else this
+
     companion object {
         fun shuffled(random: Random): Shoe = Shoe(spanishShoe(DECKS).shuffled(random))
     }

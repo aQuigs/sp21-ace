@@ -3,6 +3,7 @@ package com.aquigs.sp21ace.domain.game
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.spanishShoe
+import com.aquigs.sp21ace.domain.strategy.DECKS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -15,7 +16,7 @@ class ShoeTest {
         val shoe = Shoe.shuffled(Random(1))
 
         assertEquals(288, shoe.cards.size)
-        assertEquals(spanishShoe(6).groupingBy { it }.eachCount(), shoe.cards.groupingBy { it }.eachCount())
+        assertEquals(spanishShoe(DECKS).groupingBy { it }.eachCount(), shoe.cards.groupingBy { it }.eachCount())
     }
 
     @Test
