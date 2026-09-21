@@ -20,10 +20,16 @@ enum class Finish { STOOD, BUSTED, SURRENDERED, RESCUED }
 
 /**
  * One of the player's hands and the [wager] on it in cents, which every double doubles. A [split] hand can't be a blackjack or
- * surrendered, and earns no Super Bonus.
+ * surrendered, and earns no Super Bonus. [strategy] is how the table graded the decisions made on it.
  */
-data class PlayerHand(val cards: List<Card>, val wager: Long, val doubles: Int = 0, val split: Boolean = false, val finish: Finish? = null) :
-    Serializable {
+data class PlayerHand(
+    val cards: List<Card>,
+    val wager: Long,
+    val doubles: Int = 0,
+    val split: Boolean = false,
+    val finish: Finish? = null,
+    val strategy: StrategyRecord = StrategyRecord(),
+) : Serializable {
     val total: HandTotal get() = cards.total()
     val doubled: Boolean get() = doubles > 0
     val isBlackjack: Boolean get() = !split && cards.isBlackjack()

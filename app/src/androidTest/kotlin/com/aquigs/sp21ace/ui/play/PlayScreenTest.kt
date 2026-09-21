@@ -25,6 +25,7 @@ import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -213,6 +214,8 @@ class PlayScreenTest {
 
         compose.onNodeWithText(question).assertDoesNotExist()
         compose.onNodeWithContentDescription(string(R.string.card_name, string(R.string.queen), string(R.string.spades))).assertDoesNotExist()
+        // Backing out counts as help, as Blackjack Ace counts it
+        assertTrue(table.warned)
 
         tap(R.string.move_hit)
         // The dialog opens under the finger, so the second tap of a double tap doesn't confirm it

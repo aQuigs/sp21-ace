@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.aquigs.sp21ace.data.HandCustomizationStore
+import com.aquigs.sp21ace.data.PlayHistoryStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
@@ -28,6 +29,7 @@ import com.aquigs.sp21ace.domain.dealing.record
 import com.aquigs.sp21ace.domain.game.Shoe
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.history.playedHands
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
@@ -47,10 +49,11 @@ class MainActivity : ComponentActivity() {
 
         val store = TableRulesStore(this)
         val historyStore = PracticeHistoryStore.forApp(this)
+        val playHistoryStore = PlayHistoryStore.forApp(this)
         val handsStore = HandCustomizationStore(this)
         val tableStore = TableStore(this)
 
-        setContent { Sp21AceApp(store, historyStore, handsStore, settingsStore, tableStore) }
+        setContent { Sp21AceApp(store, historyStore, playHistoryStore, handsStore, settingsStore, tableStore) }
     }
 }
 
@@ -59,6 +62,7 @@ class MainActivity : ComponentActivity() {
 internal fun Sp21AceApp(
     store: TableRulesStore,
     historyStore: PracticeHistoryStore,
+    playHistoryStore: PlayHistoryStore,
     handsStore: HandCustomizationStore,
     settingsStore: SettingsStore,
     tableStore: TableStore,
@@ -73,6 +77,7 @@ internal fun Sp21AceApp(
     var settings by remember { mutableStateOf(settingsStore.load()) }
     val answerSounds = sounds ?: rememberAnswerSounds(settings.soundEffects)
     val history by historyStore.history.collectAsState()
+    val playHistory by playHistoryStore.history.collectAsState()
     // Each deal reads the rules, the customization and the history, so a change applies from the next hand while the one on the table stays
     val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
@@ -80,6 +85,8 @@ internal fun Sp21AceApp(
 
     fun seat(next: Table) {
         if (next.chips != table.chips) tableStore.saveChips(next.chips)
+        // Its hands join the play history as the round settles, once, since no later change unsettles it
+        next.round?.takeIf { it.settled && table.round?.settled != true }?.let { playHistoryStore.append(it.playedHands(Instant.now())) }
         table = next
     }
     val dark = settings.colorTheme.isDark()
@@ -102,6 +109,7 @@ internal fun Sp21AceApp(
             customization = customization,
             settings = settings,
             history = history.orEmpty(),
+            playHistory = playHistory.orEmpty(),
             onAnswer = { asked, move ->
                 // The store's history, since the collected one can trail a quick second answer
                 trainer.record(asked, move, rules.ruleSet, historyStore.history.value.orEmpty(), Instant.now()) { deal(picker, it) }?.let { (next, answer) ->
@@ -131,6 +139,7 @@ internal fun Sp21AceApp(
                 // The meter's streak lives in the trainer, not in the history, so the clear has to reach it too
                 trainer = trainer.copy(streak = 0)
             },
+            onClearPlayHistory = { playHistoryStore.clear() },
         )
     }
 }

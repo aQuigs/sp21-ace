@@ -156,4 +156,22 @@
     <string name="bonus_spaded_777">Spaded 7-7-7</string>
     <string name="odds">%1$d to %2$d</string>
     <string name="super_bonus">Super Bonus %1$s</string>
+
+    <string name="statistics">Statistics</string>
+    <string name="hands">Hands</string>
+    <string name="hands_won">%1$s Won</string>
+    <string name="hands_push">%1$s Push</string>
+    <string name="hands_lost">%1$s Lost</string>
+    <string name="hands_description">%1$d won, %2$s. %3$d pushed, %4$s. %5$d lost, %6$s.</string>
+    <string name="whole_percentage">%1$d%%</string>
+    <string name="bankroll">Bankroll</string>
+    <string name="profit_loss">Profit / Loss</string>
+    <string name="amount_won">Amount Won</string>
+    <string name="amount_lost">Amount Lost</string>
+    <string name="hands_played">Hands Played</string>
+    <string name="profit_chart_description">Profit or loss over %1$d hands played: %2$s at the end, %3$s at the lowest and %4$s at the highest</string>
+    <string name="correct_with_hints">Correct (with hints)</string>
+    <string name="no_action_required">No Action Required</string>
+    <string name="clear_play_history">Clear play history</string>
+    <string name="clear_play_history_message">Are you sure you want to clear your play history? This resets everything on the Statistics screen.</string>
 </resources>

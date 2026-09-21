@@ -15,3 +15,6 @@ fun chipsText(cents: Long): String {
 
 /** What a hand won or lost: +37.50 or −25. */
 fun netText(cents: Long): String = (if (cents >= 0) "+" else "−") + chipsText(abs(cents))
+
+/** A profit or loss as Statistics writes it: 25, or −37.50. */
+fun profitText(cents: Long): String = (if (cents < 0) "−" else "") + chipsText(abs(cents))

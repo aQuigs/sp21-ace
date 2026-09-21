@@ -22,6 +22,12 @@ fun Period.start(now: Instant): Instant? = when (this) {
 }
 
 /**
+ * Whether a record stamped [at] counts in the period as of [now]. One stamped after [now], as when the device's clock was set
+ * ahead and then put back, counts only under All Time.
+ */
+fun Period.counts(at: Instant, now: Instant): Boolean = start(now)?.let { at > it && at <= now } ?: true
+
+/**
  * The hands a tab counts: the ones filed under one chart table, or every hand [doubled] or every one not, as the chart splits
  * its tables. [moves] are the correct moves those hands call for under any rule set, in Blackjack Ace's order.
  */
@@ -69,12 +75,10 @@ data class Accuracy(val byMove: Map<Move, Tally>, val bySquare: Map<ChartSquare,
 }
 
 /**
- * Counts, in one pass and in the order given, the answers to [hands] within [period] of [now]. An answer stamped after [now],
- * as when the device's clock was set ahead and then put back, counts only under All Time. An answer's square comes from its
+ * Counts, in one pass and in the order given, the answers to [hands] within [period] of [now]. An answer's square comes from its
  * cards, so it stays in that square whatever rules graded it and whatever rules the chart now shows.
  */
 fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, now: Instant): Accuracy {
-    val start = period.start(now)
     val byMove = TallyCounter<Move>()
     val bySquare = TallyCounter<ChartSquare>()
     var streak = 0
@@ -84,7 +88,7 @@ fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, now: Instan
         streak = nextStreak(streak, answer.isCorrect)
         longestStreak = maxOf(longestStreak, streak)
 
-        if (start != null && (answer.answeredAt <= start || answer.answeredAt > now)) continue
+        if (!period.counts(answer.answeredAt, now)) continue
         if (!hands.counts(answer.square.row.table)) continue
 
         byMove.add(answer.correctMove, answer.isCorrect)

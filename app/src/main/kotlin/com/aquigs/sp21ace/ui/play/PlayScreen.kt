@@ -178,7 +178,10 @@ fun PlayScreen(
                 questioned = null
                 onUpdate { it.play(move) }
             },
-            onDismiss = { questioned = null },
+            onDismiss = {
+                questioned = null
+                onUpdate { it.heedWarning() }
+            },
         )
     }
 }
