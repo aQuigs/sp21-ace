@@ -72,6 +72,17 @@ class TableRulesScreenTest {
     }
 
     @Test
+    fun theInsuranceSwitchSaysWhetherTheTableOffersIt() {
+        showRules()
+
+        compose.onNodeWithText(string(R.string.insurance_not_offered)).assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.insurance)) and isToggleable()).assertIsOff().performClick().assertIsOn()
+
+        compose.onNodeWithText(string(R.string.insurance_offered)).assertIsDisplayed()
+        assertEquals(TableRules(insurance = true), rules)
+    }
+
+    @Test
     fun theSoft17PageMarksTheCurrentChoiceAndChoosingDealerHitsKeepsRedoublingAndGoesBack() {
         rules = TableRules(redoubling = true)
         var backs = 0

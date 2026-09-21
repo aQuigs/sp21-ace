@@ -54,6 +54,7 @@ import com.aquigs.sp21ace.domain.game.Bonus
 import com.aquigs.sp21ace.domain.game.CHIPS
 import com.aquigs.sp21ace.domain.game.Finish
 import com.aquigs.sp21ace.domain.game.HandResult
+import com.aquigs.sp21ace.domain.game.Odds
 import com.aquigs.sp21ace.domain.game.Outcome
 import com.aquigs.sp21ace.domain.game.PlayerHand
 import com.aquigs.sp21ace.domain.game.Round
@@ -170,6 +171,17 @@ fun PlayScreen(
     }
 
     if (addingChips) AddChipsDialog(onTopUp = { amount -> onUpdate { it.topUp(amount) } }, onDismiss = { addingChips = false })
+    // Blackjack Ace's question before the peek, where Back declines as NO does
+    if (table.offeringInsurance) {
+        ConfirmDialog(
+            title = stringResource(R.string.insurance_title),
+            message = stringResource(R.string.insurance_message),
+            confirmLabel = stringResource(R.string.yes),
+            onConfirm = { onUpdate { it.insure(take = true) } },
+            onDismiss = { onUpdate { it.insure(take = false) } },
+            dismissLabel = stringResource(R.string.no),
+        )
+    }
     // Blackjack Ace's check before a move the strategy doesn't make. It doesn't say which move is right; the hint does
     questioned?.let { move ->
         ConfirmDialog(
@@ -320,7 +332,7 @@ private fun Band(table: Table, modifier: Modifier = Modifier) {
         hand != null && result != null -> stringResource(result.headline(hand))
         else -> null
     }
-    val details = result?.let { resultDetails(it) }
+    val details = result?.let { resultDetails(it, insuranceWon = requireNotNull(table.round).insuranceNet > 0) }
     val spoken = listOfNotNull(message, details).joinToString(". ")
 
     // A live region speaks when its words change, so it's this box, there between messages too, that speaks each one
@@ -359,13 +371,20 @@ private fun HandResult.headline(hand: PlayerHand): Int = when {
     else -> R.string.result_lose
 }
 
-/** The bonus and what it paid, the Super Bonus, and the chips won or lost, as far as there are any. */
+/**
+ * The bonus and what it paid, the Super Bonus, insurance that won, and the chips the hand won or lost, as far as there are any.
+ * Insurance only wins on a dealer blackjack, which settles the round before a split, so there's one hand to name it on.
+ */
 @Composable
-private fun resultDetails(result: HandResult): String? = listOfNotNull(
-    result.bonus?.let { stringResource(R.string.bonus_pays, stringResource(it.displayName), stringResource(R.string.odds, it.odds.win, it.odds.stake)) },
+private fun resultDetails(result: HandResult, insuranceWon: Boolean): String? = listOfNotNull(
+    result.bonus?.let { stringResource(R.string.bonus_pays, stringResource(it.displayName), odds(it.odds)) },
     result.superBonus.takeIf { it > 0 }?.let { stringResource(R.string.super_bonus, chipsText(it)) },
+    stringResource(R.string.bonus_pays, stringResource(R.string.insurance), odds(Odds.TWO_TO_ONE)).takeIf { insuranceWon },
     result.net.takeIf { it != 0L }?.let(::netText),
 ).joinToString(" · ").ifEmpty { null }
+
+@Composable
+private fun odds(odds: Odds): String = stringResource(R.string.odds, odds.win, odds.stake)
 
 /**
  * Chips to bet with between rounds, those the bankroll can't cover greyed out, and during a round the bet on each hand. As in

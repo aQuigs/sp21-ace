@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.domain.game
 
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.HandTotal
+import com.aquigs.sp21ace.domain.cards.Rank
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.isPair
 import com.aquigs.sp21ace.domain.cards.total
@@ -17,6 +18,9 @@ const val MAX_DOUBLES = 3
 
 /** How a hand stopped taking decisions. */
 enum class Finish { STOOD, BUSTED, SURRENDERED, RESCUED }
+
+/** Insurance against a dealer's ace: offered before the peek, then taken or declined. */
+enum class Insurance { OFFERED, TAKEN, DECLINED }
 
 /**
  * One of the player's hands and the [wager] on it in cents, which every double doubles. A [split] hand can't be a blackjack or
@@ -36,10 +40,11 @@ data class PlayerHand(
 }
 
 /**
- * A round from the deal to the settlement, in cents. [bankroll] is the chips off the table: the bet, each double and each split
- * move chips from it onto a hand, and the settlement pays back what the hands return. The dealer's second card stays face down
+ * A round from the deal to the settlement, in cents. [bankroll] is the chips off the table: the bet, each double, each split and
+ * insurance move chips from it onto the table, and the settlement pays back what the hands and insurance return. The dealer's second card stays face down
  * until the round is [settled]. [active] is the hand being played, and once the round is settled it is past the last hand. As in
  * Blackjack Ace, a split hand that finishes before the last stays active, with nothing to decide, until [nextHand] moves on.
+ * [insurance] is null unless the table offered it.
  */
 data class Round(
     val ruleSet: RuleSet,
@@ -50,20 +55,39 @@ data class Round(
     val hands: List<PlayerHand>,
     val active: Int = 0,
     val results: List<HandResult>? = null,
+    val insurance: Insurance? = null,
 ) : Serializable {
     val upcard: Card get() = dealer.first()
     val settled: Boolean get() = results != null
 
-    /** The hand waiting on a decision, or null while a finished split hand waits for the next and once the round is settled. */
-    val activeHand: PlayerHand? get() = if (settled) null else hands[active].takeIf { it.finish == null }
+    /**
+     * The hand waiting on a decision, or null while insurance waits on an answer, while a finished split hand waits for the next,
+     * and once the round is settled.
+     */
+    val activeHand: PlayerHand?
+        get() = if (settled || insurance == Insurance.OFFERED) null else hands[active].takeIf { it.finish == null }
 
     val waitingForNextHand: Boolean get() = !settled && hands[active].finish != null
 
     /** The round moved on from a finished split hand to the next, or null unless one waits. */
     fun nextHand(): Round? = if (waitingForNextHand) copy(active = active + 1).advance() else null
 
-    /** What the round won or lost, once it's settled. */
-    val net: Long? get() = results?.sumOf { it.net }
+    /** Insurance costs half the bet, as in Blackjack Ace. */
+    val insuranceBet: Long get() = bet / 2
+
+    /** What insurance won or lost: 2 to 1 on a dealer blackjack, or else its cost. */
+    val insuranceNet: Long
+        get() = when {
+            insurance != Insurance.TAKEN -> 0
+            dealer.isBlackjack() -> Odds.TWO_TO_ONE.on(insuranceBet)
+            else -> -insuranceBet
+        }
+
+    /** What the settlement paid back, once the round is settled: each hand's wager and what it won or lost, and insurance that won. */
+    val returned: Long?
+        get() = results?.let { results ->
+            hands.zip(results).sumOf { (hand, result) -> hand.wager + result.net } + if (insuranceNet > 0) insuranceBet + insuranceNet else 0
+        }
 
     /**
      * The moves the active hand can make. A double or split has to be covered by the bankroll. A doubled hand draws one card and
@@ -107,6 +131,13 @@ data class Round(
         }.advance()
     }
 
+    /** The round once offered insurance is [taken][take] or declined, then the peek; null unless it's waiting on an answer. */
+    fun insure(take: Boolean): Round? = when {
+        insurance != Insurance.OFFERED -> null
+        take -> copy(bankroll = bankroll - insuranceBet, insurance = Insurance.TAKEN).peeked()
+        else -> copy(insurance = Insurance.DECLINED).peeked()
+    }
+
     /** The round with help counted on the active hand, as the hint or a warning backed out of gives it, or null once it's settled. */
     fun withHelp(): Round? = activeHand?.let { replaceActive(it.copy(strategy = it.strategy.copy(helped = true))) }
 
@@ -139,19 +170,23 @@ data class Round(
     }
 
     private fun payOut(): Round {
-        val results = hands.map { it.settle(dealer) }
-        val returned = hands.zip(results).sumOf { (hand, result) -> hand.wager + result.net }
-        return copy(active = hands.size, bankroll = bankroll + returned, results = results)
+        val settled = copy(active = hands.size, results = hands.map { it.settle(dealer) })
+        return settled.copy(bankroll = bankroll + requireNotNull(settled.returned))
     }
+
+    // A player blackjack is paid at once, and a dealer showing an ace or a face card peeks for blackjack, so either one settles the round
+    private fun peeked(): Round = if (hands[0].isBlackjack || dealer.isBlackjack()) payOut() else this
 
     companion object {
         /**
          * Deals a round of [bet] cents from [shoe], a card each to the player and the dealer and then a second each, the dealer's
          * face down. A player blackjack is paid at once, and a dealer showing an ace or a face card peeks for blackjack, so either
-         * one settles the round before the player acts. The bet is an even number of cents, so every half the rules pay or give
-         * back is exact, and the shoe's cut card must still be in it, which leaves more cards than a round can use.
+         * one settles the round before the player acts. Where the table offers [insurance], a dealer showing an ace offers it
+         * first, as long as the bankroll covers it, and peeks once it's answered. The bet is an even number of cents, so every
+         * half the rules pay or give back is exact, and the shoe's cut card must still be in it, which leaves more cards than a
+         * round can use.
          */
-        fun deal(ruleSet: RuleSet, bet: Long, bankroll: Long, shoe: Shoe): Round {
+        fun deal(ruleSet: RuleSet, bet: Long, bankroll: Long, shoe: Shoe, insurance: Boolean = false): Round {
             require(bet in 1..bankroll) { "A bet of $bet needs a bankroll to cover it, not $bankroll" }
             require(bet % 2 == 0L) { "A bet of $bet cents has no exact half" }
             require(!shoe.pastCutCard) { "The cut card is out, so the shoe needs shuffling" }
@@ -160,7 +195,9 @@ data class Round(
             val (first, upcard, second, hole) = cards
             val round = Round(ruleSet, bet, bankroll - bet, rest, listOf(upcard, hole), listOf(PlayerHand(listOf(first, second), bet)))
 
-            return if (round.hands[0].isBlackjack || round.dealer.isBlackjack()) round.payOut() else round
+            // Blackjack Ace offers it even on a player blackjack, which Masque's rules let a player insure once it's paid
+            val offered = insurance && upcard.rank == Rank.ACE && round.bankroll >= round.insuranceBet
+            return if (offered) round.copy(insurance = Insurance.OFFERED) else round.peeked()
         }
     }
 }

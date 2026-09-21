@@ -44,14 +44,14 @@ class PlayScreenTest {
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
     // Dealt in order: player, upcard, player, hole, then the draws
-    private fun stacked(deal: String, ruleSet: RuleSet = RuleSet.S17): Table =
-        requireNotNull(Table(STARTING_BANKROLL, Shoe(cards(deal))).addChip(2_500)?.deal(ruleSet, Random(1)))
+    private fun stacked(deal: String, ruleSet: RuleSet = RuleSet.S17, insurance: Boolean = false): Table =
+        requireNotNull(Table(STARTING_BANKROLL, Shoe(cards(deal))).addChip(2_500)?.deal(ruleSet, Random(1), insurance))
 
     // 16 against a 6, which stands, and the next card is a Q, which busts whoever draws it
     private val sixteenVsSix get() = stacked("Kc 6s 6d Kh Qs")
 
     // Most tests play whatever move they need, so the warning is off unless a test is about it
-    private fun show(start: Table, settings: Settings = Settings(warnOnIncorrectMove = false)) {
+    private fun show(start: Table, settings: Settings = Settings(warnOnIncorrectMove = false), insurance: Boolean = false) {
         table = start
         compose.setContent {
             Sp21AceTheme {
@@ -59,7 +59,7 @@ class PlayScreenTest {
                     table = table,
                     settings = settings,
                     onUpdate = { change -> change(table)?.let { table = it } },
-                    onDeal = { table = requireNotNull(table.deal(RuleSet.S17, Random(1))) },
+                    onDeal = { table = requireNotNull(table.deal(RuleSet.S17, Random(1), insurance)) },
                     onOpenDrawer = {},
                     onOpenChart = {},
                 )
@@ -280,6 +280,53 @@ class PlayScreenTest {
 
         compose.onNodeWithText(string(R.string.incorrect_move_title)).assertDoesNotExist()
         band(R.string.result_bust).assertIsDisplayed()
+    }
+
+    @Test
+    fun insuranceIsAskedBeforeAnyMoveAndYesTakesHalfTheBet() {
+        // 16 against an ace with a 6 under it
+        show(stacked("9c As 7d 6h", insurance = true))
+
+        compose.onNodeWithText(string(R.string.insurance_message)).assertIsDisplayed()
+        button(R.string.move_stand).assertDoesNotExist()
+        button(R.string.show_hint).assertDoesNotExist()
+
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.yes)).performClick()
+
+        compose.onNodeWithText(string(R.string.insurance_message)).assertDoesNotExist()
+        button(R.string.bankroll_description, "962.50").assertIsDisplayed()
+        button(R.string.move_stand).assertIsDisplayed()
+    }
+
+    @Test
+    fun theSecondTapOfADoubleTapOnDealDoesntAnswerInsuranceAndBackDeclinesIt() {
+        show(requireNotNull(Table(STARTING_BANKROLL, Shoe(cards("9c As 7d 6h"))).addChip(2_500)), insurance = true)
+
+        tap(R.string.deal)
+        compose.onNodeWithText(string(R.string.yes)).performClick()
+        compose.onNodeWithText(string(R.string.insurance_message)).assertIsDisplayed()
+
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        Espresso.pressBack()
+
+        compose.onNodeWithText(string(R.string.insurance_message)).assertDoesNotExist()
+        button(R.string.bankroll_description, "975").assertIsDisplayed()
+        button(R.string.move_stand).assertIsDisplayed()
+    }
+
+    @Test
+    fun insuranceThatWinsIsNamedWithTheHandsResult() {
+        // The dealer's ace has a K under it
+        show(stacked("9c As 7d Kh", insurance = true))
+
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.yes)).performClick()
+
+        band(R.string.result_lose).assertIsDisplayed()
+        val insurance = string(R.string.bonus_pays, string(R.string.insurance), string(R.string.odds, 2, 1))
+        compose.onNodeWithText("$insurance · −25").assertIsDisplayed()
+        button(R.string.bankroll_description, "1,000").assertIsDisplayed()
     }
 
     @Test

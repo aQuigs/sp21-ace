@@ -12,17 +12,20 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
     fun load() = TableRules(
         dealerHitsSoft17 = prefs.getBoolean(DEALER_HITS_SOFT_17, defaults.dealerHitsSoft17),
         redoubling = prefs.getBoolean(REDOUBLING, defaults.redoubling),
+        insurance = prefs.getBoolean(INSURANCE, defaults.insurance),
     )
 
     fun save(rules: TableRules) {
         prefs.edit {
             putBoolean(DEALER_HITS_SOFT_17, rules.dealerHitsSoft17)
             putBoolean(REDOUBLING, rules.redoubling)
+            putBoolean(INSURANCE, rules.insurance)
         }
     }
 
     private companion object {
         const val DEALER_HITS_SOFT_17 = "dealer_hits_soft_17"
         const val REDOUBLING = "redoubling"
+        const val INSURANCE = "insurance"
     }
 }

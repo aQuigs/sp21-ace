@@ -16,11 +16,19 @@ private const val BET = 2_500L
 private const val BANKROLL = 100_000L
 
 /** Deals [player] against [dealer] from a shoe stacked in dealing order, with [draws] next in it. */
-private fun deal(player: String, dealer: String, draws: String = "", ruleSet: RuleSet = RuleSet.S17, bet: Long = BET, bankroll: Long = BANKROLL): Round {
+private fun deal(
+    player: String,
+    dealer: String,
+    draws: String = "",
+    ruleSet: RuleSet = RuleSet.S17,
+    bet: Long = BET,
+    bankroll: Long = BANKROLL,
+    insurance: Boolean = false,
+): Round {
     val (first, second) = cards(player)
     val (upcard, hole) = cards(dealer)
     val rest = if (draws.isEmpty()) emptyList() else cards(draws)
-    return Round.deal(ruleSet, bet, bankroll, Shoe(listOf(first, upcard, second, hole) + rest))
+    return Round.deal(ruleSet, bet, bankroll, Shoe(listOf(first, upcard, second, hole) + rest), insurance)
 }
 
 private fun Round.then(vararg moves: Move): Round = moves.fold(this) { round, move -> requireNotNull(round.play(move)) { "Can't $move" } }
@@ -346,6 +354,64 @@ class RoundTest {
     }
 
     @Test
+    fun insuranceIsOfferedAgainstAnAceBeforeThePeekWhereTheTableOffersItAndTheBankrollCoversIt() {
+        val offered = deal("9c 7d", "As Kh", insurance = true)
+        assertEquals(Insurance.OFFERED, offered.insurance)
+        assertFalse(offered.settled)
+        assertNull(offered.activeHand)
+        assertEquals(emptySet<Move>(), offered.moves())
+        assertEquals(BANKROLL - BET, offered.bankroll)
+        // Even on a player blackjack, which is paid once it's answered
+        assertEquals(Insurance.OFFERED, deal("As Kd", "Ah 6c", insurance = true).insurance)
+
+        assertTrue(deal("9c 7d", "As Kh").settled)
+        assertNull(deal("9c 7d", "Ks Ah", insurance = true).insurance)
+        assertNull(deal("9c 7d", "As 6h", insurance = true, bankroll = BET + BET / 2 - 2).insurance)
+        assertEquals(Insurance.OFFERED, deal("9c 7d", "As 6h", insurance = true, bankroll = BET + BET / 2).insurance)
+    }
+
+    @Test
+    fun declinedInsuranceCostsNothingAndTheDealerThenPeeks() {
+        val blackjack = requireNotNull(deal("9c 7d", "As Kh", insurance = true).insure(take = false))
+        assertEquals(Insurance.DECLINED, blackjack.insurance)
+        assertEquals(listOf(Outcome.LOSE to -BET), blackjack.outcomes())
+        assertEquals(BANKROLL - BET, blackjack.bankroll)
+
+        val played = requireNotNull(deal("9c 7d", "As 6h", insurance = true).insure(take = false))
+        assertFalse(played.settled)
+        assertEquals(setOf(Move.HIT, Move.STAND, Move.DOUBLE, Move.SURRENDER), played.moves())
+        assertEquals(BANKROLL - BET, played.bankroll)
+    }
+
+    @Test
+    fun takenInsuranceCostsHalfTheBetAndPaysTwoToOneOnADealerBlackjack() {
+        // The hand still loses its bet, but the insurance wins it back
+        val blackjack = requireNotNull(deal("9c 7d", "As Kh", insurance = true).insure(take = true))
+        assertEquals(listOf(Outcome.LOSE to -BET), blackjack.outcomes())
+        assertEquals(BET, blackjack.insuranceNet)
+        assertEquals(BANKROLL, blackjack.bankroll)
+
+        val lost = requireNotNull(deal("Kc 9d", "As 6h", insurance = true).insure(take = true))
+        assertFalse(lost.settled)
+        assertEquals(-BET / 2, lost.insuranceNet)
+        assertEquals(BANKROLL - BET - BET / 2, lost.bankroll)
+        val stood = lost.then(Move.STAND)
+        assertEquals(listOf(Outcome.WIN to BET), stood.outcomes())
+        assertEquals(BANKROLL + BET - BET / 2, stood.bankroll)
+
+        // A player blackjack is paid 3 to 2 against the dealer's, and the insurance 2 to 1 on top
+        val both = requireNotNull(deal("As Kd", "Ah Kc", insurance = true).insure(take = true))
+        assertEquals(listOf(Outcome.WIN to 3_750L), both.outcomes())
+        assertEquals(BANKROLL + 3_750 + BET, both.bankroll)
+    }
+
+    @Test
+    fun insuranceIsAnsweredOnceAndOnlyWhenOffered() {
+        assertNull(deal("9c 7d", "As 6h", insurance = true).insure(take = true)?.insure(take = false))
+        assertNull(deal("9c 7d", "6s Ah", insurance = true).insure(take = true))
+    }
+
+    @Test
     fun randomPlayAlwaysConservesTheChipsAndOffersMovesExactlyUntilTheRoundSettles() {
         val random = Random(7)
 
@@ -354,19 +420,26 @@ class RoundTest {
             var bankroll = 1_000_000_000L
             repeat(3_000) {
                 shoe = shoe.forNextRound(random)
-                var round = Round.deal(ruleSet, BET, bankroll, shoe)
+                var round = Round.deal(ruleSet, BET, bankroll, shoe, insurance = random.nextBoolean())
                 while (!round.settled) {
-                    round = if (round.waitingForNextHand) {
-                        assertEquals(emptySet<Move>(), round.moves())
-                        round.next()
-                    } else {
-                        assertTrue(round.activeHand != null && round.moves().isNotEmpty())
-                        requireNotNull(round.play(round.moves().random(random)))
+                    round = when {
+                        round.insurance == Insurance.OFFERED -> {
+                            assertEquals(emptySet<Move>(), round.moves())
+                            requireNotNull(round.insure(take = random.nextBoolean()))
+                        }
+                        round.waitingForNextHand -> {
+                            assertEquals(emptySet<Move>(), round.moves())
+                            round.next()
+                        }
+                        else -> {
+                            assertTrue(round.activeHand != null && round.moves().isNotEmpty())
+                            requireNotNull(round.play(round.moves().random(random)))
+                        }
                     }
                 }
 
                 assertEquals(emptySet<Move>(), round.moves())
-                assertEquals(bankroll + requireNotNull(round.net), round.bankroll)
+                assertEquals(bankroll + requireNotNull(round.results).sumOf { it.net } + round.insuranceNet, round.bankroll)
                 assertTrue(round.shoe.dealt - shoe.dealt <= 72)
                 shoe = round.shoe
                 bankroll = round.bankroll
