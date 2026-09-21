@@ -31,7 +31,7 @@ data class PlayerHand(val cards: List<Card>, val wager: Long, val doubles: Int =
 /**
  * A round from the deal to the settlement, in cents. [bankroll] is the chips off the table: the bet, each double and each split
  * move chips from it onto a hand, and the settlement pays back what the hands return. The dealer's second card stays face down
- * until the round is [settled].
+ * until the round is [settled]. [active] is the hand being played, and once the round is settled it is past the last hand.
  */
 data class Round(
     val ruleSet: RuleSet,
@@ -119,10 +119,32 @@ data class Round(
         return round.settle()
     }
 
-    internal fun settle(): Round {
+    private fun settle(): Round {
         val results = hands.map { settle(it, dealer) }
         val returned = hands.zip(results).sumOf { (hand, result) -> hand.wager + result.net }
         return copy(active = hands.size, bankroll = bankroll + returned, results = results)
+    }
+
+    companion object {
+        /**
+         * Deals a round of [bet] cents from [shoe], a card each to the player and the dealer and then a second each, the dealer's
+         * face down. A player blackjack is paid at once, and a dealer showing an ace or a face card peeks for blackjack, so either
+         * one settles the round before the player acts. The bet is an even number of cents, so every half the rules pay or give
+         * back is exact, and the shoe's cut card must still be in it, which leaves more cards than a round can use.
+         */
+        fun deal(ruleSet: RuleSet, bet: Long, bankroll: Long, shoe: Shoe): Round {
+            require(bet in 1..bankroll) { "A bet of $bet needs a bankroll to cover it, not $bankroll" }
+            require(bet % 2 == 0L) { "A bet of $bet cents has no exact half" }
+            require(!shoe.pastCutCard) { "The cut card is out, so the shoe needs shuffling" }
+
+            val (first, afterFirst) = shoe.draw()
+            val (upcard, afterUpcard) = afterFirst.draw()
+            val (second, afterSecond) = afterUpcard.draw()
+            val (hole, rest) = afterSecond.draw()
+            val round = Round(ruleSet, bet, bankroll - bet, rest, listOf(upcard, hole), listOf(PlayerHand(listOf(first, second), bet)))
+
+            return if (round.hands[0].isBlackjack || round.dealer.isBlackjack()) round.settle() else round
+        }
     }
 }
 
@@ -133,20 +155,3 @@ private fun PlayerHand.finishedAt21(): PlayerHand = when {
 }
 
 private fun HandTotal.dealerHits(ruleSet: RuleSet): Boolean = value < 17 || (value == 17 && soft && ruleSet.dealerHitsSoft17)
-
-/**
- * Deals a round of [bet] cents from [shoe], a card each to the player and the dealer and then a second each, the dealer's face
- * down. A player blackjack is paid at once, and a dealer showing an ace or a face card peeks for blackjack, so either one
- * settles the round before the player acts.
- */
-fun dealRound(ruleSet: RuleSet, bet: Long, bankroll: Long, shoe: Shoe): Round {
-    require(bet in 1..bankroll) { "A bet of $bet needs a bankroll to cover it, not $bankroll" }
-
-    val (first, afterFirst) = shoe.draw()
-    val (upcard, afterUpcard) = afterFirst.draw()
-    val (second, afterSecond) = afterUpcard.draw()
-    val (hole, rest) = afterSecond.draw()
-    val round = Round(ruleSet, bet, bankroll - bet, rest, listOf(upcard, hole), listOf(PlayerHand(listOf(first, second), bet)))
-
-    return if (round.hands[0].isBlackjack || round.dealer.isBlackjack()) round.settle() else round
-}

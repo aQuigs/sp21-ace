@@ -6,11 +6,13 @@ import com.aquigs.sp21ace.domain.strategy.RuleSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import kotlin.random.Random
 
 private const val BET = 2_500L
 private const val BANKROLL = 100_000L
@@ -20,7 +22,7 @@ private fun deal(player: String, dealer: String, draws: String = "", ruleSet: Ru
     val (first, second) = cards(player)
     val (upcard, hole) = cards(dealer)
     val rest = if (draws.isEmpty()) emptyList() else cards(draws)
-    return dealRound(ruleSet, bet, bankroll, Shoe(listOf(first, upcard, second, hole) + rest))
+    return Round.deal(ruleSet, bet, bankroll, Shoe(listOf(first, upcard, second, hole) + rest))
 }
 
 private fun Round.then(vararg moves: Move): Round = moves.fold(this) { round, move -> requireNotNull(round.play(move)) { "Can't $move" } }
@@ -262,5 +264,92 @@ class RoundTest {
 
         val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(round) } }.toByteArray()
         assertEquals(round, ObjectInputStream(bytes.inputStream()).use { it.readObject() })
+    }
+
+    @Test
+    fun aSettledRoundFromAFullShoeSurvivesSerialization() {
+        val round = Round.deal(RuleSet.S17, BET, BANKROLL, Shoe.shuffled(Random(3))).let { it.play(Move.STAND) ?: it }
+
+        val bytes = ByteArrayOutputStream().also { ObjectOutputStream(it).use { out -> out.writeObject(round) } }.toByteArray()
+        assertEquals(round, ObjectInputStream(bytes.inputStream()).use { it.readObject() })
+    }
+
+    @Test
+    fun aDealNeedsAnEvenBetAndAShoeTheCutCardIsStillIn() {
+        assertThrows(IllegalArgumentException::class.java) { deal("9c 7d", "6s Kh", bet = 2_501) }
+        assertThrows(IllegalArgumentException::class.java) { Round.deal(RuleSet.S17, BET, BANKROLL, Shoe.shuffled(Random(1)).copy(dealt = 216)) }
+    }
+
+    @Test
+    fun splitAcesResplitAndTwoThatDrawTenValueCardsSettleWithNoDecision() {
+        assertTrue(Move.SPLIT in deal("As Ad", "7s Kh", draws = "Ah").then(Move.SPLIT).moves())
+
+        val both21 = deal("As Ad", "7s Kh", draws = "Kc Qd").then(Move.SPLIT)
+        assertEquals(listOf(Outcome.WIN to BET, Outcome.WIN to BET), both21.outcomes())
+        assertEquals(cards("7s Kh"), both21.dealer)
+    }
+
+    @Test
+    fun aSplitHandCanDoubleAndThenRescue() {
+        // 8-3 doubles onto a 2 and is rescued, and 8-Q stands on 18 against the dealer's 19
+        val round = deal("8c 8d", "Ks 9h", draws = "3h 2c Qd").then(Move.SPLIT, Move.DOUBLE, Move.RESCUE, Move.STAND)
+
+        assertEquals(listOf(Outcome.LOSE to -BET, Outcome.LOSE to -BET), round.outcomes())
+        assertEquals(BANKROLL - 2 * BET, round.bankroll)
+    }
+
+    @Test
+    fun aDoubledHandThatBustsLosesTheWholeWagerAndARescueLeavesTheDealerDrawingNothing() {
+        val busted = deal("Kc 3d", "6s Kh", draws = "Qs").then(Move.DOUBLE)
+        assertEquals(listOf(Outcome.LOSE to -2 * BET), busted.outcomes())
+
+        val rescued = deal("5c 6d", "6s Kh", draws = "2c 8s").then(Move.DOUBLE, Move.RESCUE)
+        assertEquals(cards("6s Kh"), rescued.dealer)
+    }
+
+    @Test
+    fun aDoubled678Or777PaysEvenMoneyAndNoSuperBonus() {
+        assertEquals(HandResult(Outcome.WIN, 2 * BET), requireNotNull(deal("6c 7d", "Ks 7h", draws = "8h").then(Move.DOUBLE).results).single())
+        assertEquals(HandResult(Outcome.WIN, 2 * BET), requireNotNull(deal("7h 7h", "7s Kc", draws = "7h").then(Move.DOUBLE).results).single())
+    }
+
+    @Test
+    fun aSpaded777AgainstA7PaysThreeToOneAndTheSuperBonusWhoseTopTierStartsAt25() {
+        assertEquals(
+            HandResult(Outcome.WIN, 7_500 + 500_000, bonus = Bonus.SPADED_777, superBonus = 500_000),
+            requireNotNull(deal("7s 7s", "7d Kc", draws = "7s").then(Move.HIT).results).single(),
+        )
+        assertEquals(100_000L, requireNotNull(deal("7s 7s", "7d Kc", draws = "7s", bet = 2_498).then(Move.HIT).results).single().superBonus)
+    }
+
+    @Test
+    fun aDealerWhoHitsSoft17HitsOneOfThreeCards() {
+        // A-A-5 is soft 17, and the 4 makes 21
+        assertEquals(listOf(Outcome.WIN to BET), deal("Kc 9d", "As Ah", draws = "5c 4d").then(Move.STAND).outcomes())
+        assertEquals(listOf(Outcome.LOSE to -BET), deal("Kc 9d", "As Ah", draws = "5c 4d", ruleSet = RuleSet.H17).then(Move.STAND).outcomes())
+    }
+
+    @Test
+    fun randomPlayAlwaysConservesTheChipsAndOffersMovesExactlyUntilTheRoundSettles() {
+        val random = Random(7)
+
+        for (ruleSet in RuleSet.entries) {
+            var shoe = Shoe.shuffled(random)
+            var bankroll = 1_000_000_000L
+            repeat(3_000) {
+                if (shoe.pastCutCard) shoe = Shoe.shuffled(random)
+                var round = Round.deal(ruleSet, BET, bankroll, shoe)
+                while (!round.settled) {
+                    assertTrue(round.activeHand != null && round.moves().isNotEmpty())
+                    round = requireNotNull(round.play(round.moves().random(random)))
+                }
+
+                assertEquals(emptySet<Move>(), round.moves())
+                assertEquals(bankroll + requireNotNull(round.net), round.bankroll)
+                assertTrue(round.shoe.dealt - shoe.dealt <= 72)
+                shoe = round.shoe
+                bankroll = round.bankroll
+            }
+        }
     }
 }
