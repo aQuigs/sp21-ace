@@ -10,6 +10,7 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
     private val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
     private val defaults = TableRules()
 
+    // Clamped so a range narrowed in a later version still puts the slider and its label on the same value
     fun load() = TableRules(
         dealerHitsSoft17 = prefs.getBoolean(DEALER_HITS_SOFT_17, defaults.dealerHitsSoft17),
         redoubling = prefs.getBoolean(REDOUBLING, defaults.redoubling),

@@ -300,7 +300,7 @@ class RoundTest {
     fun aRoundThatRunsTheShoeOutDealsOnFromTheDiscardsShuffledAndKeepsEveryCard() {
         // Four discards, then the round's four cards and one more
         val fives = cards("5c 5d 5h 5s")
-        val shoe = Shoe(fives + cards("2c 7s 2d Kc 3h"), dealt = 4, seed = 1)
+        val shoe = Shoe(fives + cards("2c 7s 2d Kc 3h"), dealt = 4)
 
         val round = Round.deal(RuleSet.S17, BET, BANKROLL, shoe).then(Move.SPLIT, Move.HIT, Move.STAND).next().then(Move.STAND)
 

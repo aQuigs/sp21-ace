@@ -28,14 +28,17 @@ data class Shoe(
         return shoe.cards.subList(shoe.dealt, shoe.dealt + count).toList() to shoe.copy(dealt = shoe.dealt + count)
     }
 
+    /** This shoe with a round about to be dealt from it, so the cards dealt so far are its discards. */
+    fun startingRound(): Shoe = copy(roundStart = dealt)
+
     /** This shoe, or a fresh shuffle once it needs one. */
     fun forNextRound(random: Random, penetration: Int): Shoe = if (needsShuffle(penetration)) shuffled(random) else this
 
     // The round's cards stay on the table, so they move to the front, ahead of the cards left and the discards
-    private fun discardsShuffledIn(): Shoe = Shoe(
+    private fun discardsShuffledIn(): Shoe = copy(
         cards = cards.subList(roundStart, cards.size) + cards.subList(0, roundStart).shuffled(Random(seed)),
         dealt = dealt - roundStart,
-        seed = seed,
+        roundStart = 0,
         ranOut = true,
     )
 
