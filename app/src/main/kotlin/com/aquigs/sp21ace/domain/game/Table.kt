@@ -14,7 +14,7 @@ const val STARTING_BANKROLL = 100_000L
  * The table between rounds and through one. Until a round is dealt, [bankroll] is the chips off the table and [bet] the ones in
  * the betting spot; a dealt [round] keeps its own. [hinted] is whether the player asked for a hint on the decision waiting. Once
  * the round is settled the dealer turns over [dealerDrawsShown] of the cards it drew, then the table shows one hand's result at a
- * time, [resultIndex], as Blackjack Ace steps through split hands.
+ * time, [resultStep], as Blackjack Ace steps through split hands.
  */
 data class Table(
     val bankroll: Long,
@@ -22,18 +22,18 @@ data class Table(
     val bet: Long = 0,
     val round: Round? = null,
     val dealerDrawsShown: Int = 0,
-    val resultIndex: Int = 0,
+    val resultStep: Int = 0,
     val hinted: Boolean = false,
 ) : Serializable {
     /**
      * The chips the player owns. Chips riding on a round still count until it's settled, so a round cut short by a restart gives
-     * back its bets rather than losing them.
+     * back its bets rather than losing them, all but a busted hand's, which the table has already taken.
      */
     val chips: Long
         get() = when {
             round == null -> bankroll + bet
             round.settled -> round.bankroll
-            else -> round.bankroll + round.hands.sumOf { it.wager }
+            else -> round.bankroll + round.hands.filter { it.finish != Finish.BUSTED }.sumOf { it.wager }
         }
 
     /** The chips off the table, which the bankroll shows. A settled round's payout waits for the dealer's last card, as its result does. */
@@ -50,21 +50,34 @@ data class Table(
     /** Whether the round is settled with every dealer card face up, so its results show. */
     val revealed: Boolean get() = round?.settled == true && dealerCardsShown == round.dealer.size
 
+    // As in Blackjack Ace, a split hand shown busting as it finished isn't shown again with the results
+    private val resultHands: List<Int>
+        get() = round?.hands?.let { hands -> hands.indices.filter { it == hands.lastIndex || hands[it].finish != Finish.BUSTED } }.orEmpty()
+
     /** The hand on show: the one being played, the last one played while the dealer plays, then the one whose result is shown. */
     val shownIndex: Int?
         get() = round?.let {
             when {
                 !it.settled -> it.active
-                revealed -> resultIndex
+                revealed -> resultHands[resultStep]
                 else -> it.hands.lastIndex
             }
         }
 
     val shownHand: PlayerHand? get() = shownIndex?.let { round?.hands?.get(it) }
 
-    val shownResult: HandResult? get() = if (revealed) round?.results?.get(resultIndex) else null
+    /** The shown hand's result, once the dealer's cards are all face up, or as a split hand busts, which the dealer can't change. */
+    val shownResult: HandResult?
+        get() = when {
+            revealed -> shownIndex?.let { round?.results?.get(it) }
+            round?.waitingForNextHand == true -> shownHand?.takeIf { it.finish == Finish.BUSTED }?.settle(round.dealer)
+            else -> null
+        }
 
-    val hasNextResult: Boolean get() = revealed && resultIndex < requireNotNull(round).hands.lastIndex
+    val hasNextResult: Boolean get() = revealed && resultStep < resultHands.lastIndex
+
+    /** Whether NEXT has somewhere to go: the next split hand, or the next hand's result. */
+    val hasNext: Boolean get() = round?.waitingForNextHand == true || hasNextResult
 
     fun addChip(value: Long): Table? = if (round == null && value <= bankroll) copy(bankroll = bankroll - value, bet = bet + value) else null
 
@@ -96,10 +109,14 @@ data class Table(
 
     fun revealDealerCard(): Table? = if (round?.settled == true && !revealed) copy(dealerDrawsShown = dealerDrawsShown + 1) else null
 
-    /** Shows the next hand's result, or after the last clears the table and bets the same again if the bankroll covers it. */
+    /**
+     * Moves on to the next split hand, or shows the next hand's result, or after the last clears the table and bets the same again
+     * if the bankroll covers it.
+     */
     fun next(): Table? {
+        round?.nextHand()?.let { return copy(round = it) }
         val round = round?.takeIf { revealed } ?: return null
-        if (hasNextResult) return copy(resultIndex = resultIndex + 1)
+        if (hasNextResult) return copy(resultStep = resultStep + 1)
 
         val again = if (round.bet <= round.bankroll) round.bet else 0
         return Table(bankroll = round.bankroll - again, shoe = round.shoe, bet = again)

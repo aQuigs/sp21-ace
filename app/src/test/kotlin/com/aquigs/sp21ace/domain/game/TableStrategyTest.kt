@@ -65,6 +65,10 @@ class TableStrategyTest {
                 // Bankrolls from one bet to six, so some doubles and splits can't be covered
                 var round = Round.deal(ruleSet, bet, bet * random.nextInt(1, 7), Shoe.shuffled(random))
                 while (!round.settled) {
+                    if (round.waitingForNextHand) {
+                        round = requireNotNull(round.nextHand())
+                        continue
+                    }
                     val moves = round.moves()
                     val move = round.correctMove()
                     assertTrue("$ruleSet ${round.activeHand} vs ${round.upcard}: $move not in $moves", move in moves)

@@ -282,9 +282,10 @@ private fun BetStack(bet: Long, onTakeBack: () -> Unit) {
 }
 
 /**
- * DEAL once a bet is down, the moves the hand can make while it's played, and OK or NEXT on each result. With only those moves
- * shown, the buttons shift whenever they change, so a tap waits until the new ones have been there a double tap's length: the
- * second tap of a double tap on DEAL would otherwise land on the SURRENDER that takes its place.
+ * DEAL once a bet is down, the moves the hand can make while it's played, NEXT on a finished split hand, and OK or NEXT on each
+ * result. With only those moves shown, the buttons shift whenever they change, so a tap waits until the new ones have been there
+ * a double tap's length: the second tap of a double tap on DEAL would otherwise land on the SURRENDER that takes its place. Each
+ * hand on show waits the same, so a double tap on NEXT can't skip one.
  */
 @Composable
 private fun ColumnScope.TableButtons(table: Table, onDeal: () -> Unit, onMove: (Move) -> Unit, onNext: () -> Unit) {
@@ -292,12 +293,12 @@ private fun ColumnScope.TableButtons(table: Table, onDeal: () -> Unit, onMove: (
     val moves = round?.takeUnless { it.settled }?.moves()?.let { moves -> Move.entries.filter { it in moves } }.orEmpty()
     val action = when {
         round == null -> R.string.deal.takeIf { table.bet > 0 }
-        table.hasNextResult -> R.string.next
+        table.hasNext -> R.string.next
         table.revealed -> R.string.ok
         else -> null
     }
     // The bulb going can move the buttons up into its place on a short screen
-    val armed by rememberArmed(moves, action, table.hinted)
+    val armed by rememberArmed(moves, action, table.hinted, table.shownIndex)
 
     val hint = table.hint
     moves.forEach { move ->
@@ -308,7 +309,7 @@ private fun ColumnScope.TableButtons(table: Table, onDeal: () -> Unit, onMove: (
 
 /**
  * Blackjack Ace's band across the middle of the table, over the cards, with the message in large light type: Place Your Bet
- * between rounds, and each hand's result once the dealer's cards are all face up. Taps go through it to the bet under it.
+ * between rounds, and each hand's result as the table shows it. Taps go through it to the bet under it.
  */
 @Composable
 private fun Band(table: Table, modifier: Modifier = Modifier) {
@@ -366,7 +367,10 @@ private fun resultDetails(result: HandResult): String? = listOfNotNull(
     result.net.takeIf { it != 0L }?.let(::netText),
 ).joinToString(" · ").ifEmpty { null }
 
-/** Chips to bet with between rounds, those the bankroll can't cover greyed out, and during a round the bet on each hand. */
+/**
+ * Chips to bet with between rounds, those the bankroll can't cover greyed out, and during a round the bet on each hand. As in
+ * Blackjack Ace, a hand that busts loses its bet at once.
+ */
 @Composable
 private fun Tray(table: Table, onBet: (Long) -> Unit) {
     val round = table.round
@@ -393,8 +397,9 @@ private fun Tray(table: Table, onBet: (Long) -> Unit) {
                         )
                     }
                 } else {
+                    val shown = table.shownIndex
                     round.hands.forEachIndexed { index, hand ->
-                        HandBet(hand.wager, shown = index == table.shownIndex)
+                        if (hand.finish != Finish.BUSTED) HandBet(hand.wager, shown = index == shown)
                     }
                 }
             }

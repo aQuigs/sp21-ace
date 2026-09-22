@@ -9,8 +9,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -168,6 +170,12 @@ class PlayScreenTest {
 
         tap(R.string.move_split)
         tap(R.string.move_hit)
+        // The first hand's 21 stays on show until NEXT, as in Blackjack Ace, with nothing to decide on it
+        compose.onNodeWithContentDescription(string(R.string.card_name, string(R.string.king), string(R.string.spades))).assertIsDisplayed()
+        button(R.string.move_stand).assertDoesNotExist()
+        button(R.string.show_hint).assertDoesNotExist()
+        button(R.string.face_down_card).assertIsDisplayed()
+        tap(R.string.next)
         tap(R.string.move_stand)
 
         band(R.string.result_win).assertIsDisplayed()
@@ -176,6 +184,28 @@ class PlayScreenTest {
         tap(R.string.ok)
 
         band(R.string.place_your_bet).assertIsDisplayed()
+    }
+
+    @Test
+    fun aSplitHandThatBustsShowsItAndLosesItsBetAtOnceThenItsResultIsntShownAgain() {
+        // 8-8 splits against a 7: the first hand draws 5 and K to bust, and the second a 9 to 17, which pushes the dealer's 17
+        show(stacked("8c 7s 8d Kh 5h Ks 9d"))
+
+        tap(R.string.move_split)
+        compose.onAllNodesWithText("25").assertCountEquals(2)
+        tap(R.string.move_hit)
+
+        band(R.string.result_bust).assertIsDisplayed()
+        compose.onNodeWithText("−25").assertIsDisplayed()
+        compose.onAllNodesWithText("25").assertCountEquals(1)
+
+        tap(R.string.next)
+        band(R.string.result_bust).assertDoesNotExist()
+        tap(R.string.move_stand)
+
+        band(R.string.result_push).assertIsDisplayed()
+        button(R.string.next).assertDoesNotExist()
+        button(R.string.ok).assertIsDisplayed()
     }
 
     @Test
