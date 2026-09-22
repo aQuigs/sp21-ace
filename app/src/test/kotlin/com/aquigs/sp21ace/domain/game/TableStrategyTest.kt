@@ -3,6 +3,7 @@ package com.aquigs.sp21ace.domain.game
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,7 +24,7 @@ class TableStrategyTest {
     ): Move? {
         val played = List(hands - 1) { PlayerHand(cards("Kc 8d"), bet, split = true, finish = Finish.STOOD) }
         val waiting = PlayerHand(cards(hand), bet shl doubles, doubles = doubles, split = hands > 1)
-        return Round(ruleSet, bet, bankroll, Shoe(emptyList()), cards("$upcard 5h"), played + waiting, active = hands - 1).correctMove()
+        return Round(TableRules(ruleSet.dealerHitsSoft17, ruleSet.redoubling), bet, bankroll, Shoe(emptyList()), cards("$upcard 5h"), played + waiting, active = hands - 1).correctMove()
     }
 
     @Test
@@ -63,7 +64,7 @@ class TableStrategyTest {
             val random = Random(ruleSet.ordinal)
             repeat(20_000) {
                 // Bankrolls from one bet to six, so some doubles and splits can't be covered
-                var round = Round.deal(ruleSet, bet, bet * random.nextInt(1, 7), Shoe.shuffled(random))
+                var round = Round.deal(TableRules(ruleSet.dealerHitsSoft17, ruleSet.redoubling), bet, bet * random.nextInt(1, 7), Shoe.shuffled(random))
                 while (!round.settled) {
                     if (round.waitingForNextHand) {
                         round = requireNotNull(round.nextHand())
@@ -113,7 +114,7 @@ class TableStrategyTest {
 
     @Test
     fun noMoveOnceTheRoundIsSettled() {
-        val round = Round.deal(RuleSet.S17, bet, STARTING_BANKROLL, Shoe(cards("Kc 7s 7d Kh")))
+        val round = Round.deal(TableRules(), bet, STARTING_BANKROLL, Shoe(cards("Kc 7s 7d Kh")))
         val settled = requireNotNull(round.play(Move.STAND))
 
         assertNull(settled.correctMove())

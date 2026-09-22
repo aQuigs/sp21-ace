@@ -5,14 +5,15 @@ import org.junit.Test
 
 class TableRulesTest {
     @Test
-    fun theDefaultIsTheDealerStandingWithoutRedoublingOrInsurance() {
-        assertEquals(TableRules(dealerHitsSoft17 = false, redoubling = false, insurance = false), TableRules())
+    fun theDefaultIsTheDealerStandingWithoutRedoublingOrInsuranceAndSplitHandsPaidTheirBonuses() {
+        assertEquals(TableRules(dealerHitsSoft17 = false, redoubling = false, insurance = false, splitBonuses = true), TableRules())
     }
 
     @Test
-    fun insuranceChangesNoChart() {
+    fun insuranceAndSplitBonusesChangeNoChart() {
         for (rules in listOf(TableRules(), TableRules(dealerHitsSoft17 = true), TableRules(dealerHitsSoft17 = true, redoubling = true))) {
             assertEquals(rules.ruleSet, rules.copy(insurance = true).ruleSet)
+            assertEquals(rules.ruleSet, rules.copy(splitBonuses = false).ruleSet)
         }
     }
 

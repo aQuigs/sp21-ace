@@ -1,5 +1,7 @@
 package com.aquigs.sp21ace.domain.strategy
 
+import java.io.Serializable
+
 /**
  * The rules the player sets, each combination of the dealer's soft 17 and redoubling picking one published chart. Redoubling is
  * remembered while it isn't offered. [insurance] changes no chart, only whether the table offers the bet, and nor does
@@ -12,7 +14,7 @@ data class TableRules(
     val insurance: Boolean = false,
     val penetration: Int = DEFAULT_PENETRATION,
     val splitBonuses: Boolean = true,
-) {
+) : Serializable {
     /** Casinos only offer redoubling where the dealer hits soft 17. */
     val offersRedoubling: Boolean get() = dealerHitsSoft17
 

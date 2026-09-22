@@ -182,12 +182,12 @@ class TableTest {
     }
 
     @Test
-    fun theRoundKeepsWhetherTheRulesPaySplitHandsTheirBonuses() {
-        for (splitBonuses in listOf(true, false)) {
-            val dealt = requireNotNull(table("9c 6s 7d Kh").betting(2_500).deal(TableRules(splitBonuses = splitBonuses), random)?.round)
+    fun theRoundKeepsTheRulesItWasDealtUnder() {
+        // Every rule off its default, so none can pass by matching it
+        val rules = TableRules(dealerHitsSoft17 = true, redoubling = true, insurance = true, penetration = 60, splitBonuses = false)
+        val dealt = requireNotNull(table("9c 6s 7d Kh").betting(2_500).deal(rules, random)?.round)
 
-            assertEquals(splitBonuses, dealt.splitBonuses)
-        }
+        assertEquals(rules, dealt.rules)
     }
 
     @Test

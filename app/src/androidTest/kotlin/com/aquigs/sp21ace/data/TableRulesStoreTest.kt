@@ -34,7 +34,7 @@ class TableRulesStoreTest {
 
     @Test
     fun loadsEveryCombinationAsSaved() {
-        // All on first, so no field can pass by matching its default
+        // Every field off its default first, so none can pass by matching it
         val both = listOf(true, false)
         val combinations = both.flatMap { hits ->
             both.flatMap { redoubling ->

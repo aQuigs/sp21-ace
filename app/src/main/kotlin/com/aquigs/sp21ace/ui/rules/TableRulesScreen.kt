@@ -16,7 +16,8 @@ import com.aquigs.sp21ace.ui.components.SwitchRow
 
 /**
  * Offers the rules that choose between the published charts, because a rule without a chart would leave nothing to grade against,
- * and Blackjack Ace's deck penetration and insurance, which change no chart, and whether split hands earn the Bonus 21 payouts.
+ * and the rules that change no chart: Blackjack Ace's deck penetration and insurance, and whether split hands earn the Bonus 21
+ * payouts.
  */
 @Composable
 fun TableRulesScreen(

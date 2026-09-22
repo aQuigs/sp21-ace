@@ -20,7 +20,10 @@ enum class Odds(val win: Int, val stake: Int) {
     fun on(wager: Long): Long = wager * win / stake
 }
 
-/** The Bonus 21 payouts, on a 21 that wasn't doubled. A 6-7-8 or 7-7-7 has to be the hand's only three cards. */
+/**
+ * The Bonus 21 payouts, on a 21 that wasn't doubled, nor split where the table pays split hands none. A 6-7-8 or 7-7-7 has to be
+ * the hand's only three cards.
+ */
 enum class Bonus(val odds: Odds) {
     FIVE_CARD_21(Odds.THREE_TO_TWO),
     SIX_CARD_21(Odds.TWO_TO_ONE),
@@ -45,9 +48,8 @@ internal val PlayerHand.awaitsDealer: Boolean get() = finish == Finish.STOOD && 
 /**
  * Settles the hand against the dealer's finished [dealer] cards. A player blackjack beats a dealer's, and any other 21 beats any
  * dealer 21 but a blackjack, which the dealer peeks for, so only a hand dealt nothing more than its first two cards can meet one.
- * A split hand's 21 earns its bonus only where the table pays [splitBonuses].
  */
-internal fun PlayerHand.settle(dealer: List<Card>, splitBonuses: Boolean = true): HandResult {
+internal fun PlayerHand.settle(dealer: List<Card>, splitBonuses: Boolean): HandResult {
     val dealerTotal = dealer.total().value
 
     return when {
