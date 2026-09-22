@@ -62,7 +62,6 @@ internal fun PlayerHand.settle(dealer: List<Card>, splitBonuses: Boolean): HandR
     }
 }
 
-/** A doubled hand earns no bonus, and a split one no Super Bonus, nor any bonus where the table pays [splitBonuses] none. */
 internal fun PlayerHand.bonusesEarned(splitBonuses: Boolean): BonusesEarned = when {
     doubled || (split && !splitBonuses) -> BonusesEarned.NONE
     split -> BonusesEarned.BONUS_21S

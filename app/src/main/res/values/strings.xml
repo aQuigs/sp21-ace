@@ -20,7 +20,7 @@
     <string name="redoubling_summary">Up to three doubles on one hand</string>
     <string name="split_bonuses">Bonuses on split hands</string>
     <string name="split_bonuses_paid">Bonus 21s paid on split hands</string>
-    <string name="split_bonuses_not_paid">Bonus 21s not paid on split hands</string>
+    <string name="split_bonuses_not_paid">Bonus 21s not paid on split hands, which skip the strategy chart\'s bonus plays, as in D3, S5 or S4*</string>
     <string name="insurance">Insurance</string>
     <string name="insurance_offered">Insurance offered</string>
     <string name="insurance_not_offered">Insurance not offered</string>

@@ -91,7 +91,10 @@ fun StrategyChart.play(row: ChartRow, upcard: Upcard): Play = requireNotNull(pla
  */
 fun StrategyChart.correctMove(hand: List<Card>, upcard: Card): Move = correctMove(chartRow(hand), hand, upcard, BonusesEarned.ALL)
 
-/** The bonuses a hand can earn: all of them, the Bonus 21s without the Super Bonus, as a split hand does, or none. */
+/**
+ * The bonuses a hand can earn: all of them, the Bonus 21s without the Super Bonus, as a split hand does where the table pays it
+ * them, or none.
+ */
 enum class BonusesEarned { ALL, BONUS_21S, NONE }
 
 /**
@@ -105,7 +108,7 @@ internal fun StrategyChart.correctMove(row: ChartRow, hand: List<Card>, upcard: 
     return if (bonus?.canStillMake(hand, upcard.upcard) == true) Move.HIT else play.move(cards = hand.size)
 }
 
-// RH stays, since its hit past two cards is there because surrender is gone, not for a bonus
+// RH needs nothing stripped: its hit past two cards, which forCards adds, stands in for a surrender rather than a bonus
 private val Play.plain: Play get() = copy(hitWithCards = null, bonusException = null)
 
 /**

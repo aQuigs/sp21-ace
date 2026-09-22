@@ -126,8 +126,15 @@ class TableStrategyTest {
         // 14 vs 4 is S4*: a 6-8 stands rather than hitting for a 6-7-8
         assertEquals(Move.HIT, move("6c 8d", "4s", hands = 2))
         assertEquals(Move.STAND, move("6c 8d", "4s", hands = 2, splitBonuses = false))
-        // 17 vs A is RH, which still hits, since the split took surrender away
+        // 17 vs A is RH, which still hits, since the split took surrender away, with 2 cards or more
         assertEquals(Move.HIT, move("9c 8d", "As", hands = 2, splitBonuses = false))
+        assertEquals(Move.HIT, move("9c 5d 3h", "As", hands = 2, splitBonuses = false))
+        // Soft 18 vs 4 is D4: a 4-card soft 18 doubles, and with no chips to cover it stands, as a double it can't make does
+        assertEquals(Move.HIT, move("Ac 2d 2h 3s", "4s", hands = 2, bankroll = 0))
+        assertEquals(Move.STAND, move("Ac 2d 2h 3s", "4s", hands = 2, bankroll = 0, splitBonuses = false))
+        // 13 vs 6 is S4* only where the dealer hits soft 17: a 6-7 stands rather than hitting for a 6-7-8
+        assertEquals(Move.HIT, move("6c 7d", "6s", RuleSet.H17, hands = 2))
+        assertEquals(Move.STAND, move("6c 7d", "6s", RuleSet.H17, hands = 2, splitBonuses = false))
     }
 
     @Test
