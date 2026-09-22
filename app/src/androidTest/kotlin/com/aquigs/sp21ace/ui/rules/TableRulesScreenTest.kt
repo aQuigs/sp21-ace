@@ -103,11 +103,11 @@ class TableRulesScreenTest {
 
         compose.onNodeWithText("75% (4.50 decks)").assertIsDisplayed()
 
-        for (penetration in listOf(PENETRATIONS.first, PENETRATIONS.last)) {
+        for ((penetration, label) in listOf(PENETRATIONS.first to "10% (0.60 decks)", PENETRATIONS.last to "85% (5.10 decks)")) {
             compose.onNodeWithContentDescription(string(R.string.deck_penetration)).performSemanticsAction(SemanticsActions.SetProgress) { it(penetration.toFloat()) }
 
             assertEquals(TableRules(penetration = penetration), rules)
-            compose.onNodeWithText("$penetration% (${"%.2f".format(6 * penetration / 100f)} decks)").assertIsDisplayed()
+            compose.onNodeWithText(label).assertIsDisplayed()
         }
     }
 

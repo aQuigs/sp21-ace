@@ -204,10 +204,10 @@ private fun SettingItem(
     ListItem(
         headlineContent = { Text(title, color = if (enabled) color else disabled, fontWeight = if (emphasized) FontWeight.Bold else null) },
         modifier = modifier,
-        supportingContent = supporting?.let { text ->
+        supportingContent = if (supporting == null && below == null) null else {
             {
                 Column {
-                    Text(text, color = if (enabled) Color.Unspecified else disabled)
+                    supporting?.let { Text(it, color = if (enabled) Color.Unspecified else disabled) }
                     below?.invoke()
                 }
             }

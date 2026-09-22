@@ -309,6 +309,22 @@ class RoundTest {
     }
 
     @Test
+    fun aRoundThatRunsTheShoeOutDealsOnFromTheDiscardsShuffledAndKeepsEveryCard() {
+        // Four discards, then the round's four cards and one more
+        val fives = cards("5c 5d 5h 5s")
+        val shoe = Shoe(fives + cards("2c 7s 2d Kc 3h"), dealt = 4)
+
+        val round = Round.deal(RuleSet.S17, BET, BANKROLL, shoe).then(Move.SPLIT, Move.HIT, Move.STAND).next().then(Move.STAND)
+
+        val (first, second) = round.hands.map { it.cards }
+        assertEquals(cards("2c 3h"), first.take(2))
+        assertTrue(first[2] in fives && second[1] in fives && first[2] != second[1])
+        assertTrue(round.shoe.ranOut)
+        assertEquals(shoe.cards.groupingBy { it }.eachCount(), round.shoe.cards.groupingBy { it }.eachCount())
+        assertEquals(first.size + second.size + round.dealer.size, round.shoe.dealt - round.shoe.roundStart)
+    }
+
+    @Test
     fun aDealNeedsAnEvenBet() {
         assertThrows(IllegalArgumentException::class.java) { deal("9c 7d", "6s Kh", bet = 2_501) }
     }

@@ -9,6 +9,7 @@ import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Duration
@@ -46,7 +47,7 @@ class PlayStatsTest {
     fun aTablesRoundIsPlayedOnceAsItSettlesByAMoveOrOnTheDeal() {
         // 16 vs 6 stands, and the dealer's 6-K draws a Q to bust
         val betting = requireNotNull(Table(STARTING_BANKROLL, Shoe(cards("Kc 6s 6d Kh Qs"))).addChip(2_500))
-        val dealt = requireNotNull(betting.deal(RuleSet.S17, Random(1)))
+        val dealt = requireNotNull(betting.deal(TableRules(), Random(1)))
         val settled = requireNotNull(dealt.play(Move.STAND))
         val revealed = requireNotNull(settled.revealDealerCard())
 
@@ -59,7 +60,7 @@ class PlayStatsTest {
 
         // A blackjack settles on the deal
         val blackjack = requireNotNull(Table(STARTING_BANKROLL, Shoe(cards("Ac 6s Kd 9h"))).addChip(2_500))
-        val paid = requireNotNull(blackjack.deal(RuleSet.S17, Random(1))).playedHandsSince(blackjack, now)
+        val paid = requireNotNull(blackjack.deal(TableRules(), Random(1))).playedHandsSince(blackjack, now)
         assertEquals(listOf(StrategyGrade.NO_ACTION_REQUIRED), paid.map { it.grade })
     }
 

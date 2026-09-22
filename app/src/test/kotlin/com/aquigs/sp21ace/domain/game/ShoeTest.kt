@@ -39,16 +39,9 @@ class ShoeTest {
     }
 
     @Test
-    fun aRoundDealtBeforeTheCutCardStartsWhereTheLastLeftOff() {
-        val shoe = Shoe.shuffled(Random(1)).copy(dealt = 100)
-
-        assertEquals(shoe.copy(roundStart = 100), shoe.forNextRound(Random(2), penetration = 75))
-    }
-
-    @Test
     fun aRoundThatRunsTheShoeOutDealsOnFromTheDiscardsShuffledAndTheNextRoundGetsAFreshShoe() {
         // Two discards, then a round that has dealt the shoe's last four cards
-        val shoe = Shoe(cards("2c 3c 4c 5c 6c 7c"), dealt = 6, roundStart = 2, seed = 1)
+        val shoe = Shoe(cards("2c 3c 4c 5c 6c 7c"), dealt = 6, roundStart = 2)
 
         val (card, rest) = shoe.draw()
 

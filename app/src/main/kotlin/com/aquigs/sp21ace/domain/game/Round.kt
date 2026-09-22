@@ -208,7 +208,7 @@ data class Round(
             require(bet in 1..bankroll) { "A bet of $bet needs a bankroll to cover it, not $bankroll" }
             require(bet % 2 == 0L) { "A bet of $bet cents has no exact half" }
 
-            val (cards, rest) = shoe.draw(4)
+            val (cards, rest) = shoe.startingRound().draw(4)
             val (first, upcard, second, hole) = cards
             val hand = PlayerHand(listOf(first, second), bet)
             val round = Round(ruleSet, bet, bankroll - bet, rest, listOf(upcard, hole), listOf(hand), splitBonuses = splitBonuses)

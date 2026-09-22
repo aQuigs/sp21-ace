@@ -1,8 +1,7 @@
 package com.aquigs.sp21ace.domain.game
 
-import com.aquigs.sp21ace.domain.strategy.DEFAULT_PENETRATION
 import com.aquigs.sp21ace.domain.strategy.Move
-import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import java.io.Serializable
 import kotlin.random.Random
 
@@ -78,15 +77,12 @@ data class Table(
 
     fun topUp(amount: Long): Table = if (round == null) copy(bankroll = bankroll + amount) else copy(round = round.copy(bankroll = round.bankroll + amount))
 
-    /**
-     * Deals the bet, offering [insurance] against an ace if the table does, and from a fresh shuffle once the cut card is out,
-     * [penetration] percent of the way into the shoe. Split hands earn the Bonus 21 payouts where [splitBonuses] says so.
-     */
-    fun deal(ruleSet: RuleSet, random: Random, insurance: Boolean = false, penetration: Int = DEFAULT_PENETRATION, splitBonuses: Boolean = true): Table? {
+    /** Deals the bet under [rules], offering insurance against an ace if they do, from a fresh shuffle once the cut card is out. */
+    fun deal(rules: TableRules, random: Random): Table? {
         if (round != null || bet == 0L) return null
 
-        val shoe = shoe.forNextRound(random, penetration)
-        return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe, insurance, splitBonuses))
+        val shoe = shoe.forNextRound(random, rules.penetration)
+        return copy(bet = 0, round = Round.deal(rules.ruleSet, bet, bankroll + bet, shoe, rules.insurance, rules.splitBonuses))
     }
 
     val offeringInsurance: Boolean get() = round?.offeringInsurance == true
