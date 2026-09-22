@@ -6,7 +6,8 @@ import java.io.Serializable
  * The rules the player sets, each combination of the dealer's soft 17 and redoubling picking one published chart. Redoubling is
  * remembered while it isn't offered. [insurance] changes no chart, only whether the table offers the bet, and nor does
  * [penetration], the percentage of the shoe the table deals before it shuffles. [splitBonuses] is whether a split hand earns the
- * Bonus 21 payouts, as Masque's rules pay them; no split hand earns the Super Bonus.
+ * Bonus 21 payouts, as Masque's rules pay them; no split hand earns the Super Bonus. Without them, the Play table grades a split
+ * hand by each square's plain move, as nothing is left to draw for.
  */
 data class TableRules(
     val dealerHitsSoft17: Boolean = false,

@@ -7,6 +7,7 @@ import com.aquigs.sp21ace.domain.cards.allSpades
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.suited
 import com.aquigs.sp21ace.domain.cards.total
+import com.aquigs.sp21ace.domain.strategy.BonusesEarned
 import java.io.Serializable
 
 /** Pays [win] for every [stake] bet. */
@@ -20,10 +21,7 @@ enum class Odds(val win: Int, val stake: Int) {
     fun on(wager: Long): Long = wager * win / stake
 }
 
-/**
- * The Bonus 21 payouts, on a 21 that wasn't doubled, nor split where the table pays split hands none. A 6-7-8 or 7-7-7 has to be
- * the hand's only three cards.
- */
+/** The Bonus 21 payouts, on a 21 that [earns][bonusesEarned] them. A 6-7-8 or 7-7-7 has to be the hand's only three cards. */
 enum class Bonus(val odds: Odds) {
     FIVE_CARD_21(Odds.THREE_TO_TWO),
     SIX_CARD_21(Odds.TWO_TO_ONE),
@@ -64,12 +62,20 @@ internal fun PlayerHand.settle(dealer: List<Card>, splitBonuses: Boolean): HandR
     }
 }
 
-// A doubled 21 still wins, but only at even money, as does a split one where split hands earn no bonus
+/** A doubled hand earns no bonus, and a split one no Super Bonus, nor any bonus where the table pays [splitBonuses] none. */
+internal fun PlayerHand.bonusesEarned(splitBonuses: Boolean): BonusesEarned = when {
+    doubled || (split && !splitBonuses) -> BonusesEarned.NONE
+    split -> BonusesEarned.BONUS_21S
+    else -> BonusesEarned.ALL
+}
+
+// A 21 that earns no bonus still wins, but only at even money
 private fun PlayerHand.twentyOne(upcard: Card, splitBonuses: Boolean): HandResult {
-    if (doubled || (split && !splitBonuses)) return HandResult(Outcome.WIN, wager)
+    val earned = bonusesEarned(splitBonuses)
+    if (earned == BonusesEarned.NONE) return HandResult(Outcome.WIN, wager)
 
     val bonus = bonus(cards)
-    val superBonus = if (split) 0 else superBonus(bonus, upcard, wager)
+    val superBonus = if (earned == BonusesEarned.ALL) superBonus(bonus, upcard, wager) else 0
     return HandResult(Outcome.WIN, (bonus?.odds ?: Odds.EVEN).on(wager) + superBonus, bonus = bonus, superBonus = superBonus)
 }
 
