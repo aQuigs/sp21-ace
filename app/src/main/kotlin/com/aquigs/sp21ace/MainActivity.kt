@@ -119,7 +119,7 @@ internal fun Sp21AceApp(
             },
             onTableUpdate = { change -> change(table)?.let(::seat) },
             // A round keeps the rules it was dealt under, so a change applies from the next deal
-            onDeal = { table.deal(rules.ruleSet, random, rules.insurance, rules.penetration)?.let(::seat) },
+            onDeal = { table.deal(rules.ruleSet, random, rules.insurance, rules.penetration, rules.splitBonuses)?.let(::seat) },
             onRulesChange = {
                 rules = it
                 store.save(it)

@@ -47,7 +47,8 @@ data class PlayerHand(
  * insurance move chips from it onto the table, and the settlement pays back what the hands and insurance return. The dealer's
  * second card stays face down until the round is [settled]. [active] is the hand being played, and once the round is settled it
  * is past the last hand. As in Blackjack Ace, a split hand that finishes before the last stays active, with nothing to decide,
- * until [nextHand] moves on. [insurance] is null unless it's on offer or taken.
+ * until [nextHand] moves on. [insurance] is null unless it's on offer or taken. [splitBonuses] is whether split hands earn the
+ * Bonus 21 payouts.
  */
 data class Round(
     val ruleSet: RuleSet,
@@ -59,6 +60,7 @@ data class Round(
     val active: Int = 0,
     val results: List<HandResult>? = null,
     val insurance: Insurance? = null,
+    val splitBonuses: Boolean = true,
 ) : Serializable {
     val upcard: Card get() = dealer.first()
     val settled: Boolean get() = results != null
@@ -188,7 +190,7 @@ data class Round(
     }
 
     private fun payOut(): Round {
-        val settled = copy(active = hands.size, results = hands.map { it.settle(dealer) })
+        val settled = copy(active = hands.size, results = hands.map { it.settle(dealer, splitBonuses) })
         return settled.copy(bankroll = bankroll + requireNotNull(settled.returned))
     }
 
@@ -199,16 +201,17 @@ data class Round(
          * Deals a round of [bet] cents from [shoe], a card each to the player and the dealer and then a second each, the dealer's
          * face down. A player blackjack is paid at once, and a dealer showing an ace or a face card peeks for blackjack, so either
          * one settles the round before the player acts. Where the table offers [insurance], a dealer showing an ace offers it
-         * first, as long as the bankroll covers it, and peeks once it's answered. The bet is an even number of cents, so every
-         * half the rules pay or give back is exact.
+         * first, as long as the bankroll covers it, and peeks once it's answered. Split hands earn the Bonus 21 payouts where
+         * [splitBonuses] says so. The bet is an even number of cents, so every half the rules pay or give back is exact.
          */
-        fun deal(ruleSet: RuleSet, bet: Long, bankroll: Long, shoe: Shoe, insurance: Boolean = false): Round {
+        fun deal(ruleSet: RuleSet, bet: Long, bankroll: Long, shoe: Shoe, insurance: Boolean = false, splitBonuses: Boolean = true): Round {
             require(bet in 1..bankroll) { "A bet of $bet needs a bankroll to cover it, not $bankroll" }
             require(bet % 2 == 0L) { "A bet of $bet cents has no exact half" }
 
             val (cards, rest) = shoe.draw(4)
             val (first, upcard, second, hole) = cards
-            val round = Round(ruleSet, bet, bankroll - bet, rest, listOf(upcard, hole), listOf(PlayerHand(listOf(first, second), bet)))
+            val hand = PlayerHand(listOf(first, second), bet)
+            val round = Round(ruleSet, bet, bankroll - bet, rest, listOf(upcard, hole), listOf(hand), splitBonuses = splitBonuses)
 
             // Blackjack Ace offers it even on a player blackjack, which Masque's rules let a player insure once it's paid
             val offered = insurance && upcard.rank == Rank.ACE && round.bankroll >= round.insuranceBet

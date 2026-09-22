@@ -45,8 +45,9 @@ internal val PlayerHand.awaitsDealer: Boolean get() = finish == Finish.STOOD && 
 /**
  * Settles the hand against the dealer's finished [dealer] cards. A player blackjack beats a dealer's, and any other 21 beats any
  * dealer 21 but a blackjack, which the dealer peeks for, so only a hand dealt nothing more than its first two cards can meet one.
+ * A split hand's 21 earns its bonus only where the table pays [splitBonuses].
  */
-internal fun PlayerHand.settle(dealer: List<Card>): HandResult {
+internal fun PlayerHand.settle(dealer: List<Card>, splitBonuses: Boolean = true): HandResult {
     val dealerTotal = dealer.total().value
 
     return when {
@@ -54,16 +55,16 @@ internal fun PlayerHand.settle(dealer: List<Card>): HandResult {
         finish == Finish.BUSTED -> HandResult(Outcome.LOSE, -wager)
         isBlackjack -> HandResult(Outcome.WIN, Odds.THREE_TO_TWO.on(wager), blackjack = true)
         dealer.isBlackjack() -> HandResult(Outcome.LOSE, -wager)
-        total.value == 21 -> twentyOne(dealer.first())
+        total.value == 21 -> twentyOne(dealer.first(), splitBonuses)
         dealerTotal > 21 || total.value > dealerTotal -> HandResult(Outcome.WIN, wager)
         total.value == dealerTotal -> HandResult(Outcome.PUSH, 0)
         else -> HandResult(Outcome.LOSE, -wager)
     }
 }
 
-// A doubled 21 still wins, but only at even money
-private fun PlayerHand.twentyOne(upcard: Card): HandResult {
-    if (doubled) return HandResult(Outcome.WIN, wager)
+// A doubled 21 still wins, but only at even money, as does a split one where split hands earn no bonus
+private fun PlayerHand.twentyOne(upcard: Card, splitBonuses: Boolean): HandResult {
+    if (doubled || (split && !splitBonuses)) return HandResult(Outcome.WIN, wager)
 
     val bonus = bonus(cards)
     val superBonus = if (split) 0 else superBonus(bonus, upcard, wager)

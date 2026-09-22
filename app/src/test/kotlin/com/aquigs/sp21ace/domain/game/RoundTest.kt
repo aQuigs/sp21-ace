@@ -25,11 +25,12 @@ private fun deal(
     bet: Long = BET,
     bankroll: Long = BANKROLL,
     insurance: Boolean = false,
+    splitBonuses: Boolean = true,
 ): Round {
     val (first, second) = cards(player)
     val (upcard, hole) = cards(dealer)
     val rest = if (draws.isEmpty()) emptyList() else cards(draws)
-    return Round.deal(ruleSet, bet, bankroll, Shoe(listOf(first, upcard, second, hole) + rest), insurance)
+    return Round.deal(ruleSet, bet, bankroll, Shoe(listOf(first, upcard, second, hole) + rest), insurance, splitBonuses)
 }
 
 private fun Round.then(vararg moves: Move): Round = moves.fold(this) { round, move -> requireNotNull(round.play(move)) { "Can't $move" } }
@@ -273,6 +274,17 @@ class RoundTest {
         val round = deal("7h 7h", "7s Kc", draws = "7h 7h Ks").then(Move.SPLIT, Move.HIT).next().then(Move.STAND)
 
         assertEquals(HandResult(Outcome.WIN, 5_000, bonus = Bonus.SUITED_777), round.result())
+    }
+
+    @Test
+    fun whereSplitHandsEarnNoBonusesTheirBonus21sPayEvenMoneyAndHandsNotSplitStillEarnTheirs() {
+        val sevens = deal("7h 7h", "7s Kc", draws = "7h 7h Ks", splitBonuses = false).then(Move.SPLIT, Move.HIT).next().then(Move.STAND)
+        val fiveCards = deal("2c 2d", "7s Kc", draws = "3h 4s 5d 7c Ks", splitBonuses = false).then(Move.SPLIT, Move.HIT, Move.HIT, Move.HIT).next().then(Move.STAND)
+        val notSplit = deal("7h 7h", "7s Kc", draws = "7h", splitBonuses = false).then(Move.HIT)
+
+        assertEquals(HandResult(Outcome.WIN, 2_500), sevens.result())
+        assertEquals(HandResult(Outcome.WIN, 2_500), fiveCards.result())
+        assertEquals(HandResult(Outcome.WIN, 5_000 + 500_000, bonus = Bonus.SUITED_777, superBonus = 500_000), notSplit.result())
     }
 
     @Test

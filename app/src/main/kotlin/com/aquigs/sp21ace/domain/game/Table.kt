@@ -80,12 +80,13 @@ data class Table(
 
     /**
      * Deals the bet, offering [insurance] against an ace if the table does, and from a fresh shuffle once the cut card is out,
-     * [penetration] percent of the way into the shoe.
+     * [penetration] percent of the way into the shoe. Split hands earn the Bonus 21 payouts where [splitBonuses] says so.
      */
-    fun deal(ruleSet: RuleSet, random: Random, insurance: Boolean = false, penetration: Int = DEFAULT_PENETRATION): Table? {
+    fun deal(ruleSet: RuleSet, random: Random, insurance: Boolean = false, penetration: Int = DEFAULT_PENETRATION, splitBonuses: Boolean = true): Table? {
         if (round != null || bet == 0L) return null
 
-        return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe.forNextRound(random, penetration), insurance))
+        val shoe = shoe.forNextRound(random, penetration)
+        return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe, insurance, splitBonuses))
     }
 
     val offeringInsurance: Boolean get() = round?.offeringInsurance == true

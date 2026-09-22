@@ -16,7 +16,7 @@ import com.aquigs.sp21ace.ui.components.SwitchRow
 
 /**
  * Offers the rules that choose between the published charts, because a rule without a chart would leave nothing to grade against,
- * and Blackjack Ace's deck penetration and insurance, which change no chart.
+ * and Blackjack Ace's deck penetration and insurance, which change no chart, and whether split hands earn the Bonus 21 payouts.
  */
 @Composable
 fun TableRulesScreen(
@@ -48,6 +48,12 @@ fun TableRulesScreen(
                 onCheckedChange = { onChange(rules.copy(redoubling = it)) },
             )
         }
+        SwitchRow(
+            title = stringResource(R.string.split_bonuses),
+            summary = stringResource(if (rules.splitBonuses) R.string.split_bonuses_paid else R.string.split_bonuses_not_paid),
+            checked = rules.splitBonuses,
+            onCheckedChange = { onChange(rules.copy(splitBonuses = it)) },
+        )
         SwitchRow(
             title = stringResource(R.string.insurance),
             summary = stringResource(if (rules.insurance) R.string.insurance_offered else R.string.insurance_not_offered),

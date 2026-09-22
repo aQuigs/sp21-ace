@@ -10,7 +10,7 @@
     <string name="open_menu">Open navigation menu</string>
     <string name="back">Back</string>
 
-    <string name="table_rules_intro">These are the table rules for the strategy trainer and the table you play at. They decide which moves are correct, and the strategy chart follows them. Deck penetration and insurance only apply at the table you play at.</string>
+    <string name="table_rules_intro">These are the table rules for the strategy trainer and the table you play at. They decide which moves are correct, and the strategy chart follows them. Deck penetration, bonuses on split hands and insurance only apply at the table you play at.</string>
     <string name="deck_penetration">Deck penetration</string>
     <string name="deck_penetration_value">%1$d%% (%2$.2f decks)</string>
     <string name="soft_17">Soft 17</string>
@@ -18,6 +18,9 @@
     <string name="dealer_stands">Dealer stands</string>
     <string name="redoubling">Redoubling (Double-Double Down)</string>
     <string name="redoubling_summary">Up to three doubles on one hand</string>
+    <string name="split_bonuses">Bonuses on split hands</string>
+    <string name="split_bonuses_paid">Bonus 21s paid on split hands</string>
+    <string name="split_bonuses_not_paid">Bonus 21s not paid on split hands</string>
     <string name="insurance">Insurance</string>
     <string name="insurance_offered">Insurance offered</string>
     <string name="insurance_not_offered">Insurance not offered</string>
