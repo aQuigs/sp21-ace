@@ -20,6 +20,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -124,6 +125,8 @@ fun SliderRow(title: String, label: String, value: Int, range: IntRange, onValue
                 contentDescription = title
                 stateDescription = label
             },
+            // Whole-number steps, but as in Blackjack Ace a plain track rather than a tick for each of them
+            colors = SliderDefaults.colors(activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent),
             valueRange = range.first.toFloat()..range.last.toFloat(),
             steps = range.last - range.first - 1,
         )
