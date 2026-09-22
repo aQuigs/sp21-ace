@@ -13,6 +13,7 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
         dealerHitsSoft17 = prefs.getBoolean(DEALER_HITS_SOFT_17, defaults.dealerHitsSoft17),
         redoubling = prefs.getBoolean(REDOUBLING, defaults.redoubling),
         insurance = prefs.getBoolean(INSURANCE, defaults.insurance),
+        penetration = prefs.getInt(PENETRATION, defaults.penetration),
     )
 
     fun save(rules: TableRules) {
@@ -20,6 +21,7 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
             putBoolean(DEALER_HITS_SOFT_17, rules.dealerHitsSoft17)
             putBoolean(REDOUBLING, rules.redoubling)
             putBoolean(INSURANCE, rules.insurance)
+            putInt(PENETRATION, rules.penetration)
         }
     }
 
@@ -27,5 +29,6 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
         const val DEALER_HITS_SOFT_17 = "dealer_hits_soft_17"
         const val REDOUBLING = "redoubling"
         const val INSURANCE = "insurance"
+        const val PENETRATION = "penetration"
     }
 }

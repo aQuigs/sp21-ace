@@ -59,6 +59,16 @@ class TableTest {
     }
 
     @Test
+    fun aDeeperPenetrationDealsOnFromTheSameShoe() {
+        val used = Shoe.shuffled(Random(2)).copy(dealt = 216)
+        val dealt = requireNotNull(requireNotNull(Table(STARTING_BANKROLL, used).betting(500).deal(RuleSet.S17, random, penetration = 85)).round)
+
+        assertEquals(used.cards, dealt.shoe.cards)
+        assertEquals(220, dealt.shoe.dealt)
+        assertEquals(216, dealt.shoe.roundStart)
+    }
+
+    @Test
     fun chipsRidingOnAnUnsettledRoundStillCount() {
         val doubled = requireNotNull(table("5c 6s 6d Kh 2c").betting(2_500).deal(RuleSet.S17, random)?.play(Move.DOUBLE))
 

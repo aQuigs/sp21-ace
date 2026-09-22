@@ -3,6 +3,7 @@ package com.aquigs.sp21ace.domain.game
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.serializedAndBack
 import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.strategy.PENETRATIONS
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -296,9 +297,8 @@ class RoundTest {
     }
 
     @Test
-    fun aDealNeedsAnEvenBetAndAShoeTheCutCardIsStillIn() {
+    fun aDealNeedsAnEvenBet() {
         assertThrows(IllegalArgumentException::class.java) { deal("9c 7d", "6s Kh", bet = 2_501) }
-        assertThrows(IllegalArgumentException::class.java) { Round.deal(RuleSet.S17, BET, BANKROLL, Shoe.shuffled(Random(1)).copy(dealt = 216)) }
     }
 
     @Test
@@ -419,7 +419,7 @@ class RoundTest {
             var shoe = Shoe.shuffled(random)
             var bankroll = 1_000_000_000L
             repeat(3_000) {
-                shoe = shoe.forNextRound(random)
+                shoe = shoe.forNextRound(random, PENETRATIONS.last)
                 var round = Round.deal(ruleSet, BET, bankroll, shoe, insurance = random.nextBoolean())
                 while (!round.settled) {
                     assertEquals(round.activeHand != null, round.moves().isNotEmpty())
@@ -432,7 +432,7 @@ class RoundTest {
 
                 assertEquals(emptySet<Move>(), round.moves())
                 assertEquals(bankroll + requireNotNull(round.results).sumOf { it.net } + round.insuranceNet, round.bankroll)
-                assertTrue(round.shoe.dealt - shoe.dealt <= 72)
+                assertTrue(round.shoe.dealt - round.shoe.roundStart <= 72)
                 shoe = round.shoe
                 bankroll = round.bankroll
             }

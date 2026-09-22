@@ -4,16 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.strategy.DECKS
+import com.aquigs.sp21ace.domain.strategy.PENETRATIONS
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.components.ChoicePage
 import com.aquigs.sp21ace.ui.components.ChoiceRow
 import com.aquigs.sp21ace.ui.components.SettingsIntro
 import com.aquigs.sp21ace.ui.components.SettingsPage
+import com.aquigs.sp21ace.ui.components.SliderRow
 import com.aquigs.sp21ace.ui.components.SwitchRow
 
 /**
  * Offers the rules that choose between the published charts, because a rule without a chart would leave nothing to grade against,
- * and Blackjack Ace's Insurance.
+ * and Blackjack Ace's deck penetration and insurance, which change no chart.
  */
 @Composable
 fun TableRulesScreen(
@@ -25,6 +28,13 @@ fun TableRulesScreen(
 ) {
     SettingsPage(title = stringResource(R.string.table_rules), onBack = onBack, modifier = modifier) {
         SettingsIntro(stringResource(R.string.table_rules_intro))
+        SliderRow(
+            title = stringResource(R.string.deck_penetration),
+            label = stringResource(R.string.deck_penetration_value, rules.penetration, DECKS * rules.penetration / 100f),
+            value = rules.penetration,
+            range = PENETRATIONS,
+            onValueChange = { onChange(rules.copy(penetration = it)) },
+        )
         ChoiceRow(
             title = stringResource(R.string.soft_17),
             value = stringResource(soft17Choice(rules.dealerHitsSoft17)),

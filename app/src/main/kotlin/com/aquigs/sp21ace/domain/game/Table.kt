@@ -1,5 +1,6 @@
 package com.aquigs.sp21ace.domain.game
 
+import com.aquigs.sp21ace.domain.strategy.DEFAULT_PENETRATION
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import java.io.Serializable
@@ -77,11 +78,14 @@ data class Table(
 
     fun topUp(amount: Long): Table = if (round == null) copy(bankroll = bankroll + amount) else copy(round = round.copy(bankroll = round.bankroll + amount))
 
-    /** Deals the bet, from a fresh shuffle once the cut card is out, offering [insurance] against an ace if the table does. */
-    fun deal(ruleSet: RuleSet, random: Random, insurance: Boolean = false): Table? {
+    /**
+     * Deals the bet, offering [insurance] against an ace if the table does, and from a fresh shuffle once the cut card is out,
+     * [penetration] percent of the way into the shoe.
+     */
+    fun deal(ruleSet: RuleSet, random: Random, insurance: Boolean = false, penetration: Int = DEFAULT_PENETRATION): Table? {
         if (round != null || bet == 0L) return null
 
-        return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe.forNextRound(random), insurance))
+        return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe.forNextRound(random, penetration), insurance))
     }
 
     val offeringInsurance: Boolean get() = round?.offeringInsurance == true

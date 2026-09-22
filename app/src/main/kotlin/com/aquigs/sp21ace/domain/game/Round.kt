@@ -200,13 +200,11 @@ data class Round(
          * face down. A player blackjack is paid at once, and a dealer showing an ace or a face card peeks for blackjack, so either
          * one settles the round before the player acts. Where the table offers [insurance], a dealer showing an ace offers it
          * first, as long as the bankroll covers it, and peeks once it's answered. The bet is an even number of cents, so every
-         * half the rules pay or give back is exact, and the shoe's cut card must still be in it, which leaves more cards than a
-         * round can use.
+         * half the rules pay or give back is exact.
          */
         fun deal(ruleSet: RuleSet, bet: Long, bankroll: Long, shoe: Shoe, insurance: Boolean = false): Round {
             require(bet in 1..bankroll) { "A bet of $bet needs a bankroll to cover it, not $bankroll" }
             require(bet % 2 == 0L) { "A bet of $bet cents has no exact half" }
-            require(!shoe.pastCutCard) { "The cut card is out, so the shoe needs shuffling" }
 
             val (cards, rest) = shoe.draw(4)
             val (first, upcard, second, hole) = cards
