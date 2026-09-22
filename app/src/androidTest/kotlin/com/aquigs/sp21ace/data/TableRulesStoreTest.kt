@@ -34,8 +34,10 @@ class TableRulesStoreTest {
 
     @Test
     fun loadsEveryCombinationAsSaved() {
-        // Both on first, so neither field can pass by matching its default
-        for (rules in listOf(TableRules(true, true), TableRules(true, false), TableRules(false, true), TableRules(false, false))) {
+        // All on first, so no field can pass by matching its default
+        val both = listOf(true, false)
+        val combinations = both.flatMap { hits -> both.flatMap { redoubling -> both.map { insurance -> TableRules(hits, redoubling, insurance) } } }
+        for (rules in combinations) {
             TableRulesStore(context, name).save(rules)
 
             assertEquals(rules, TableRulesStore(context, name).load())

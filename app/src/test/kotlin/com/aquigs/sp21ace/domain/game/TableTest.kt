@@ -172,6 +172,46 @@ class TableTest {
     }
 
     @Test
+    fun insuranceWaitsOnAnAnswerBeforeAnythingElseThenCostsHalfTheBetAtOnce() {
+        // 16 against an ace with a 6 under it, so the dealer has no blackjack
+        val offered = requireNotNull(table("9c As 7d 6h").betting(2_500).deal(RuleSet.S17, random, insurance = true))
+        assertTrue(offered.offeringInsurance)
+        assertEquals(emptySet<Move>(), offered.round?.moves())
+        assertFalse(offered.canHint)
+        assertNull(offered.play(Move.STAND))
+        assertEquals(offered, offered.serializedAndBack())
+
+        val insured = requireNotNull(offered.insure(take = true))
+        assertFalse(insured.offeringInsurance)
+        assertEquals(STARTING_BANKROLL - 2_500 - 1_250, insured.available)
+        assertEquals(STARTING_BANKROLL - 1_250, insured.chips)
+        assertTrue(Move.STAND in requireNotNull(insured.round).moves())
+        assertNull(insured.insure(take = false))
+
+        assertFalse(requireNotNull(table("9c As 7d 6h").betting(2_500).deal(RuleSet.S17, random)).offeringInsurance)
+    }
+
+    @Test
+    fun aBlackjackWaitingOnAnInsuranceAnswerCountsAsWonSoARestartKeepsIt() {
+        // The player's A-K is a blackjack whatever the dealer's ace has under it, so it has won before insurance is answered
+        val offered = requireNotNull(table("As Ah Kd 6c").betting(2_500).deal(RuleSet.S17, random, insurance = true))
+        assertTrue(offered.offeringInsurance)
+        assertEquals(STARTING_BANKROLL + 3_750, offered.chips)
+
+        assertEquals(STARTING_BANKROLL + 3_750, offered.insure(take = false)?.chips)
+        assertEquals(STARTING_BANKROLL + 2_500, offered.insure(take = true)?.chips)
+    }
+
+    @Test
+    fun insuranceStaysOutOfTheHandsPlayedAsBlackjackAcesStatisticsLeaveIt() {
+        // The dealer's blackjack takes the hand's bet, and the insurance wins it back
+        val insured = requireNotNull(table("9c As 7d Kh").betting(2_500).deal(RuleSet.S17, random, insurance = true)?.insure(take = true))
+
+        assertEquals(STARTING_BANKROLL, insured.chips)
+        assertEquals(-2_500, requireNotNull(insured.round).playedHands(Instant.EPOCH).single().net)
+    }
+
+    @Test
     fun aHintShowsTheCorrectMoveUntilAMoveIsMade() {
         // 12 vs 2 hits, and the 3 it draws makes 15, a decision of its own
         val dealt = requireNotNull(table("Kc 2s 2d Kh 3s").betting(2_500).deal(RuleSet.S17, random))

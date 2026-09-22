@@ -10,12 +10,15 @@
     <string name="open_menu">Open navigation menu</string>
     <string name="back">Back</string>
 
-    <string name="table_rules_intro">These are the table rules for the strategy trainer and the table you play at. They decide which moves are correct, and the strategy chart follows them.</string>
+    <string name="table_rules_intro">These are the table rules for the strategy trainer and the table you play at. They decide which moves are correct, and the strategy chart follows them. Only the table you play at offers insurance.</string>
     <string name="soft_17">Soft 17</string>
     <string name="dealer_hits">Dealer hits</string>
     <string name="dealer_stands">Dealer stands</string>
     <string name="redoubling">Redoubling (Double-Double Down)</string>
     <string name="redoubling_summary">Up to three doubles on one hand</string>
+    <string name="insurance">Insurance</string>
+    <string name="insurance_offered">Insurance offered</string>
+    <string name="insurance_not_offered">Insurance not offered</string>
 
     <string name="settings">Settings</string>
     <string name="color_theme">Color theme</string>
@@ -122,6 +125,8 @@
     <string name="play">Play</string>
     <string name="show_hint">Show the correct move</string>
     <string name="hint_correct_move">The correct move</string>
+    <string name="insurance_title">Insurance?</string>
+    <string name="insurance_message">Would you like to make an insurance bet?</string>
     <string name="incorrect_move_title">Are you sure?</string>
     <string name="incorrect_move_message">%1$s is not the correct move according to the strategy. Do you still want to play it?</string>
     <string name="play_move">Play</string>

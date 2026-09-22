@@ -11,7 +11,10 @@ import com.aquigs.sp21ace.ui.components.SettingsIntro
 import com.aquigs.sp21ace.ui.components.SettingsPage
 import com.aquigs.sp21ace.ui.components.SwitchRow
 
-/** Offers only the rules that choose between the published charts, because a rule without a chart would leave nothing to grade against. */
+/**
+ * Offers the rules that choose between the published charts, because a rule without a chart would leave nothing to grade against,
+ * and Blackjack Ace's Insurance.
+ */
 @Composable
 fun TableRulesScreen(
     rules: TableRules,
@@ -35,6 +38,12 @@ fun TableRulesScreen(
                 onCheckedChange = { onChange(rules.copy(redoubling = it)) },
             )
         }
+        SwitchRow(
+            title = stringResource(R.string.insurance),
+            summary = stringResource(if (rules.insurance) R.string.insurance_offered else R.string.insurance_not_offered),
+            checked = rules.insurance,
+            onCheckedChange = { onChange(rules.copy(insurance = it)) },
+        )
     }
 }
 

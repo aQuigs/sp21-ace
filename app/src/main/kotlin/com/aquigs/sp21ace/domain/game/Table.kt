@@ -25,22 +25,14 @@ data class Table(
     val resultStep: Int = 0,
     val hinted: Boolean = false,
 ) : Serializable {
-    /**
-     * The chips the player owns. Chips riding on a round still count until it's settled, so a round cut short by a restart gives
-     * back its bets rather than losing them, all but a busted hand's, which the table has already taken.
-     */
-    val chips: Long
-        get() = when {
-            round == null -> bankroll + bet
-            round.settled -> round.bankroll
-            else -> round.bankroll + round.hands.filter { it.finish != Finish.BUSTED }.sumOf { it.wager }
-        }
+    /** The chips the player owns: between rounds the bankroll and the bet, and once a round is dealt, [Round.chips]. */
+    val chips: Long get() = round?.chips ?: (bankroll + bet)
 
     /** The chips off the table, which the bankroll shows. A settled round's payout waits for the dealer's last card, as its result does. */
     val available: Long
         get() = when {
             round == null -> bankroll
-            round.settled && !revealed -> round.bankroll - round.hands.sumOf { it.wager } - requireNotNull(round.net)
+            round.settled && !revealed -> round.bankroll - requireNotNull(round.returned)
             else -> round.bankroll
         }
 
@@ -85,12 +77,17 @@ data class Table(
 
     fun topUp(amount: Long): Table = if (round == null) copy(bankroll = bankroll + amount) else copy(round = round.copy(bankroll = round.bankroll + amount))
 
-    /** Deals the bet, from a fresh shuffle once the cut card is out. */
-    fun deal(ruleSet: RuleSet, random: Random): Table? {
+    /** Deals the bet, from a fresh shuffle once the cut card is out, offering [insurance] against an ace if the table does. */
+    fun deal(ruleSet: RuleSet, random: Random, insurance: Boolean = false): Table? {
         if (round != null || bet == 0L) return null
 
-        return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe.forNextRound(random)))
+        return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe.forNextRound(random), insurance))
     }
+
+    val offeringInsurance: Boolean get() = round?.offeringInsurance == true
+
+    /** As in Blackjack Ace, the answer isn't graded and draws no warning. */
+    fun insure(take: Boolean): Table? = round?.insure(take)?.let { copy(round = it) }
 
     /** The move the hint shows, once asked for, until a move is made. */
     val hint: Move? get() = if (hinted) round?.correctMove() else null
