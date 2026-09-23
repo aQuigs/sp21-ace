@@ -10,7 +10,7 @@ enum class HandsDealt { RANDOM, PRIORITIZE_WORSE }
 data class HandType(val table: ChartTable, val move: Move)
 
 /** A kind of hand's switches, the same whatever the rules, as in Blackjack Ace: one for every move it calls for under any rule set. All isn't a kind of hand, so it has none. */
-val HandFilter.types: List<HandType> get() = table?.let { table -> moves.map { HandType(table, it) } }.orEmpty()
+private val HandFilter.types: List<HandType> get() = table?.let { table -> moves.map { HandType(table, it) } }.orEmpty()
 
 /** Every switch, kind by kind. */
 val HAND_TYPES: List<HandType> = HandFilter.entries.flatMap { it.types }

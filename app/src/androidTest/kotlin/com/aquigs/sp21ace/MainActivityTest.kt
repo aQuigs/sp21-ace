@@ -19,10 +19,10 @@ import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.data.TableStore
 import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
-import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.cardTexts
+import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.ui.onScreen
 import com.aquigs.sp21ace.ui.settings.pageIsDark
 import org.junit.After

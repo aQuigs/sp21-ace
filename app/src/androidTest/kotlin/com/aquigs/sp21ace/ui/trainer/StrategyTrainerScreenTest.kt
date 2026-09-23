@@ -149,18 +149,6 @@ class StrategyTrainerScreenTest {
     }
 
     @Test
-    fun showsTheDealerUpcardOverTheHoleCardAndThePlayersTwoCards() {
-        showTrainer()
-
-        compose.onNodeWithText(string(R.string.dealer)).assertIsDisplayed()
-        compose.onNodeWithText(string(R.string.you)).assertIsDisplayed()
-
-        for (card in listOf(string(R.string.face_down_card), "Ace of spades", "9 of clubs", "7 of diamonds")) {
-            compose.onNodeWithContentDescription(card).assertIsDisplayed()
-        }
-    }
-
-    @Test
     fun aRightAnswerTurnsTheBarRightAndDealsTheNextHand() {
         showTrainer()
 

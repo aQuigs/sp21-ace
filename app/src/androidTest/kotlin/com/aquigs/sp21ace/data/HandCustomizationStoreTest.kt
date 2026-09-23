@@ -1,15 +1,13 @@
 package com.aquigs.sp21ace.data
 
 import android.content.Context
-import androidx.core.content.edit
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
 import com.aquigs.sp21ace.domain.dealing.HandsDealt
-import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -18,16 +16,8 @@ class HandCustomizationStoreTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val name = "customize_hands_test"
 
-    // Cleared through the cached preferences with commit, so a write the last test queued can't land after the clear
-    private fun clearSaved() {
-        context.getSharedPreferences(name, Context.MODE_PRIVATE).edit(commit = true) { clear() }
-    }
-
-    @Before
-    fun setUp() = clearSaved()
-
-    @After
-    fun tearDown() = clearSaved()
+    @get:Rule
+    val cleared = ClearedPreferences(context, name)
 
     @Test
     fun loadsRandomDealingWithEverySwitchOnWhenNothingIsSaved() {

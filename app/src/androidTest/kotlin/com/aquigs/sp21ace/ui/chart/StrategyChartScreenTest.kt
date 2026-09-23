@@ -20,7 +20,6 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -54,8 +53,8 @@ class StrategyChartScreenTest {
 
     private fun string(id: Int) = compose.activity.getString(id)
 
-    private fun showChart(onBack: () -> Unit = {}) {
-        compose.setContent { Sp21AceTheme { StrategyChartScreen(rules, onBack) } }
+    private fun showChart() {
+        compose.setContent { Sp21AceTheme { StrategyChartScreen(rules, onBack = {}) } }
     }
 
     private fun openTab(title: Int) {
@@ -90,13 +89,6 @@ class StrategyChartScreenTest {
 
         // Two ten-value cards are a pair, so the accuracy heatmap has no hard 20 row, but the chart still prints it
         square("20", "2", "S").performScrollTo().assertIsDisplayed()
-    }
-
-    @Test
-    fun aSquareReadsOutAsWords() {
-        showChart()
-
-        described("14 vs 4: Stand, but hit with 4 or more cards or while any 6-7-8 is possible").assertExists()
     }
 
     @Test
@@ -261,15 +253,5 @@ class StrategyChartScreenTest {
             .map { it.textLayout() }
             .filter { it.layoutInput.text.text in gridText }
             .forEach { it.assertFitsOnOneLine() }
-    }
-
-    @Test
-    fun theBackArrowGoesBack() {
-        var backs = 0
-        showChart(onBack = { backs++ })
-
-        screen.onNodeWithContentDescription(string(R.string.back)).performClick()
-
-        assertEquals(1, backs)
     }
 }

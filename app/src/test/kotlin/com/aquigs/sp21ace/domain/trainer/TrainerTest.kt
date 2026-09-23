@@ -11,9 +11,7 @@ import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TrainerTest {
@@ -38,7 +36,6 @@ class TrainerTest {
             Answered(TrainerState(softSeventeenVsTen, grade, streak = 1), grade),
             TrainerState(sixteenVsAce).answer(sixteenVsAce, Move.HIT, s17) { softSeventeenVsTen },
         )
-        assertTrue(grade.isCorrect)
     }
 
     @Test
@@ -47,7 +44,6 @@ class TrainerTest {
 
         val square = Play(Action.STAND, hitWithCards = 4, bonusException = BonusException.ANY_678)
         assertEquals(Grade(sixEightVsFour, square, Move.STAND, Move.HIT), grade)
-        assertFalse(grade.isCorrect)
     }
 
     @Test

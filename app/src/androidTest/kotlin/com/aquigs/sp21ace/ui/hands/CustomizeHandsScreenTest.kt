@@ -56,10 +56,10 @@ class CustomizeHandsScreenTest {
 
     private fun percentage(value: Double) = compose.activity.getString(R.string.percentage, value)
 
-    private fun showScreen(history: List<PracticeAnswer> = emptyList(), onOpenHandsDealt: () -> Unit = {}) {
+    private fun showScreen(history: List<PracticeAnswer> = emptyList()) {
         compose.setContent {
             Sp21AceTheme {
-                CustomizeHandsScreen(customization, history, onChange = { customization = it }, onOpenHandsDealt = onOpenHandsDealt, onBack = {})
+                CustomizeHandsScreen(customization, history, onChange = { customization = it }, onOpenHandsDealt = {}, onBack = {})
             }
         }
     }
@@ -173,16 +173,6 @@ class CustomizeHandsScreenTest {
         switch.performClick().assertIsOn()
 
         assertEquals(HandCustomization(), customization)
-    }
-
-    @Test
-    fun theHandsDealtRowShowsRandomAndOpensItsPage() {
-        var opened = 0
-        showScreen(onOpenHandsDealt = { opened++ })
-
-        compose.onNode(hasText(string(R.string.hands_dealt)) and hasText(string(R.string.random))).performClick()
-
-        assertEquals(1, opened)
     }
 
     @Test

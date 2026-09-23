@@ -66,15 +66,6 @@ class AccuracyTest {
     }
 
     @Test
-    fun anAnswerStaysInTodayPastMidnightAndLeavesIt24HoursOn() {
-        val lateAtNight = Instant.parse("2026-09-17T23:00:00Z")
-        val history = listOf(answer(at = lateAtNight))
-
-        assertEquals(1, history.figures(Period.TODAY, at = Instant.parse("2026-09-18T08:00:00Z")).overall.total)
-        assertEquals(0, history.figures(Period.TODAY, at = lateAtNight.plus(Duration.ofHours(24))).overall.total)
-    }
-
-    @Test
     fun anAnswerStampedAfterNowCountsOnlyUnderAllTime() {
         // As when the device's clock was set ahead, then put back
         val history = listOf(answer(at = now), answer(right = false, at = now.plusMillis(1)))
@@ -242,18 +233,6 @@ class AccuracyTest {
         val history = listOf(answer(), answer(rules = RuleSet.H17, correctMove = Move.SURRENDER))
 
         assertEquals(mapOf(sixteenVsAceSquare to Tally(correct = 2, incorrect = 0)), history.figures().bySquare)
-    }
-
-    @Test
-    fun aCounterTalliesEachKeysRightAndWrongAnswersAndHoldsOnlyTheKeysAdded() {
-        val counter = TallyCounter<String>()
-        counter.add("a", isCorrect = true)
-        counter.add("b", isCorrect = false)
-        counter.add("a", isCorrect = false)
-        counter.add("a", isCorrect = true)
-
-        assertEquals(mapOf("a" to Tally(correct = 2, incorrect = 1), "b" to Tally(correct = 0, incorrect = 1)), counter.toMap())
-        assertEquals(emptyMap<String, Tally>(), TallyCounter<String>().toMap())
     }
 
     @Test

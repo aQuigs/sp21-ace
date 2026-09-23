@@ -19,7 +19,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -47,11 +46,11 @@ import com.aquigs.sp21ace.domain.trainer.dealerTotal
 import com.aquigs.sp21ace.domain.trainer.playerTotal
 import com.aquigs.sp21ace.ui.components.DealerHand
 import com.aquigs.sp21ace.ui.components.Dissolve
+import com.aquigs.sp21ace.ui.components.DissolvingHand
 import com.aquigs.sp21ace.ui.components.EdgeControls
 import com.aquigs.sp21ace.ui.components.EdgeRow
 import com.aquigs.sp21ace.ui.components.HandArea
 import com.aquigs.sp21ace.ui.components.MoveButton
-import com.aquigs.sp21ace.ui.components.DissolvingHand
 import com.aquigs.sp21ace.ui.components.appBarColors
 import com.aquigs.sp21ace.ui.components.autoSizeDownTo
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme

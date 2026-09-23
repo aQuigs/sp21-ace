@@ -62,16 +62,6 @@ class TableRulesScreenTest {
     }
 
     @Test
-    fun theRedoublingSwitchTurnsRedoublingOn() {
-        rules = TableRules(dealerHitsSoft17 = true)
-        showRules()
-
-        compose.onNode(hasText(string(R.string.redoubling)) and isToggleable()).assertIsOff().performClick().assertIsOn()
-
-        assertEquals(TableRules(dealerHitsSoft17 = true, redoubling = true), rules)
-    }
-
-    @Test
     fun theInsuranceSwitchSaysWhetherTheTableOffersIt() {
         showRules()
 

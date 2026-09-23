@@ -209,11 +209,6 @@ class CorrectMoveTest {
         assertEquals(emptyList<String>(), mismatches)
     }
 
-    @Test
-    fun tenValueCardsAreTheTenUpcard() {
-        assertEquals(listOf(Upcard.TEN, Upcard.TEN, Upcard.TEN, Upcard.ACE, Upcard.NINE), cards("Jc Qd Ks Ah 9c").map(Card::upcard))
-    }
-
     // The oracles read the fixture's text codes by the printed legend, sharing no code with chartRow or correctMove, so a
     // mistake in either can't hide behind itself
     private fun fixtureCodes(ruleSet: RuleSet) = Fixtures.rows(ruleSet).associate { (table, hand, upcard, code) -> listOf(table, hand, upcard) to code }

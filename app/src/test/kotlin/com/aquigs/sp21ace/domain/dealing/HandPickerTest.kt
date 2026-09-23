@@ -1,7 +1,6 @@
 package com.aquigs.sp21ace.domain.dealing
 
 import com.aquigs.sp21ace.domain.cards.Card
-import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.isBlackjack
@@ -17,7 +16,6 @@ import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.chartRow
-import com.aquigs.sp21ace.domain.strategy.correctMove
 import com.aquigs.sp21ace.domain.strategy.countsCards
 import com.aquigs.sp21ace.domain.strategy.doubledRow
 import com.aquigs.sp21ace.domain.strategy.play
