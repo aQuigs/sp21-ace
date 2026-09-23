@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.data
 
 import android.content.Context
 import androidx.core.content.edit
+import com.aquigs.sp21ace.domain.strategy.PENETRATIONS
 import com.aquigs.sp21ace.domain.strategy.TableRules
 
 /** Keeps the table rules through restarts. A test passes its own [name], so it never overwrites the rules the app saved. */
@@ -9,10 +10,12 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
     private val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
     private val defaults = TableRules()
 
+    // Clamped so a range narrowed in a later version still puts the slider and its label on the same value
     fun load() = TableRules(
         dealerHitsSoft17 = prefs.getBoolean(DEALER_HITS_SOFT_17, defaults.dealerHitsSoft17),
         redoubling = prefs.getBoolean(REDOUBLING, defaults.redoubling),
         insurance = prefs.getBoolean(INSURANCE, defaults.insurance),
+        penetration = prefs.getInt(PENETRATION, defaults.penetration).coerceIn(PENETRATIONS),
     )
 
     fun save(rules: TableRules) {
@@ -20,6 +23,7 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
             putBoolean(DEALER_HITS_SOFT_17, rules.dealerHitsSoft17)
             putBoolean(REDOUBLING, rules.redoubling)
             putBoolean(INSURANCE, rules.insurance)
+            putInt(PENETRATION, rules.penetration)
         }
     }
 
@@ -27,5 +31,6 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
         const val DEALER_HITS_SOFT_17 = "dealer_hits_soft_17"
         const val REDOUBLING = "redoubling"
         const val INSURANCE = "insurance"
+        const val PENETRATION = "penetration"
     }
 }

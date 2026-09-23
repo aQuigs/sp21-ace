@@ -4,7 +4,7 @@ import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.history.playedHands
 import com.aquigs.sp21ace.serializedAndBack
 import com.aquigs.sp21ace.domain.strategy.Move
-import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -39,9 +39,9 @@ class TableTest {
 
     @Test
     fun dealsTheBetButNothingWithoutOne() {
-        assertNull(table("9c 6s 7d Kh").deal(RuleSet.S17, random))
+        assertNull(table("9c 6s 7d Kh").deal(TableRules(), random))
 
-        val dealt = requireNotNull(table("9c 6s 7d Kh").betting(2_500).deal(RuleSet.S17, random))
+        val dealt = requireNotNull(table("9c 6s 7d Kh").betting(2_500).deal(TableRules(), random))
         val round = requireNotNull(dealt.round)
         assertEquals(cards("9c 7d"), round.hands.single().cards)
         assertEquals(2_500, round.bet)
@@ -52,15 +52,25 @@ class TableTest {
     @Test
     fun dealsFromAFreshShuffleOnceTheCutCardIsOut() {
         val used = Shoe.shuffled(Random(2)).copy(dealt = 216)
-        val dealt = requireNotNull(Table(STARTING_BANKROLL, used).betting(500).deal(RuleSet.S17, random)).round
+        val dealt = requireNotNull(Table(STARTING_BANKROLL, used).betting(500).deal(TableRules(), random)).round
 
         assertEquals(4, requireNotNull(dealt).shoe.dealt)
         assertNotEquals(used.cards, dealt.shoe.cards)
     }
 
     @Test
+    fun aDeeperPenetrationDealsOnFromTheSameShoe() {
+        val used = Shoe.shuffled(Random(2)).copy(dealt = 216)
+        val dealt = requireNotNull(Table(STARTING_BANKROLL, used).betting(500).deal(TableRules(penetration = 85), random)?.round)
+
+        assertEquals(used.cards, dealt.shoe.cards)
+        assertEquals(220, dealt.shoe.dealt)
+        assertEquals(216, dealt.shoe.roundStart)
+    }
+
+    @Test
     fun chipsRidingOnAnUnsettledRoundStillCount() {
-        val doubled = requireNotNull(table("5c 6s 6d Kh 2c").betting(2_500).deal(RuleSet.S17, random)?.play(Move.DOUBLE))
+        val doubled = requireNotNull(table("5c 6s 6d Kh 2c").betting(2_500).deal(TableRules(), random)?.play(Move.DOUBLE))
 
         assertEquals(STARTING_BANKROLL - 5_000, doubled.available)
         assertEquals(STARTING_BANKROLL, doubled.chips)
@@ -69,7 +79,7 @@ class TableTest {
     @Test
     fun aSettledRoundShowsEachHandsResultThenBetsTheSameAgain() {
         // 8-8 splits against a 7 with K, the first hand drawing 3 and K to 21 and the second Q to 18, which beat the dealer's 17
-        val split = requireNotNull(table("8c 7s 8d Kh 3h Ks Qd").betting(2_500).deal(RuleSet.S17, random))
+        val split = requireNotNull(table("8c 7s 8d Kh 3h Ks Qd").betting(2_500).deal(TableRules(), random))
         val settled = requireNotNull(split.play(Move.SPLIT)?.play(Move.HIT)?.next()?.play(Move.STAND))
         assertEquals(cards("8c 3h Ks"), settled.shownHand?.cards)
         assertEquals(STARTING_BANKROLL + 5_000, settled.chips)
@@ -87,7 +97,7 @@ class TableTest {
     @Test
     fun theDealersDrawsTurnOverOneAtATimeAndTheResultAndPayoutWaitForTheLast() {
         // 16 stands against a 6 and K, which draws a Q and busts
-        val stood = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(RuleSet.S17, random)?.play(Move.STAND))
+        val stood = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(TableRules(), random)?.play(Move.STAND))
         assertEquals(2, stood.dealerCardsShown)
         assertNull(stood.shownResult)
         assertEquals(STARTING_BANKROLL - 2_500, stood.available)
@@ -103,7 +113,7 @@ class TableTest {
     @Test
     fun whileTheDealerPlaysASplitRoundShowsTheLastHandPlayedThenStepsFromTheFirst() {
         // 8-8 splits against a 6 and K: 21 on the first hand, 18 on the second, and the dealer draws a 5 to 21
-        val split = requireNotNull(table("8c 6s 8d Kh 3h Ks Qd 5c").betting(2_500).deal(RuleSet.S17, random))
+        val split = requireNotNull(table("8c 6s 8d Kh 3h Ks Qd 5c").betting(2_500).deal(TableRules(), random))
         val stood = requireNotNull(split.play(Move.SPLIT)?.play(Move.HIT)?.next()?.play(Move.STAND))
         assertEquals(1, stood.shownIndex)
         assertFalse(stood.hasNextResult)
@@ -118,7 +128,7 @@ class TableTest {
     @Test
     fun aFinishedSplitHandStaysOnShowUntilNextThenTheNextHandPlays() {
         // 8-8 splits against a 7: the first hand draws 3 and K to 21, and the second draws Q to 18 and stands
-        val split = requireNotNull(table("8c 7s 8d Kh 3h Ks Qd").betting(2_500).deal(RuleSet.S17, random)?.play(Move.SPLIT))
+        val split = requireNotNull(table("8c 7s 8d Kh 3h Ks Qd").betting(2_500).deal(TableRules(), random)?.play(Move.SPLIT))
         assertFalse(split.hasNext)
 
         val finished = requireNotNull(split.play(Move.HIT))
@@ -141,7 +151,7 @@ class TableTest {
     fun aSplitHandThatMakes21ByItselfIsPlayedOnlyOnceTheTableMovesOnToIt() {
         // K-Q splits against a 6: the first hand draws a 9 and stands on 19, the second an A to 21 by itself, and the dealer's
         // 6-K draws a 5 to 21
-        val dealt = requireNotNull(table("Kc 6s Qd Kh 9s Ad 5h").betting(2_500).deal(RuleSet.S17, random))
+        val dealt = requireNotNull(table("Kc 6s Qd Kh 9s Ad 5h").betting(2_500).deal(TableRules(), random))
         val stood = requireNotNull(dealt.play(Move.SPLIT)?.play(Move.STAND))
         assertFalse(requireNotNull(stood.round).settled)
         assertEquals(cards("Qd"), stood.round?.hands?.get(1)?.cards)
@@ -158,7 +168,7 @@ class TableTest {
     @Test
     fun aSplitHandThatBustsShowsItAndLosesItsBetAtOnceThenItsResultIsntShownAgain() {
         // 8-8 splits against a 7: the first hand draws 5 and K to bust, and the second a 9 to 17, which pushes the dealer's 17
-        val split = requireNotNull(table("8c 7s 8d Kh 5h Ks 9d").betting(2_500).deal(RuleSet.S17, random)?.play(Move.SPLIT))
+        val split = requireNotNull(table("8c 7s 8d Kh 5h Ks 9d").betting(2_500).deal(TableRules(), random)?.play(Move.SPLIT))
         val busted = requireNotNull(split.play(Move.HIT))
         assertTrue(busted.hasNext)
         assertEquals(HandResult(Outcome.LOSE, -2_500), busted.shownResult)
@@ -174,7 +184,7 @@ class TableTest {
     @Test
     fun insuranceWaitsOnAnAnswerBeforeAnythingElseThenCostsHalfTheBetAtOnce() {
         // 16 against an ace with a 6 under it, so the dealer has no blackjack
-        val offered = requireNotNull(table("9c As 7d 6h").betting(2_500).deal(RuleSet.S17, random, insurance = true))
+        val offered = requireNotNull(table("9c As 7d 6h").betting(2_500).deal(TableRules(insurance = true), random))
         assertTrue(offered.offeringInsurance)
         assertEquals(emptySet<Move>(), offered.round?.moves())
         assertFalse(offered.canHint)
@@ -188,13 +198,13 @@ class TableTest {
         assertTrue(Move.STAND in requireNotNull(insured.round).moves())
         assertNull(insured.insure(take = false))
 
-        assertFalse(requireNotNull(table("9c As 7d 6h").betting(2_500).deal(RuleSet.S17, random)).offeringInsurance)
+        assertFalse(requireNotNull(table("9c As 7d 6h").betting(2_500).deal(TableRules(), random)).offeringInsurance)
     }
 
     @Test
     fun aBlackjackWaitingOnAnInsuranceAnswerCountsAsWonSoARestartKeepsIt() {
         // The player's A-K is a blackjack whatever the dealer's ace has under it, so it has won before insurance is answered
-        val offered = requireNotNull(table("As Ah Kd 6c").betting(2_500).deal(RuleSet.S17, random, insurance = true))
+        val offered = requireNotNull(table("As Ah Kd 6c").betting(2_500).deal(TableRules(insurance = true), random))
         assertTrue(offered.offeringInsurance)
         assertEquals(STARTING_BANKROLL + 3_750, offered.chips)
 
@@ -205,7 +215,7 @@ class TableTest {
     @Test
     fun insuranceStaysOutOfTheHandsPlayedAsBlackjackAcesStatisticsLeaveIt() {
         // The dealer's blackjack takes the hand's bet, and the insurance wins it back
-        val insured = requireNotNull(table("9c As 7d Kh").betting(2_500).deal(RuleSet.S17, random, insurance = true)?.insure(take = true))
+        val insured = requireNotNull(table("9c As 7d Kh").betting(2_500).deal(TableRules(insurance = true), random)?.insure(take = true))
 
         assertEquals(STARTING_BANKROLL, insured.chips)
         assertEquals(-2_500, requireNotNull(insured.round).playedHands(Instant.EPOCH).single().net)
@@ -214,7 +224,7 @@ class TableTest {
     @Test
     fun aHintShowsTheCorrectMoveUntilAMoveIsMade() {
         // 12 vs 2 hits, and the 3 it draws makes 15, a decision of its own
-        val dealt = requireNotNull(table("Kc 2s 2d Kh 3s").betting(2_500).deal(RuleSet.S17, random))
+        val dealt = requireNotNull(table("Kc 2s 2d Kh 3s").betting(2_500).deal(TableRules(), random))
         assertNull(dealt.hint)
 
         val hinted = requireNotNull(dealt.showHint())
@@ -229,7 +239,7 @@ class TableTest {
     @Test
     fun eachMoveIsGradedOnItsHandAndHelpCountsAsBlackjackAceCountsIt() {
         // 16 vs 6 stands, and the Q to come busts whoever draws it
-        val dealt = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(RuleSet.S17, random))
+        val dealt = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(TableRules(), random))
         fun grade(table: Table?) = requireNotNull(table?.round).playedHands(Instant.EPOCH).single().grade
 
         assertEquals(StrategyGrade.CORRECT, grade(dealt.play(Move.STAND)))
@@ -239,13 +249,13 @@ class TableTest {
         assertEquals(StrategyGrade.CORRECT_WITH_HINTS, grade(dealt.heedWarning()?.play(Move.STAND)))
         assertEquals(StrategyGrade.INCORRECT, grade(dealt.showHint()?.play(Move.HIT)))
         // A blackjack settles at the deal, with nothing to decide
-        assertEquals(StrategyGrade.NO_ACTION_REQUIRED, grade(table("Ac 6s Kd 9h").betting(2_500).deal(RuleSet.S17, random)))
+        assertEquals(StrategyGrade.NO_ACTION_REQUIRED, grade(table("Ac 6s Kd 9h").betting(2_500).deal(TableRules(), random)))
     }
 
     @Test
     fun aSplitsDecisionStaysWithTheFirstOfItsHands() {
         // K-Q vs 6 stands, so the split is wrong. The first hand draws a 9 to stand on, and the second an A, making 21 by itself
-        val dealt = requireNotNull(table("Kc 6s Qd Kh 9s Ad 5h").betting(2_500).deal(RuleSet.S17, random))
+        val dealt = requireNotNull(table("Kc 6s Qd Kh 9s Ad 5h").betting(2_500).deal(TableRules(), random))
         val played = requireNotNull(dealt.play(Move.SPLIT)?.play(Move.STAND)?.next())
 
         assertEquals(
@@ -257,7 +267,7 @@ class TableTest {
     @Test
     fun theHintGoesWithTheMoveButTheHelpStaysWithTheHand() {
         // 12 vs 2 hits, and the 3 it draws makes 15, a decision of its own
-        val dealt = requireNotNull(table("Kc 2s 2d Kh 3s Qs").betting(2_500).deal(RuleSet.S17, random))
+        val dealt = requireNotNull(table("Kc 2s 2d Kh 3s Qs").betting(2_500).deal(TableRules(), random))
         val helped = requireNotNull(dealt.showHint()?.play(Move.HIT))
 
         assertFalse(helped.hinted)
@@ -266,7 +276,7 @@ class TableTest {
 
     @Test
     fun noHelpOnceTheRoundIsSettled() {
-        val settled = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(RuleSet.S17, random)?.play(Move.STAND))
+        val settled = requireNotNull(table("Kc 6s 6d Kh Qs").betting(2_500).deal(TableRules(), random)?.play(Move.STAND))
 
         assertNull(settled.showHint())
         assertNull(settled.heedWarning())
@@ -274,14 +284,14 @@ class TableTest {
 
     @Test
     fun aTableMidRoundComesBackFromItsSavedState() {
-        val doubled = requireNotNull(table("5c 6s 6d Kh 2c").betting(2_500).deal(RuleSet.S17, random)?.play(Move.DOUBLE))
+        val doubled = requireNotNull(table("5c 6s 6d Kh 2c").betting(2_500).deal(TableRules(), random)?.play(Move.DOUBLE))
 
         assertEquals(doubled, doubled.serializedAndBack())
     }
 
     @Test
     fun theSameBetAgainOnlyIfTheBankrollCoversIt() {
-        val lost = requireNotNull(table("Kc 7s 6d Kh", bankroll = 2_500).betting(2_500).deal(RuleSet.S17, random)?.play(Move.STAND))
+        val lost = requireNotNull(table("Kc 7s 6d Kh", bankroll = 2_500).betting(2_500).deal(TableRules(), random)?.play(Move.STAND))
 
         assertEquals(Table(0, lost.round!!.shoe), lost.next())
     }
@@ -290,7 +300,7 @@ class TableTest {
     fun aTopUpAddsToTheBankrollBetweenRoundsOrDuringOne() {
         assertEquals(STARTING_BANKROLL + 50_000, table("9c 6s 7d Kh").topUp(50_000).bankroll)
 
-        val dealt = requireNotNull(table("9c 6s 7d Kh").betting(2_500).deal(RuleSet.S17, random))
+        val dealt = requireNotNull(table("9c 6s 7d Kh").betting(2_500).deal(TableRules(), random))
         assertEquals(STARTING_BANKROLL - 2_500 + 10_000, dealt.topUp(10_000).available)
     }
 }

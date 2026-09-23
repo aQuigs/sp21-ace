@@ -3,6 +3,7 @@ package com.aquigs.sp21ace.domain.game
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.serializedAndBack
 import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.strategy.PENETRATIONS
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -296,9 +297,24 @@ class RoundTest {
     }
 
     @Test
-    fun aDealNeedsAnEvenBetAndAShoeTheCutCardIsStillIn() {
+    fun aRoundThatRunsTheShoeOutDealsOnFromTheDiscardsShuffledAndKeepsEveryCard() {
+        // Four discards, then the round's four cards and one more
+        val fives = cards("5c 5d 5h 5s")
+        val shoe = Shoe(fives + cards("2c 7s 2d Kc 3h"), dealt = 4)
+
+        val round = Round.deal(RuleSet.S17, BET, BANKROLL, shoe).then(Move.SPLIT, Move.HIT, Move.STAND).next().then(Move.STAND)
+
+        val (first, second) = round.hands.map { it.cards }
+        assertEquals(cards("2c 3h"), first.take(2))
+        assertTrue(first[2] in fives && second[1] in fives && first[2] != second[1])
+        assertTrue(round.shoe.ranOut)
+        assertEquals(shoe.cards.groupingBy { it }.eachCount(), round.shoe.cards.groupingBy { it }.eachCount())
+        assertEquals(first.size + second.size + round.dealer.size, round.shoe.dealt - round.shoe.roundStart)
+    }
+
+    @Test
+    fun aDealNeedsAnEvenBet() {
         assertThrows(IllegalArgumentException::class.java) { deal("9c 7d", "6s Kh", bet = 2_501) }
-        assertThrows(IllegalArgumentException::class.java) { Round.deal(RuleSet.S17, BET, BANKROLL, Shoe.shuffled(Random(1)).copy(dealt = 216)) }
     }
 
     @Test
@@ -419,7 +435,7 @@ class RoundTest {
             var shoe = Shoe.shuffled(random)
             var bankroll = 1_000_000_000L
             repeat(3_000) {
-                shoe = shoe.forNextRound(random)
+                shoe = shoe.forNextRound(random, PENETRATIONS.last)
                 var round = Round.deal(ruleSet, BET, bankroll, shoe, insurance = random.nextBoolean())
                 while (!round.settled) {
                     assertEquals(round.activeHand != null, round.moves().isNotEmpty())
@@ -432,7 +448,7 @@ class RoundTest {
 
                 assertEquals(emptySet<Move>(), round.moves())
                 assertEquals(bankroll + requireNotNull(round.results).sumOf { it.net } + round.insuranceNet, round.bankroll)
-                assertTrue(round.shoe.dealt - shoe.dealt <= 72)
+                assertTrue(round.shoe.dealt - round.shoe.roundStart <= 72)
                 shoe = round.shoe
                 bankroll = round.bankroll
             }

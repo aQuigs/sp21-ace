@@ -10,7 +10,9 @@
     <string name="open_menu">Open navigation menu</string>
     <string name="back">Back</string>
 
-    <string name="table_rules_intro">These are the table rules for the strategy trainer and the table you play at. They decide which moves are correct, and the strategy chart follows them. Only the table you play at offers insurance.</string>
+    <string name="table_rules_intro">These are the table rules for the strategy trainer and the table you play at. They decide which moves are correct, and the strategy chart follows them. Deck penetration and insurance only apply at the table you play at.</string>
+    <string name="deck_penetration">Deck penetration</string>
+    <string name="deck_penetration_value">%1$d%% (%2$.2f decks)</string>
     <string name="soft_17">Soft 17</string>
     <string name="dealer_hits">Dealer hits</string>
     <string name="dealer_stands">Dealer stands</string>

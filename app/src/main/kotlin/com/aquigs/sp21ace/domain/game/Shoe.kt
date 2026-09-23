@@ -7,21 +7,42 @@ import java.io.Serializable
 import kotlin.random.Random
 
 /**
- * A shoe dealt from the top, [dealt] cards in. The cut card sits three quarters of the way in, Blackjack Ace's default, which
- * leaves 72 cards, far more than a round uses.
+ * A shoe dealt from the top, [dealt] cards in. The round on the table was dealt from [roundStart] on, so the cards before it are
+ * the discards. Should a round run the shoe out, the dealer shuffles the discards by [seed] and deals on, and the shoe needs a
+ * fresh shuffle before the next round, as it does once the cut card is out.
  */
-data class Shoe(val cards: List<Card>, val dealt: Int = 0) : Serializable {
-    /** A round only starts from a shoe the cut card hasn't come out of, so one that has is shuffled first. */
-    val pastCutCard: Boolean get() = dealt >= cards.size * 3 / 4
+data class Shoe(
+    val cards: List<Card>,
+    val dealt: Int = 0,
+    val roundStart: Int = 0,
+    val seed: Long = 0,
+    val ranOut: Boolean = false,
+) : Serializable {
+    /** Whether the cut card, [penetration] percent of the way in, is out, or the shoe ran out, so it needs shuffling. */
+    fun needsShuffle(penetration: Int): Boolean = ranOut || dealt >= cards.size * penetration / 100
 
-    fun draw(): Pair<Card, Shoe> = cards[dealt] to copy(dealt = dealt + 1)
+    fun draw(): Pair<Card, Shoe> = draw(1).let { (drawn, rest) -> drawn.single() to rest }
 
-    fun draw(count: Int): Pair<List<Card>, Shoe> = cards.subList(dealt, dealt + count).toList() to copy(dealt = dealt + count)
+    fun draw(count: Int): Pair<List<Card>, Shoe> {
+        val shoe = if (dealt + count > cards.size) discardsShuffledIn() else this
+        return shoe.cards.subList(shoe.dealt, shoe.dealt + count).toList() to shoe.copy(dealt = shoe.dealt + count)
+    }
 
-    /** This shoe, or a fresh shuffle once the cut card is out. */
-    fun forNextRound(random: Random): Shoe = if (pastCutCard) shuffled(random) else this
+    /** This shoe with a round about to be dealt from it, so the cards dealt so far are its discards. */
+    fun startingRound(): Shoe = copy(roundStart = dealt)
+
+    /** This shoe, or a fresh shuffle once it needs one. */
+    fun forNextRound(random: Random, penetration: Int): Shoe = if (needsShuffle(penetration)) shuffled(random) else this
+
+    // The round's cards stay on the table, so they move to the front, ahead of the cards left and the discards
+    private fun discardsShuffledIn(): Shoe = copy(
+        cards = cards.subList(roundStart, cards.size) + cards.subList(0, roundStart).shuffled(Random(seed)),
+        dealt = dealt - roundStart,
+        roundStart = 0,
+        ranOut = true,
+    )
 
     companion object {
-        fun shuffled(random: Random): Shoe = Shoe(spanishShoe(DECKS).shuffled(random))
+        fun shuffled(random: Random): Shoe = Shoe(spanishShoe(DECKS).shuffled(random), seed = random.nextLong())
     }
 }
