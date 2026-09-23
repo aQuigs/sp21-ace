@@ -34,15 +34,14 @@ import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
-import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
-import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.HandType
 import com.aquigs.sp21ace.domain.dealing.type
+import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
+import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.settings.Settings
-import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -51,9 +50,9 @@ import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
 import com.aquigs.sp21ace.ui.accuracy.square
-import com.aquigs.sp21ace.ui.statistics.strategyCardTexts
+import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.ui.hands.handTypeSwitch
-import org.junit.After
+import com.aquigs.sp21ace.ui.statistics.strategyCardTexts
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -118,16 +117,6 @@ class AppShellTest {
                 random = Random(2),
             )
         }
-    }
-
-    @After
-    fun tearDown() {
-        store.save(TableRules())
-        tableStore.saveChips(STARTING_BANKROLL)
-        handsStore.save(HandCustomization())
-        settingsStore.save(Settings())
-        historyStore.clear()
-        playHistoryStore.clear()
     }
 
     private fun openFromDrawer(title: Int) {

@@ -5,7 +5,6 @@ import androidx.core.content.edit
 import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
 import com.aquigs.sp21ace.domain.dealing.HandType
-import com.aquigs.sp21ace.domain.dealing.HandsDealt
 
 /** Keeps how the trainer deals through restarts. A test passes its own [name], so it never overwrites what the app saved. */
 class HandCustomizationStore(context: Context, name: String = "customize_hands") {

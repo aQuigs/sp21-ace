@@ -35,7 +35,7 @@ private const val EDGE_SPOTS = 8
 internal fun topChip(amount: Long): Long = CHIP_COLORS.keys.lastOrNull { it <= amount } ?: CHIP_COLORS.keys.first()
 
 /** A chip's value as written on it: 5 to 100, and 1K for a thousand. */
-internal fun chipLabel(value: Long): String = if (value >= 100_000) "${value / 100_000}K" else "${value / 100}"
+private fun chipLabel(value: Long): String = if (value >= 100_000) "${value / 100_000}K" else "${value / 100}"
 
 /** A casino chip of [value] cents: its colour, white spots around the edge, and a face with the value on it, or none when [labelled] is off. */
 @Composable

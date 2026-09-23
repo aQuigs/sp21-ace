@@ -45,6 +45,8 @@ private const val ASPECT_RATIO = 2.5f / 3.5f
 // How much of the card underneath stays uncovered: enough to read its corner index
 private const val OVERLAP_STEP = 0.2f
 
+private val MAX_CARD_HEIGHT = 256.dp
+
 private val CardShape = RoundedCornerShape(percent = 5)
 private val Edge = Color(0xFFD9D9D9)
 private val Red = Color(0xFFC8102E)
@@ -125,17 +127,17 @@ fun CardBack(modifier: Modifier = Modifier) {
 }
 
 /**
- * Deals cards left to right, each over most of the one before, as large as the space allows up to [maxCardHeight]. A [sideways]
+ * Deals cards left to right, each over most of the one before, as large as the space allows up to [MAX_CARD_HEIGHT]. A [sideways]
  * last card lies turned a quarter across the middle of the fan, as a dealer lays a double's card.
  */
 @Composable
-fun OverlappingCards(modifier: Modifier = Modifier, maxCardHeight: Dp = 256.dp, sideways: Boolean = false, content: @Composable () -> Unit) {
+fun OverlappingCards(modifier: Modifier = Modifier, sideways: Boolean = false, content: @Composable () -> Unit) {
     Layout(content, modifier) { measurables, constraints ->
         val steps = (measurables.size - 1).coerceAtLeast(0)
         // A sideways card is as wide as a card is high
         val widthPerHeight = ASPECT_RATIO * OVERLAP_STEP * steps + if (sideways) 1f else ASPECT_RATIO
         // Rounded down, so a fan that fills its space never spills past it onto what sits beside it
-        val cardHeight = minOf(maxCardHeight.toPx(), constraints.maxHeight.toFloat(), constraints.maxWidth / widthPerHeight).toInt()
+        val cardHeight = minOf(MAX_CARD_HEIGHT.toPx(), constraints.maxHeight.toFloat(), constraints.maxWidth / widthPerHeight).toInt()
         val cardWidth = (cardHeight * ASPECT_RATIO).toInt()
         val step = (cardWidth * OVERLAP_STEP).toInt()
         val cards = measurables.map { it.measure(Constraints.fixed(cardWidth, cardHeight)) }

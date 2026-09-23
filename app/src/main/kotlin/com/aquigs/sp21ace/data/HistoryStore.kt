@@ -55,7 +55,6 @@ open class HistoryStore<T> internal constructor(
 
     fun append(record: T) = append(listOf(record))
 
-    /** Forgets every record. */
     fun clear() {
         update {
             records = emptyList()

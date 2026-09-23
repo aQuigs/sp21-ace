@@ -55,6 +55,7 @@ class PracticeHistoryStoreTest {
     @Test
     fun anAnswerCutShortWhenTheAppWasKilledIsSkippedAndTheNextAnswerLoadsIntact() {
         PracticeHistoryStore(file).append(rightHit)
+        // Loading waits for the append to land, so the cut-short line goes after it
         loadAfresh()
         // Written as the store writes, a newline first, but killed partway
         file.appendText("\n" + PracticeLine.print(cutShort).take(30))

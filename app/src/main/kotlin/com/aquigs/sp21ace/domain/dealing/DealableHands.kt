@@ -13,7 +13,6 @@ import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.Upcard
-import com.aquigs.sp21ace.domain.strategy.afterDoublingRow
 import com.aquigs.sp21ace.domain.strategy.chartRow
 import com.aquigs.sp21ace.domain.strategy.correctMove
 import com.aquigs.sp21ace.domain.strategy.correctMoveAfterDoubling

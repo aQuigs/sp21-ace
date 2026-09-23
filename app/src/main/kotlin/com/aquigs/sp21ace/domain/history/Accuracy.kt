@@ -57,7 +57,6 @@ data class Tally(val correct: Int, val incorrect: Int) {
     operator fun plus(other: Tally): Tally = Tally(correct + other.correct, incorrect + other.incorrect)
 }
 
-/** Tallies answers under keys of the caller's choosing, holding only the keys added. */
 class TallyCounter<K> {
     private val tallies = HashMap<K, Tally>()
 
