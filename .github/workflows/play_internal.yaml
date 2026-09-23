@@ -9,6 +9,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# An explicit bash adds -o pipefail, so a failed curl or openssl mid-pipe fails the step
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
@@ -70,7 +74,7 @@ jobs:
         run: |
           b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
           now=$(date +%s)
-          key=$(jq -r .private_key <<< "$PLAY_SERVICE_ACCOUNT_JSON")
+          key=$(jq -er .private_key <<< "$PLAY_SERVICE_ACCOUNT_JSON")
 
           header=$(echo -n '{"alg":"RS256","typ":"JWT"}' | b64url)
           claims=$(jq -c --argjson now "$now" '{
@@ -86,7 +90,7 @@ jobs:
           response=$(curl -sS --fail-with-body https://oauth2.googleapis.com/token \
             -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
             -d assertion="$header.$claims.$signature") || { echo "$response"; exit 1; }
-          token=$(jq -r .access_token <<< "$response")
+          token=$(jq -er .access_token <<< "$response")
           echo "::add-mask::$token"
           echo "PLAY_TOKEN=$token" >> "$GITHUB_ENV"
 
@@ -99,9 +103,9 @@ jobs:
           # Logs every response to stderr, so a failed call shows Google's reason
           play() { curl -sS --fail-with-body -H "Authorization: Bearer $PLAY_TOKEN" "$@" | tee /dev/stderr; }
 
-          edit=$(play -X POST "$api/edits" | jq -r .id)
+          edit=$(play -X POST "$api/edits" | jq -er .id)
           version=$(play -H 'Content-Type: application/octet-stream' --data-binary @"$aab" \
-            "$upload_api/edits/$edit/bundles?uploadType=media" | jq -r .versionCode)
+            "$upload_api/edits/$edit/bundles?uploadType=media" | jq -er .versionCode)
           track=$(jq -n --arg version "$version" '{releases: [{versionCodes: [$version], status: "completed"}]}')
           play -X PUT --json "$track" "$api/edits/$edit/tracks/internal" > /dev/null
           play -X POST "$api/edits/$edit:commit" > /dev/null
