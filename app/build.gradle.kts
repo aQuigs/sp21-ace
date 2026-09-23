@@ -23,30 +23,9 @@ android {
     buildFeatures {
         compose = true
     }
-
-    buildTypes {
-        // Store-build speed: Compose runs several times slower when debuggable, and R8 speeds it up further. Debug-signed, so
-        // it installs over this machine's debug build and keeps its practice history.
-        release {
-            isMinifyEnabled = true
-            signingConfig = signingConfigs.getByName("debug")
-        }
-    }
 }
 
-// Refreshes the shared copies described in CLAUDE.md when sync-common is on PATH. The configuration cache records isFile
-// but not canExecute, so isFile is what makes installing or removing the command re-run this lookup.
-val syncCommon = System.getenv("PATH").orEmpty().split(File.pathSeparator)
-    .map { File(it, "sync-common") }
-    .firstOrNull { it.isFile && it.canExecute() }
-val syncShared = mapOf("syncSharedScripts" to "scripts", "syncSharedWorkflows" to ".github/workflows").map { (name, dir) ->
-    tasks.register<Exec>(name) {
-        enabled = syncCommon != null
-        workingDir = rootDir
-        commandLine(syncCommon?.path ?: "sync-common", dir)
-    }
-}
-tasks.named("preBuild") { dependsOn(syncShared) }
+apply(from = "../scripts/android-app.gradle")
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))

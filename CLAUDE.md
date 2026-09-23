@@ -21,13 +21,13 @@ scripts/emulator.sh                  # this repo's AVD from the installed Play S
 scripts/run.sh                       # install the debug build and open it (VARIANT=Release: the minified, store-speed build, over the debug one)
 scripts/screenshot.sh [name]         # adb screencap → screenshots/<name>.png (gitignored)
 scripts/record.sh [name] [seconds]   # adb screenrecord → screenshots/<name>.mp4 (gitignored)
-scripts/pr-media.sh <files>          # upload shots as GitHub attachments, print markdown for the PR body
+scripts/pr-media.sh <file> <caption>... # upload shots as GitHub attachments, print the PR body's media table
 scripts/court-art/generate.sh        # regenerate the court card drawables from Fomin's CC0 SVGs (needs node)
 scripts/answer-sounds/generate.sh    # regenerate the trainer's right and wrong answer sounds in res/raw (needs python3 and ffmpeg)
 scrcpy                               # mirror the emulator interactively
 ```
 
-Files headed `# Shared script:` or `# Shared workflow:` are copies of files in a separate tooling checkout. When its `sync-common` is on PATH, every build overwrites them, matched by name. Edit them at the source, never here, and do not name a repo-owned file after a shared one. To adopt another shared file, create it once under the same name and let the build fill it.
+Files headed `Shared script:`, `Shared workflow:` or `Shared config:` are copies of files in a separate tooling checkout. When its `sync-common` is on PATH, every build overwrites them, matched by name. Edit them at the source, never here, and do not name a repo-owned file after a shared one. To adopt another shared file, create it once under the same name and let the build fill it. Build config every app needs goes in the shared `scripts/android-app.gradle`.
 
 ## Layout
 
