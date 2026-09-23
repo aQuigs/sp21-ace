@@ -9,6 +9,7 @@ import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Duration
@@ -33,7 +34,7 @@ class PlayStatsTest {
     @Test
     fun aSettledRoundsHandsArePlayedApartWithTheirResults() {
         // 8-8 vs 6 splits, each 8 draws a K to stand on, as the chart does, and the dealer's 6-K draws a 2 for 18
-        val round = Round.deal(RuleSet.S17, 2_500, STARTING_BANKROLL, Shoe(cards("8c 6s 8d Kh Ks Kd 2h")))
+        val round = Round.deal(TableRules(), 2_500, STARTING_BANKROLL, Shoe(cards("8c 6s 8d Kh Ks Kd 2h")))
         val settled = requireNotNull(round.play(Move.SPLIT)?.play(Move.STAND)?.nextHand()?.play(Move.STAND))
 
         assertEquals(
@@ -46,7 +47,7 @@ class PlayStatsTest {
     fun aTablesRoundIsPlayedOnceAsItSettlesByAMoveOrOnTheDeal() {
         // 16 vs 6 stands, and the dealer's 6-K draws a Q to bust
         val betting = requireNotNull(Table(STARTING_BANKROLL, Shoe(cards("Kc 6s 6d Kh Qs"))).addChip(2_500))
-        val dealt = requireNotNull(betting.deal(RuleSet.S17, Random(1)))
+        val dealt = requireNotNull(betting.deal(TableRules(), Random(1)))
         val settled = requireNotNull(dealt.play(Move.STAND))
         val revealed = requireNotNull(settled.revealDealerCard())
 
@@ -59,7 +60,7 @@ class PlayStatsTest {
 
         // A blackjack settles on the deal
         val blackjack = requireNotNull(Table(STARTING_BANKROLL, Shoe(cards("Ac 6s Kd 9h"))).addChip(2_500))
-        val paid = requireNotNull(blackjack.deal(RuleSet.S17, Random(1))).playedHandsSince(blackjack, now)
+        val paid = requireNotNull(blackjack.deal(TableRules(), Random(1))).playedHandsSince(blackjack, now)
         assertEquals(listOf(StrategyGrade.NO_ACTION_REQUIRED), paid.map { it.grade })
     }
 

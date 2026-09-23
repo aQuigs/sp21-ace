@@ -25,7 +25,7 @@ import com.aquigs.sp21ace.domain.game.Shoe
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
-import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertTrue
@@ -44,8 +44,8 @@ class PlayScreenTest {
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
     // Dealt in order: player, upcard, player, hole, then the draws
-    private fun stacked(deal: String, ruleSet: RuleSet = RuleSet.S17, insurance: Boolean = false): Table =
-        requireNotNull(Table(STARTING_BANKROLL, Shoe(cards(deal))).addChip(2_500)?.deal(ruleSet, Random(1), insurance))
+    private fun stacked(deal: String, rules: TableRules = TableRules()): Table =
+        requireNotNull(Table(STARTING_BANKROLL, Shoe(cards(deal))).addChip(2_500)?.deal(rules, Random(1)))
 
     // 16 against a 6, which stands, and the next card is a Q, which busts whoever draws it
     private val sixteenVsSix get() = stacked("Kc 6s 6d Kh Qs")
@@ -59,7 +59,7 @@ class PlayScreenTest {
                     table = table,
                     settings = settings,
                     onUpdate = { change -> change(table)?.let { table = it } },
-                    onDeal = { table = requireNotNull(table.deal(RuleSet.S17, Random(1), insurance)) },
+                    onDeal = { table = requireNotNull(table.deal(TableRules(insurance = insurance), Random(1))) },
                     onOpenDrawer = {},
                     onOpenChart = {},
                 )
@@ -126,7 +126,7 @@ class PlayScreenTest {
 
     @Test
     fun aDoubledHandOffersStandRedoubleAndRescue() {
-        show(requireNotNull(stacked("5c 6s 6d Kh 2c", ruleSet = RuleSet.H17_REDOUBLE).play(Move.DOUBLE)))
+        show(requireNotNull(stacked("5c 6s 6d Kh 2c", TableRules(dealerHitsSoft17 = true, redoubling = true)).play(Move.DOUBLE)))
 
         listOf(R.string.move_stand, R.string.move_redouble, R.string.move_rescue).forEach { button(it).assertIsDisplayed() }
         button(R.string.move_hit).assertDoesNotExist()
@@ -285,7 +285,7 @@ class PlayScreenTest {
     @Test
     fun insuranceIsAskedBeforeAnyMoveAndYesTakesHalfTheBet() {
         // 16 against an ace with a 6 under it
-        show(stacked("9c As 7d 6h", insurance = true))
+        show(stacked("9c As 7d 6h", TableRules(insurance = true)))
 
         compose.onNodeWithText(string(R.string.insurance_message)).assertIsDisplayed()
         button(R.string.move_stand).assertDoesNotExist()
@@ -318,7 +318,7 @@ class PlayScreenTest {
     @Test
     fun insuranceThatWinsIsNamedWithTheHandsResult() {
         // The dealer's ace has a K under it
-        show(stacked("9c As 7d Kh", insurance = true))
+        show(stacked("9c As 7d Kh", TableRules(insurance = true)))
 
         compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
         compose.onNodeWithText(string(R.string.yes)).performClick()

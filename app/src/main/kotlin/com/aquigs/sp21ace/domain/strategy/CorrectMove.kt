@@ -89,17 +89,27 @@ fun StrategyChart.play(row: ChartRow, upcard: Upcard): Play = requireNotNull(pla
  * The chart's answer to a hand not yet doubled. A bonus exception turns the play into a hit while its bonus hand can still be
  * made, which only two cards can.
  */
-fun StrategyChart.correctMove(hand: List<Card>, upcard: Card): Move = correctMove(chartRow(hand), hand, upcard, split = false)
+fun StrategyChart.correctMove(hand: List<Card>, upcard: Card): Move = correctMove(chartRow(hand), hand, upcard, BonusesEarned.ALL)
 
 /**
- * The chart's answer to [hand] read from [row], which for a pair can be its total's row rather than the pairs table's. A [split]
- * hand earns no Super Bonus, so a suited 7-7 against a 7 has no reason to hit for one.
+ * The bonuses a hand can earn: all of them, the Bonus 21s without the Super Bonus, as a split hand does where the table pays it
+ * them, or none.
  */
-internal fun StrategyChart.correctMove(row: ChartRow, hand: List<Card>, upcard: Card, split: Boolean): Move {
-    val play = play(row, upcard.upcard)
-    val bonus = play.bonusException?.takeUnless { split && it == BonusException.SUITED_777 }
+enum class BonusesEarned { ALL, BONUS_21S, NONE }
+
+/**
+ * The chart's answer to [hand] read from [row], which for a pair can be its total's row rather than the pairs table's. A hand
+ * that earns no Super Bonus has no reason to hit a suited 7-7 against a 7 for one. † One that earns no bonus at all has nothing
+ * to draw for, so it plays the square's plain move, with no card count or 6-7-8 mark, as SOURCES.md's known gaps explain.
+ */
+internal fun StrategyChart.correctMove(row: ChartRow, hand: List<Card>, upcard: Card, earned: BonusesEarned): Move {
+    val play = play(row, upcard.upcard).let { if (earned == BonusesEarned.NONE) it.plain else it }
+    val bonus = play.bonusException?.takeUnless { earned != BonusesEarned.ALL && it == BonusException.SUITED_777 }
     return if (bonus?.canStillMake(hand, upcard.upcard) == true) Move.HIT else play.move(cards = hand.size)
 }
+
+// RH needs nothing stripped: its hit past two cards, which forCards adds, stands in for a surrender rather than a bonus
+private val Play.plain: Play get() = copy(hitWithCards = null, bonusException = null)
 
 /**
  * Whether [hand]'s ranks could make the bonus its square marks against [upcard] in some suits, so the suits may decide its move: a

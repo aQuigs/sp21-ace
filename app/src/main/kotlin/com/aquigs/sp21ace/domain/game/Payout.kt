@@ -7,6 +7,7 @@ import com.aquigs.sp21ace.domain.cards.allSpades
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.suited
 import com.aquigs.sp21ace.domain.cards.total
+import com.aquigs.sp21ace.domain.strategy.BonusesEarned
 import java.io.Serializable
 
 /** Pays [win] for every [stake] bet. */
@@ -20,7 +21,7 @@ enum class Odds(val win: Int, val stake: Int) {
     fun on(wager: Long): Long = wager * win / stake
 }
 
-/** The Bonus 21 payouts, on a 21 that wasn't doubled. A 6-7-8 or 7-7-7 has to be the hand's only three cards. */
+/** The Bonus 21 payouts, on a 21 that [earns][bonusesEarned] them. A 6-7-8 or 7-7-7 has to be the hand's only three cards. */
 enum class Bonus(val odds: Odds) {
     FIVE_CARD_21(Odds.THREE_TO_TWO),
     SIX_CARD_21(Odds.TWO_TO_ONE),
@@ -46,7 +47,7 @@ internal val PlayerHand.awaitsDealer: Boolean get() = finish == Finish.STOOD && 
  * Settles the hand against the dealer's finished [dealer] cards. A player blackjack beats a dealer's, and any other 21 beats any
  * dealer 21 but a blackjack, which the dealer peeks for, so only a hand dealt nothing more than its first two cards can meet one.
  */
-internal fun PlayerHand.settle(dealer: List<Card>): HandResult {
+internal fun PlayerHand.settle(dealer: List<Card>, splitBonuses: Boolean): HandResult {
     val dealerTotal = dealer.total().value
 
     return when {
@@ -54,19 +55,26 @@ internal fun PlayerHand.settle(dealer: List<Card>): HandResult {
         finish == Finish.BUSTED -> HandResult(Outcome.LOSE, -wager)
         isBlackjack -> HandResult(Outcome.WIN, Odds.THREE_TO_TWO.on(wager), blackjack = true)
         dealer.isBlackjack() -> HandResult(Outcome.LOSE, -wager)
-        total.value == 21 -> twentyOne(dealer.first())
+        total.value == 21 -> twentyOne(dealer.first(), splitBonuses)
         dealerTotal > 21 || total.value > dealerTotal -> HandResult(Outcome.WIN, wager)
         total.value == dealerTotal -> HandResult(Outcome.PUSH, 0)
         else -> HandResult(Outcome.LOSE, -wager)
     }
 }
 
-// A doubled 21 still wins, but only at even money
-private fun PlayerHand.twentyOne(upcard: Card): HandResult {
-    if (doubled) return HandResult(Outcome.WIN, wager)
+internal fun PlayerHand.bonusesEarned(splitBonuses: Boolean): BonusesEarned = when {
+    doubled || (split && !splitBonuses) -> BonusesEarned.NONE
+    split -> BonusesEarned.BONUS_21S
+    else -> BonusesEarned.ALL
+}
+
+// A 21 that earns no bonus still wins, but only at even money
+private fun PlayerHand.twentyOne(upcard: Card, splitBonuses: Boolean): HandResult {
+    val earned = bonusesEarned(splitBonuses)
+    if (earned == BonusesEarned.NONE) return HandResult(Outcome.WIN, wager)
 
     val bonus = bonus(cards)
-    val superBonus = if (split) 0 else superBonus(bonus, upcard, wager)
+    val superBonus = if (earned == BonusesEarned.ALL) superBonus(bonus, upcard, wager) else 0
     return HandResult(Outcome.WIN, (bonus?.odds ?: Odds.EVEN).on(wager) + superBonus, bonus = bonus, superBonus = superBonus)
 }
 

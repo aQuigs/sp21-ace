@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.domain.game
 
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.strategy.Action
+import com.aquigs.sp21ace.domain.strategy.BonusesEarned
 import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
@@ -22,6 +23,7 @@ import com.aquigs.sp21ace.domain.strategy.upcard
  * - With no surrender, after a split, RH hits, and 8-8's R against an ace splits again while it can, then plays as hard 16.
  * - A double the bankroll can't cover stands on soft 18 or more and hits anything less.
  * - A pair that can't be split again plays by its total, soft 12 for a pair of aces.
+ * - † Where the table pays split hands no bonus, a split hand plays each square's plain move, with no card count or 6-7-8 mark.
  */
 fun Round.correctMove(): Move? {
     val hand = activeHand ?: return null
@@ -34,11 +36,11 @@ fun Round.correctMove(): Move? {
         return chart.correctMoveAfterDoubling(hand.total, upcard.upcard).takeIf { it in moves }
             ?: StrategyCharts.forRules(withoutRedoubling).correctMoveAfterDoubling(hand.total, upcard.upcard)
     }
-    return chart.tableMove(hand, upcard, moves)
+    return chart.tableMove(hand, upcard, moves, hand.bonusesEarned(rules.splitBonuses))
 }
 
-private fun StrategyChart.tableMove(hand: PlayerHand, upcard: Card, moves: Set<Move>, row: ChartRow = chartRow(hand.cards)): Move {
-    val move = correctMove(row, hand.cards, upcard, hand.split)
+private fun StrategyChart.tableMove(hand: PlayerHand, upcard: Card, moves: Set<Move>, earned: BonusesEarned, row: ChartRow = chartRow(hand.cards)): Move {
+    val move = correctMove(row, hand.cards, upcard, earned)
 
     return when {
         move in moves -> move
@@ -47,7 +49,7 @@ private fun StrategyChart.tableMove(hand: PlayerHand, upcard: Card, moves: Set<M
         move == Move.SURRENDER && Move.SPLIT in moves -> Move.SPLIT
         // The pairs table's split or surrender, where neither can be made. Soft 12 has a row only where the chart prints one,
         // which H17 with redoubling doesn't, since it always splits aces
-        row.table == ChartTable.PAIRS -> totalRow(hand.cards).let { if (printsRow(it)) tableMove(hand, upcard, moves, it) else Move.HIT }
+        row.table == ChartTable.PAIRS -> totalRow(hand.cards).let { if (printsRow(it)) tableMove(hand, upcard, moves, earned, it) else Move.HIT }
         else -> error("No move for ${hand.cards} vs ${upcard.upcard.label} with only $moves")
     }
 }

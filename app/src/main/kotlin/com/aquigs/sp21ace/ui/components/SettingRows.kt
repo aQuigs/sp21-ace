@@ -19,6 +19,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,12 +35,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.ui.theme.disabledContent
+import kotlin.math.roundToInt
 
 // As in Blackjack Ace, rows leave an icon's width at their start, so every title lines up under a page's intro text
 private val IconSpace = 24.dp
@@ -103,6 +109,28 @@ fun SwitchRow(title: String, summary: String, checked: Boolean, onCheckedChange:
         trailing = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
         enabled = enabled,
     )
+}
+
+/**
+ * A setting with a range of whole numbers: its title over [label], the value chosen, over a slider. As in Blackjack Ace, the label
+ * follows the slider as it moves, and each value is kept as the slider reaches it.
+ */
+@Composable
+fun SliderRow(title: String, label: String, value: Int, range: IntRange, onValueChange: (Int) -> Unit, modifier: Modifier = Modifier) {
+    SettingItem(title, modifier, supporting = label) {
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { position -> position.roundToInt().takeIf { it != value }?.let(onValueChange) },
+            modifier = Modifier.semantics {
+                contentDescription = title
+                stateDescription = label
+            },
+            // Whole-number steps, but as in Blackjack Ace a plain track rather than a tick for each of them
+            colors = SliderDefaults.colors(activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent),
+            valueRange = range.first.toFloat()..range.last.toFloat(),
+            steps = range.last - range.first - 1,
+        )
+    }
 }
 
 /** Settings under a header that hides or shows them. Every group starts open, as Blackjack Ace's do. */
@@ -171,6 +199,7 @@ private fun SettingItem(
     trailing: (@Composable () -> Unit)? = null,
     color: Color = Color.Unspecified,
     enabled: Boolean = true,
+    below: (@Composable () -> Unit)? = null,
 ) {
     // A list item has no disabled state of its own to apply it
     val disabled = MaterialTheme.colorScheme.disabledContent
@@ -178,7 +207,14 @@ private fun SettingItem(
     ListItem(
         headlineContent = { Text(title, color = if (enabled) color else disabled, fontWeight = if (emphasized) FontWeight.Bold else null) },
         modifier = modifier,
-        supportingContent = supporting?.let { text -> { Text(text, color = if (enabled) Color.Unspecified else disabled) } },
+        supportingContent = if (supporting == null && below == null) null else {
+            {
+                Column {
+                    supporting?.let { Text(it, color = if (enabled) Color.Unspecified else disabled) }
+                    below?.invoke()
+                }
+            }
+        },
         leadingContent = {
             if (icon == null) Spacer(Modifier.size(IconSpace)) else Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(IconSpace))
         },

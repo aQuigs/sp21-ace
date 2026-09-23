@@ -1,7 +1,7 @@
 package com.aquigs.sp21ace.domain.game
 
 import com.aquigs.sp21ace.domain.strategy.Move
-import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import java.io.Serializable
 import kotlin.random.Random
 
@@ -62,7 +62,7 @@ data class Table(
     val shownResult: HandResult?
         get() = when {
             revealed -> shownIndex?.let { round?.results?.get(it) }
-            round?.waitingForNextHand == true -> shownHand?.takeIf { it.finish == Finish.BUSTED }?.settle(round.dealer)
+            round?.waitingForNextHand == true -> shownHand?.takeIf { it.finish == Finish.BUSTED }?.settle(round.dealer, round.rules.splitBonuses)
             else -> null
         }
 
@@ -77,11 +77,12 @@ data class Table(
 
     fun topUp(amount: Long): Table = if (round == null) copy(bankroll = bankroll + amount) else copy(round = round.copy(bankroll = round.bankroll + amount))
 
-    /** Deals the bet, from a fresh shuffle once the cut card is out, offering [insurance] against an ace if the table does. */
-    fun deal(ruleSet: RuleSet, random: Random, insurance: Boolean = false): Table? {
+    /** Deals the bet under [rules], offering insurance against an ace if they do, from a fresh shuffle once the cut card is out. */
+    fun deal(rules: TableRules, random: Random): Table? {
         if (round != null || bet == 0L) return null
 
-        return copy(bet = 0, round = Round.deal(ruleSet, bet, bankroll + bet, shoe.forNextRound(random), insurance))
+        val shoe = shoe.forNextRound(random, rules.penetration)
+        return copy(bet = 0, round = Round.deal(rules, bet, bankroll + bet, shoe))
     }
 
     val offeringInsurance: Boolean get() = round?.offeringInsurance == true

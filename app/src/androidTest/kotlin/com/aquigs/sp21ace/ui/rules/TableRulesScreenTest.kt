@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
@@ -12,10 +13,13 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.strategy.PENETRATIONS
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
@@ -70,6 +74,31 @@ class TableRulesScreenTest {
 
         compose.onNodeWithText(string(R.string.insurance_offered)).assertIsDisplayed()
         assertEquals(TableRules(insurance = true), rules)
+    }
+
+    @Test
+    fun theSplitBonusesSwitchSaysWhetherSplitHandsEarnThem() {
+        showRules()
+
+        compose.onNodeWithText(string(R.string.split_bonuses_paid)).assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.split_bonuses)) and isToggleable()).assertIsOn().performClick().assertIsOff()
+
+        compose.onNodeWithText(string(R.string.split_bonuses_not_paid)).assertIsDisplayed()
+        assertEquals(TableRules(splitBonuses = false), rules)
+    }
+
+    @Test
+    fun theDeckPenetrationSliderStartsAtThreeQuartersAndItsLabelFollowsItToEitherEnd() {
+        showRules()
+
+        compose.onNodeWithText("75% (4.50 decks)").assertIsDisplayed()
+
+        for ((penetration, label) in listOf(PENETRATIONS.first to "10% (0.60 decks)", PENETRATIONS.last to "85% (5.10 decks)")) {
+            compose.onNodeWithContentDescription(string(R.string.deck_penetration)).performSemanticsAction(SemanticsActions.SetProgress) { it(penetration.toFloat()) }
+
+            assertEquals(TableRules(penetration = penetration), rules)
+            compose.onNodeWithText(label).assertIsDisplayed()
+        }
     }
 
     @Test
