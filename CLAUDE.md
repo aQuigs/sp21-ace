@@ -27,7 +27,7 @@ scripts/answer-sounds/generate.sh    # regenerate the trainer's right and wrong 
 scrcpy                               # mirror the emulator interactively
 ```
 
-Files whose first comment starts with `Shared script:`, `Shared workflow:` or `Shared config:` are copies of files in a separate tooling checkout. When its `sync-common` is on PATH, every build overwrites them, matched by name. Edit them at the source, never here, and do not name a repo-owned file after a shared one. To adopt another shared file, create it once under the same name and let the build fill it. `scripts/android-app.gradle` is the shared Gradle config `app/build.gradle.kts` applies: the release build type and the copy refresh itself; build config every app would carry belongs there, not in `app/build.gradle.kts`.
+Files headed `Shared script:`, `Shared workflow:` or `Shared config:` are copies of files in a separate tooling checkout. When its `sync-common` is on PATH, every build overwrites them, matched by name. Edit them at the source, never here, and do not name a repo-owned file after a shared one. To adopt another shared file, create it once under the same name and let the build fill it. Build config every app needs goes in the shared `scripts/android-app.gradle`.
 
 ## Layout
 
