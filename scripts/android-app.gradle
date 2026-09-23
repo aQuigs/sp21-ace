@@ -4,10 +4,13 @@
 
 android {
     defaultConfig {
+        // Only Play needs rising codes; a fixed code elsewhere lets any worktree's build install over another's.
         // Squash merges raise the commit count on every merge to main; a shallow clone gives 1.
         // Set here because AGP ignores -Pandroid.injected.version.code.
-        versionCode = providers.exec { commandLine('git', 'rev-list', '--count', 'HEAD') }
-            .standardOutput.asText.get().trim().toInteger()
+        versionCode = providers.gradleProperty('android.injected.signing.store.file').present
+            ? providers.exec { commandLine('git', 'rev-list', '--count', 'HEAD') }
+                .standardOutput.asText.get().trim().toInteger()
+            : 1
     }
 
     buildTypes {
