@@ -16,6 +16,7 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
         redoubling = prefs.getBoolean(REDOUBLING, defaults.redoubling),
         insurance = prefs.getBoolean(INSURANCE, defaults.insurance),
         penetration = prefs.getInt(PENETRATION, defaults.penetration).coerceIn(PENETRATIONS),
+        splitBonuses = prefs.getBoolean(SPLIT_BONUSES, defaults.splitBonuses),
     )
 
     fun save(rules: TableRules) {
@@ -24,6 +25,7 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
             putBoolean(REDOUBLING, rules.redoubling)
             putBoolean(INSURANCE, rules.insurance)
             putInt(PENETRATION, rules.penetration)
+            putBoolean(SPLIT_BONUSES, rules.splitBonuses)
         }
     }
 
@@ -32,5 +34,6 @@ class TableRulesStore(context: Context, name: String = "table_rules") {
         const val REDOUBLING = "redoubling"
         const val INSURANCE = "insurance"
         const val PENETRATION = "penetration"
+        const val SPLIT_BONUSES = "split_bonuses"
     }
 }

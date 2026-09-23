@@ -3,6 +3,7 @@ package com.aquigs.sp21ace.domain.game
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -20,10 +21,12 @@ class TableStrategyTest {
         hands: Int = 1,
         doubles: Int = 0,
         bankroll: Long = STARTING_BANKROLL,
+        splitBonuses: Boolean = true,
     ): Move? {
         val played = List(hands - 1) { PlayerHand(cards("Kc 8d"), bet, split = true, finish = Finish.STOOD) }
         val waiting = PlayerHand(cards(hand), bet shl doubles, doubles = doubles, split = hands > 1)
-        return Round(ruleSet, bet, bankroll, Shoe(emptyList()), cards("$upcard 5h"), played + waiting, active = hands - 1).correctMove()
+        val rules = TableRules(ruleSet.dealerHitsSoft17, ruleSet.redoubling, splitBonuses = splitBonuses)
+        return Round(rules, bet, bankroll, Shoe(emptyList()), cards("$upcard 5h"), played + waiting, active = hands - 1).correctMove()
     }
 
     @Test
@@ -63,7 +66,8 @@ class TableStrategyTest {
             val random = Random(ruleSet.ordinal)
             repeat(20_000) {
                 // Bankrolls from one bet to six, so some doubles and splits can't be covered
-                var round = Round.deal(ruleSet, bet, bet * random.nextInt(1, 7), Shoe.shuffled(random))
+                val rules = TableRules(ruleSet.dealerHitsSoft17, ruleSet.redoubling, splitBonuses = random.nextBoolean())
+                var round = Round.deal(rules, bet, bet * random.nextInt(1, 7), Shoe.shuffled(random))
                 while (!round.settled) {
                     if (round.waitingForNextHand) {
                         round = requireNotNull(round.nextHand())
@@ -112,8 +116,38 @@ class TableStrategyTest {
     }
 
     @Test
+    fun whereSplitHandsEarnNoBonusesTheyPlayEachSquaresPlainMove() {
+        // 16 vs 2 is S5: a 5-card 16 stands rather than hitting for a 6-card 21
+        assertEquals(Move.HIT, move("2c 3d 4h 2s 5c", "2s", hands = 2))
+        assertEquals(Move.STAND, move("2c 3d 4h 2s 5c", "2s", hands = 2, splitBonuses = false))
+        // 11 vs 10 is D3: a 3-card 11 doubles, since doubling gives up no bonus
+        assertEquals(Move.HIT, move("4c 3d 4h", "Ks", hands = 2))
+        assertEquals(Move.DOUBLE, move("4c 3d 4h", "Ks", hands = 2, splitBonuses = false))
+        // 14 vs 4 is S4*: a 6-8 stands rather than hitting for a 6-7-8
+        assertEquals(Move.HIT, move("6c 8d", "4s", hands = 2))
+        assertEquals(Move.STAND, move("6c 8d", "4s", hands = 2, splitBonuses = false))
+        // 17 vs A is RH, which still hits, since the split took surrender away, with 2 cards or more
+        assertEquals(Move.HIT, move("9c 8d", "As", hands = 2, splitBonuses = false))
+        assertEquals(Move.HIT, move("9c 5d 3h", "As", hands = 2, splitBonuses = false))
+        // Soft 18 vs 4 is D4: a 4-card soft 18 doubles, and with no chips to cover it stands, as a double it can't make does
+        assertEquals(Move.HIT, move("Ac 2d 2h 3s", "4s", hands = 2, bankroll = 0))
+        assertEquals(Move.STAND, move("Ac 2d 2h 3s", "4s", hands = 2, bankroll = 0, splitBonuses = false))
+        // 13 vs 6 is S4* only where the dealer hits soft 17: a 6-7 stands rather than hitting for a 6-7-8
+        assertEquals(Move.HIT, move("6c 7d", "6s", RuleSet.H17, hands = 2))
+        assertEquals(Move.STAND, move("6c 7d", "6s", RuleSet.H17, hands = 2, splitBonuses = false))
+    }
+
+    @Test
+    fun whereSplitHandsEarnNoBonusesHandsNotSplitStillPlayForThemAndPairsStillSplit() {
+        assertEquals(Move.HIT, move("6c 8d", "4s", splitBonuses = false))
+        assertEquals(Move.HIT, move("2c 3d 4h 2s 5c", "2s", splitBonuses = false))
+        assertEquals(Move.SPLIT, move("8c 8d", "Ks", hands = 2, splitBonuses = false))
+        assertEquals(Move.SPLIT, move("7c 7c", "7s", hands = 2, splitBonuses = false))
+    }
+
+    @Test
     fun noMoveOnceTheRoundIsSettled() {
-        val round = Round.deal(RuleSet.S17, bet, STARTING_BANKROLL, Shoe(cards("Kc 7s 7d Kh")))
+        val round = Round.deal(TableRules(), bet, STARTING_BANKROLL, Shoe(cards("Kc 7s 7d Kh")))
         val settled = requireNotNull(round.play(Move.STAND))
 
         assertNull(settled.correctMove())

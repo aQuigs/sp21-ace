@@ -5,6 +5,7 @@ import com.aquigs.sp21ace.serializedAndBack
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.PENETRATIONS
 import com.aquigs.sp21ace.domain.strategy.RuleSet
+import com.aquigs.sp21ace.domain.strategy.TableRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -15,21 +16,24 @@ import kotlin.random.Random
 
 private const val BET = 2_500L
 private const val BANKROLL = 100_000L
+private val H17 = TableRules(dealerHitsSoft17 = true)
+private val H17_REDOUBLE = H17.copy(redoubling = true)
+private val INSURANCE = TableRules(insurance = true)
+private val NO_SPLIT_BONUSES = TableRules(splitBonuses = false)
 
 /** Deals [player] against [dealer] from a shoe stacked in dealing order, with [draws] next in it. */
 private fun deal(
     player: String,
     dealer: String,
     draws: String = "",
-    ruleSet: RuleSet = RuleSet.S17,
+    rules: TableRules = TableRules(),
     bet: Long = BET,
     bankroll: Long = BANKROLL,
-    insurance: Boolean = false,
 ): Round {
     val (first, second) = cards(player)
     val (upcard, hole) = cards(dealer)
     val rest = if (draws.isEmpty()) emptyList() else cards(draws)
-    return Round.deal(ruleSet, bet, bankroll, Shoe(listOf(first, upcard, second, hole) + rest), insurance)
+    return Round.deal(rules, bet, bankroll, Shoe(listOf(first, upcard, second, hole) + rest))
 }
 
 private fun Round.then(vararg moves: Move): Round = moves.fold(this) { round, move -> requireNotNull(round.play(move)) { "Can't $move" } }
@@ -87,7 +91,7 @@ class RoundTest {
         assertEquals(cards("As 6d"), stands.dealer)
         assertEquals(listOf(Outcome.WIN to BET), stands.outcomes())
 
-        val hits = deal("Kc 9d", "As 6d", draws = "4h", ruleSet = RuleSet.H17).then(Move.STAND)
+        val hits = deal("Kc 9d", "As 6d", draws = "4h", rules = H17).then(Move.STAND)
         assertEquals(cards("As 6d 4h"), hits.dealer)
         assertEquals(listOf(Outcome.LOSE to -BET), hits.outcomes())
     }
@@ -153,16 +157,16 @@ class RoundTest {
     fun aRescueGivesBackHalfTheWagerSoItForfeitsTheOriginalBetAfterOneDouble() {
         assertEquals(listOf(Outcome.LOSE to -BET), deal("5c 6d", "6s Kh", draws = "2c").then(Move.DOUBLE, Move.RESCUE).outcomes())
 
-        val redoubled = deal("5c 6d", "6s Kh", draws = "Ac 2d", ruleSet = RuleSet.H17_REDOUBLE).then(Move.DOUBLE, Move.REDOUBLE, Move.RESCUE)
+        val redoubled = deal("5c 6d", "6s Kh", draws = "Ac 2d", rules = H17_REDOUBLE).then(Move.DOUBLE, Move.REDOUBLE, Move.RESCUE)
         assertEquals(listOf(Outcome.LOSE to -2 * BET), redoubled.outcomes())
         assertEquals(BANKROLL - 2 * BET, redoubled.bankroll)
     }
 
     @Test
     fun redoublingComesOnlyWithItsRulesAndStopsAfterThreeDoubles() {
-        val once = deal("5c 6d", "6s Kh", draws = "Ac 2d 2h 8s", ruleSet = RuleSet.H17_REDOUBLE).then(Move.DOUBLE)
+        val once = deal("5c 6d", "6s Kh", draws = "Ac 2d 2h 8s", rules = H17_REDOUBLE).then(Move.DOUBLE)
         assertEquals(setOf(Move.STAND, Move.REDOUBLE, Move.RESCUE), once.moves())
-        assertNull(deal("5c 6d", "6s Kh", draws = "Ac", ruleSet = RuleSet.H17).then(Move.DOUBLE).play(Move.REDOUBLE))
+        assertNull(deal("5c 6d", "6s Kh", draws = "Ac", rules = H17).then(Move.DOUBLE).play(Move.REDOUBLE))
 
         val thrice = once.then(Move.REDOUBLE, Move.REDOUBLE)
         assertEquals(cards("5c 6d Ac 2d 2h"), thrice.hands.single().cards)
@@ -178,7 +182,7 @@ class RoundTest {
         assertEquals(setOf(Move.HIT, Move.STAND, Move.SURRENDER), deal("8c 8d", "6s Kh", bankroll = BET).moves())
         assertEquals(
             setOf(Move.STAND, Move.RESCUE),
-            deal("5c 6d", "6s Kh", draws = "2c", ruleSet = RuleSet.H17_REDOUBLE, bankroll = 2 * BET).then(Move.DOUBLE).moves(),
+            deal("5c 6d", "6s Kh", draws = "2c", rules = H17_REDOUBLE, bankroll = 2 * BET).then(Move.DOUBLE).moves(),
         )
     }
 
@@ -276,6 +280,18 @@ class RoundTest {
     }
 
     @Test
+    fun whereSplitHandsEarnNoBonusesTheirBonus21sPayEvenMoneyAndHandsNotSplitStillEarnTheirs() {
+        val sevens = deal("7h 7h", "7s Kc", draws = "7h 7h Ks", rules = NO_SPLIT_BONUSES).then(Move.SPLIT, Move.HIT).next().then(Move.STAND)
+        val fiveCards = deal("2c 2d", "7s Kc", draws = "3h 4s 5d 7c Ks", rules = NO_SPLIT_BONUSES)
+            .then(Move.SPLIT, Move.HIT, Move.HIT, Move.HIT).next().then(Move.STAND)
+        val notSplit = deal("7h 7h", "7s Kc", draws = "7h", rules = NO_SPLIT_BONUSES).then(Move.HIT)
+
+        assertEquals(HandResult(Outcome.WIN, 2_500), sevens.result())
+        assertEquals(HandResult(Outcome.WIN, 2_500), fiveCards.result())
+        assertEquals(HandResult(Outcome.WIN, 5_000 + 500_000, bonus = Bonus.SUITED_777, superBonus = 500_000), notSplit.result())
+    }
+
+    @Test
     fun aMoveTheHandCantMakeChangesNothing() {
         assertNull(deal("9c 7d", "6s Kh").play(Move.SPLIT))
         assertNull(deal("9c 7d", "6s Kh").play(Move.RESCUE))
@@ -291,7 +307,7 @@ class RoundTest {
 
     @Test
     fun aSettledRoundFromAFullShoeSurvivesSerialization() {
-        val round = Round.deal(RuleSet.S17, BET, BANKROLL, Shoe.shuffled(Random(3))).let { it.play(Move.STAND) ?: it }
+        val round = Round.deal(TableRules(), BET, BANKROLL, Shoe.shuffled(Random(3))).let { it.play(Move.STAND) ?: it }
 
         assertEquals(round, round.serializedAndBack())
     }
@@ -302,7 +318,7 @@ class RoundTest {
         val fives = cards("5c 5d 5h 5s")
         val shoe = Shoe(fives + cards("2c 7s 2d Kc 3h"), dealt = 4)
 
-        val round = Round.deal(RuleSet.S17, BET, BANKROLL, shoe).then(Move.SPLIT, Move.HIT, Move.STAND).next().then(Move.STAND)
+        val round = Round.deal(TableRules(), BET, BANKROLL, shoe).then(Move.SPLIT, Move.HIT, Move.STAND).next().then(Move.STAND)
 
         val (first, second) = round.hands.map { it.cards }
         assertEquals(cards("2c 3h"), first.take(2))
@@ -366,34 +382,34 @@ class RoundTest {
     fun aDealerWhoHitsSoft17HitsOneOfThreeCards() {
         // A-A-5 is soft 17, and the 4 makes 21
         assertEquals(listOf(Outcome.WIN to BET), deal("Kc 9d", "As Ah", draws = "5c 4d").then(Move.STAND).outcomes())
-        assertEquals(listOf(Outcome.LOSE to -BET), deal("Kc 9d", "As Ah", draws = "5c 4d", ruleSet = RuleSet.H17).then(Move.STAND).outcomes())
+        assertEquals(listOf(Outcome.LOSE to -BET), deal("Kc 9d", "As Ah", draws = "5c 4d", rules = H17).then(Move.STAND).outcomes())
     }
 
     @Test
     fun insuranceIsOfferedAgainstAnAceBeforeThePeekWhereTheTableOffersItAndTheBankrollCoversIt() {
-        val offered = deal("9c 7d", "As Kh", insurance = true)
+        val offered = deal("9c 7d", "As Kh", rules = INSURANCE)
         assertEquals(Insurance.OFFERED, offered.insurance)
         assertFalse(offered.settled)
         assertNull(offered.activeHand)
         assertEquals(emptySet<Move>(), offered.moves())
         assertEquals(BANKROLL - BET, offered.bankroll)
         // Even on a player blackjack, which is paid once it's answered
-        assertEquals(Insurance.OFFERED, deal("As Kd", "Ah 6c", insurance = true).insurance)
+        assertEquals(Insurance.OFFERED, deal("As Kd", "Ah 6c", rules = INSURANCE).insurance)
 
         assertTrue(deal("9c 7d", "As Kh").settled)
-        assertNull(deal("9c 7d", "Ks Ah", insurance = true).insurance)
-        assertNull(deal("9c 7d", "As 6h", insurance = true, bankroll = BET + BET / 2 - 2).insurance)
-        assertEquals(Insurance.OFFERED, deal("9c 7d", "As 6h", insurance = true, bankroll = BET + BET / 2).insurance)
+        assertNull(deal("9c 7d", "Ks Ah", rules = INSURANCE).insurance)
+        assertNull(deal("9c 7d", "As 6h", rules = INSURANCE, bankroll = BET + BET / 2 - 2).insurance)
+        assertEquals(Insurance.OFFERED, deal("9c 7d", "As 6h", rules = INSURANCE, bankroll = BET + BET / 2).insurance)
     }
 
     @Test
     fun declinedInsuranceCostsNothingAndTheDealerThenPeeks() {
-        val blackjack = requireNotNull(deal("9c 7d", "As Kh", insurance = true).insure(take = false))
+        val blackjack = requireNotNull(deal("9c 7d", "As Kh", rules = INSURANCE).insure(take = false))
         assertNull(blackjack.insurance)
         assertEquals(listOf(Outcome.LOSE to -BET), blackjack.outcomes())
         assertEquals(BANKROLL - BET, blackjack.bankroll)
 
-        val played = requireNotNull(deal("9c 7d", "As 6h", insurance = true).insure(take = false))
+        val played = requireNotNull(deal("9c 7d", "As 6h", rules = INSURANCE).insure(take = false))
         assertFalse(played.settled)
         assertEquals(setOf(Move.HIT, Move.STAND, Move.DOUBLE, Move.SURRENDER), played.moves())
         assertEquals(BANKROLL - BET, played.bankroll)
@@ -402,12 +418,12 @@ class RoundTest {
     @Test
     fun takenInsuranceCostsHalfTheBetAndPaysTwoToOneOnADealerBlackjack() {
         // The hand still loses its bet, but the insurance wins it back
-        val blackjack = requireNotNull(deal("9c 7d", "As Kh", insurance = true).insure(take = true))
+        val blackjack = requireNotNull(deal("9c 7d", "As Kh", rules = INSURANCE).insure(take = true))
         assertEquals(listOf(Outcome.LOSE to -BET), blackjack.outcomes())
         assertEquals(BET, blackjack.insuranceNet)
         assertEquals(BANKROLL, blackjack.bankroll)
 
-        val lost = requireNotNull(deal("Kc 9d", "As 6h", insurance = true).insure(take = true))
+        val lost = requireNotNull(deal("Kc 9d", "As 6h", rules = INSURANCE).insure(take = true))
         assertFalse(lost.settled)
         assertEquals(-BET / 2, lost.insuranceNet)
         assertEquals(BANKROLL - BET - BET / 2, lost.bankroll)
@@ -416,15 +432,15 @@ class RoundTest {
         assertEquals(BANKROLL + BET - BET / 2, stood.bankroll)
 
         // A player blackjack is paid 3 to 2 against the dealer's, and the insurance 2 to 1 on top
-        val both = requireNotNull(deal("As Kd", "Ah Kc", insurance = true).insure(take = true))
+        val both = requireNotNull(deal("As Kd", "Ah Kc", rules = INSURANCE).insure(take = true))
         assertEquals(listOf(Outcome.WIN to 3_750L), both.outcomes())
         assertEquals(BANKROLL + 3_750 + BET, both.bankroll)
     }
 
     @Test
     fun insuranceIsAnsweredOnceAndOnlyWhenOffered() {
-        assertNull(deal("9c 7d", "As 6h", insurance = true).insure(take = true)?.insure(take = false))
-        assertNull(deal("9c 7d", "6s Ah", insurance = true).insure(take = true))
+        assertNull(deal("9c 7d", "As 6h", rules = INSURANCE).insure(take = true)?.insure(take = false))
+        assertNull(deal("9c 7d", "6s Ah", rules = INSURANCE).insure(take = true))
     }
 
     @Test
@@ -436,7 +452,8 @@ class RoundTest {
             var bankroll = 1_000_000_000L
             repeat(3_000) {
                 shoe = shoe.forNextRound(random, PENETRATIONS.last)
-                var round = Round.deal(ruleSet, BET, bankroll, shoe, insurance = random.nextBoolean())
+                val rules = TableRules(ruleSet.dealerHitsSoft17, ruleSet.redoubling, random.nextBoolean(), splitBonuses = random.nextBoolean())
+                var round = Round.deal(rules, BET, bankroll, shoe)
                 while (!round.settled) {
                     assertEquals(round.activeHand != null, round.moves().isNotEmpty())
                     round = when {

@@ -34,7 +34,7 @@ class PlayStatsTest {
     @Test
     fun aSettledRoundsHandsArePlayedApartWithTheirResults() {
         // 8-8 vs 6 splits, each 8 draws a K to stand on, as the chart does, and the dealer's 6-K draws a 2 for 18
-        val round = Round.deal(RuleSet.S17, 2_500, STARTING_BANKROLL, Shoe(cards("8c 6s 8d Kh Ks Kd 2h")))
+        val round = Round.deal(TableRules(), 2_500, STARTING_BANKROLL, Shoe(cards("8c 6s 8d Kh Ks Kd 2h")))
         val settled = requireNotNull(round.play(Move.SPLIT)?.play(Move.STAND)?.nextHand()?.play(Move.STAND))
 
         assertEquals(

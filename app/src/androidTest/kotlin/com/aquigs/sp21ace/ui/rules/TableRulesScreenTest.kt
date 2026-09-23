@@ -87,6 +87,17 @@ class TableRulesScreenTest {
     }
 
     @Test
+    fun theSplitBonusesSwitchSaysWhetherSplitHandsEarnThem() {
+        showRules()
+
+        compose.onNodeWithText(string(R.string.split_bonuses_paid)).assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.split_bonuses)) and isToggleable()).assertIsOn().performClick().assertIsOff()
+
+        compose.onNodeWithText(string(R.string.split_bonuses_not_paid)).assertIsDisplayed()
+        assertEquals(TableRules(splitBonuses = false), rules)
+    }
+
+    @Test
     fun theDeckPenetrationSliderStartsAtThreeQuartersAndItsLabelFollowsItToEitherEnd() {
         showRules()
 

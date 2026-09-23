@@ -182,6 +182,15 @@ class TableTest {
     }
 
     @Test
+    fun theRoundKeepsTheRulesItWasDealtUnder() {
+        // Every rule off its default, so none can pass by matching it
+        val rules = TableRules(dealerHitsSoft17 = true, redoubling = true, insurance = true, penetration = 60, splitBonuses = false)
+        val dealt = requireNotNull(table("9c 6s 7d Kh").betting(2_500).deal(rules, random)?.round)
+
+        assertEquals(rules, dealt.rules)
+    }
+
+    @Test
     fun insuranceWaitsOnAnAnswerBeforeAnythingElseThenCostsHalfTheBetAtOnce() {
         // 16 against an ace with a 6 under it, so the dealer has no blackjack
         val offered = requireNotNull(table("9c As 7d 6h").betting(2_500).deal(TableRules(insurance = true), random))

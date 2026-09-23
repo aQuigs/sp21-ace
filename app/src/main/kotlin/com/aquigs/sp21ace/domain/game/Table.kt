@@ -62,7 +62,7 @@ data class Table(
     val shownResult: HandResult?
         get() = when {
             revealed -> shownIndex?.let { round?.results?.get(it) }
-            round?.waitingForNextHand == true -> shownHand?.takeIf { it.finish == Finish.BUSTED }?.settle(round.dealer)
+            round?.waitingForNextHand == true -> shownHand?.takeIf { it.finish == Finish.BUSTED }?.settle(round.dealer, round.rules.splitBonuses)
             else -> null
         }
 
@@ -82,7 +82,7 @@ data class Table(
         if (round != null || bet == 0L) return null
 
         val shoe = shoe.forNextRound(random, rules.penetration)
-        return copy(bet = 0, round = Round.deal(rules.ruleSet, bet, bankroll + bet, shoe, rules.insurance))
+        return copy(bet = 0, round = Round.deal(rules, bet, bankroll + bet, shoe))
     }
 
     val offeringInsurance: Boolean get() = round?.offeringInsurance == true

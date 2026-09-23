@@ -34,10 +34,12 @@ class TableRulesStoreTest {
 
     @Test
     fun loadsEveryCombinationAsSaved() {
-        // All on first, so no field can pass by matching its default
+        // Every field off its default first, so none can pass by matching it
         val both = listOf(true, false)
         val combinations = both.flatMap { hits ->
-            both.flatMap { redoubling -> both.map { insurance -> TableRules(hits, redoubling, insurance, penetration = if (insurance) 60 else 75) } }
+            both.flatMap { redoubling ->
+                both.map { insurance -> TableRules(hits, redoubling, insurance, penetration = if (insurance) 60 else 75, splitBonuses = !insurance) }
+            }
         }
         for (rules in combinations) {
             TableRulesStore(context, name).save(rules)
