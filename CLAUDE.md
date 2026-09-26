@@ -55,7 +55,7 @@ Dependencies flow down only: `ui → domain` and `data → domain`, and `MainAct
   - Take the before shots on `main` and the after shots on the branch.
   - Publish with `scripts/pr-media.sh` and paste its tags into one `| Before | After |` table per state, under a one-line bold caption, at most about four states. A screen that is new in the PR gets an After column only.
   - Media is uploaded as GitHub attachments, never committed. Shots must never show a signed-in Google account.
-- The emulator is the test target. Gradle auto-downloads the platform and build-tools for `compileSdk` on first build; system images come from the machine setup (toggles in `~/.zsh_toggles`); `scripts/emulator.sh` only creates an AVD from the installed Play Store image and names the toggle to set if it is missing. Never run `sdkmanager` installs from this repo.
+- The emulator is the test target. Gradle auto-downloads the platform and build-tools for `compileSdk` on first build; system images come from the machine setup (toggles in `~/.zsh_toggles`); `scripts/emulator.sh` only creates an AVD from the installed Play Store image and names the toggle to set if it is missing. Never run `android sdk` (or the deprecated `sdkmanager`) installs from this repo.
 - Pure logic goes in `domain` with a unit test. UI behaviour gets a Compose test in `androidTest` that renders the composable with fake data. `MainActivityTest` is the one end-to-end smoke test against the real system.
 - A passing test is not a passing feature: for UI changes, install on the emulator, screenshot, and look at the PNG before calling it done. That after shot is the one that goes in the PR.
 - Pre-commit runs hygiene checks, markdownlint, lint and the unit tests. Install with `pre-commit install`.
