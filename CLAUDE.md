@@ -16,8 +16,8 @@ Spanish 21 basic strategy trainer for Android ("Spanish 21 Ace"): set the table 
 ./gradlew testDebugUnitTest          # JVM unit tests (pre-commit runs them too)
 ./gradlew assembleDebug              # → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew lintDebug                  # Android lint → app/build/reports/lint-results-debug.html (pre-commit runs it too)
-scripts/emulator.sh                  # this repo's AVD from the installed Play Store image, boot, wait (IMAGE_TAG=google_apis for adb root, HEADLESS=1 for no window)
-./gradlew connectedDebugAndroidTest  # Compose UI + activity tests on the running emulator
+scripts/emulator-lock.sh <command>   # device work (the commands below that touch the emulator): boots this repo's AVD, runs it, stops it (IMAGE_TAG=google_apis for adb root, HEADLESS=1 for no window)
+scripts/emulator-lock.sh ./gradlew connectedDebugAndroidTest  # Compose UI + activity tests on the emulator
 scripts/run.sh                       # install the debug build and open it (VARIANT=Release: the minified, store-speed build, over the debug one)
 scripts/screenshot.sh [name]         # adb screencap → screenshots/<name>.png (gitignored)
 scripts/record.sh [name] [seconds]   # adb screenrecord → screenshots/<name>.mp4 (gitignored)
@@ -47,7 +47,7 @@ Dependencies flow down only: `ui → domain` and `data → domain`, and `MainAct
 ## How we work
 
 - Blackjack Ace (`com.blackjack_ace.blackjackace`) is the behaviour reference. Where it has a feature, mimic how it behaves and how it is laid out, in our own colours, for Spanish 21. Unsure how it does something? Open it on the emulator that has it installed and look, do not guess. Where it has no such feature, use your judgement or ask.
-- The reference app lives on a separate emulator that is signed in to Google Play. Work that does not need the reference app uses this repo's own AVD from `scripts/emulator.sh`. Only one emulator runs at a time.
+- The reference app lives on a separate emulator that is signed in to Google Play. Work that does not need the reference app uses this repo's own AVD through `scripts/emulator-lock.sh`. Only one emulator runs at a time.
 - Correct basic strategy is the product. Every strategy decision comes from published, cited sources, cross-checked across independent sources for the selected rule set. Unit tests pin every chart cell. Never change a chart cell from intuition.
 - Every change after the initial scaffold ships as a PR against `main`, using the PR template. Code changes get an adversarial-review pass and `/simplify` on the branch before handover; docs-only PRs skip those.
 - User-visible changes carry screenshots (or a recording) in the PR's "Screenshots / recording" section:
