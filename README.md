@@ -8,7 +8,7 @@ Requires JDK 21, Gradle, the Android command-line tools with `platform-tools` an
 
 ```bash
 ./gradlew assembleDebug lintDebug testDebugUnitTest  # build, lint, unit tests
-scripts/emulator.sh                                  # boot the emulator (creates the AVD on first run)
-./gradlew connectedDebugAndroidTest                  # UI tests on the emulator
-scripts/run.sh                                       # install and open the app
+scripts/emulator-lock.sh ./gradlew connectedDebugAndroidTest  # UI tests: boots the emulator, runs them, stops it
+scripts/emulator.sh                                  # boot the emulator by hand (creates the AVD on first run; `stop` stops it)
+scripts/run.sh                                       # install and open the app on the running emulator
 ```
