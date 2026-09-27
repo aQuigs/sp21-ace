@@ -25,7 +25,10 @@ Thumbs.db
 # Logs and local artifacts
 *.log
 screenshots/
-.claude/
+.claude/worktrees/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+CLAUDE.local.md
 
 # The court art converter's libraries (scripts/court-art)
 node_modules/

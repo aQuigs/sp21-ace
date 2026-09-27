@@ -5,10 +5,8 @@ Spanish 21 basic strategy trainer for Android ("Spanish 21 Ace"): set the table 
 ## Stack
 
 - Kotlin + Jetpack Compose (Material 3), single `app` module
-- Android Gradle Plugin 9 with built-in Kotlin: do **not** apply `org.jetbrains.kotlin.android` to the module, only the Compose compiler plugin
 - Every version number lives in `gradle/libs.versions.toml` or the Gradle wrapper; keep them on current stable releases
 - Tests: JUnit 4 unit tests on the JVM, Compose UI tests on the emulator
-- No Android Studio. Tooling (JDK 21, cmdline-tools, gradle, scrcpy) is installed by the machine setup, never by this repo
 
 ## Commands
 
@@ -27,8 +25,6 @@ scripts/court-art/generate.sh        # regenerate the court card drawables from 
 scripts/answer-sounds/generate.sh    # regenerate the trainer's right and wrong answer sounds in res/raw (needs python3 and ffmpeg)
 scrcpy                               # mirror the emulator interactively
 ```
-
-Files headed `Shared script:`, `Shared workflow:` or `Shared config:` are copies of files in a separate tooling checkout. When its `sync-common` is on PATH, every build overwrites them, matched by name. Edit them at the source, never here, and do not name a repo-owned file after a shared one. To adopt another shared file, create it once under the same name and let the build fill it. Build config every app needs goes in the shared `scripts/android-app.gradle`.
 
 ## Layout
 
@@ -50,30 +46,11 @@ Dependencies flow down only: `ui → domain` and `data → domain`, and `MainAct
 - Blackjack Ace (`com.blackjack_ace.blackjackace`) is the behaviour reference. Where it has a feature, mimic how it behaves and how it is laid out, in our own colours, for Spanish 21. Unsure how it does something? Open it on the emulator that has it installed and look, do not guess. Where it has no such feature, use your judgement or ask.
 - The reference app lives on a separate emulator that is signed in to Google Play. Work that does not need the reference app uses this repo's own AVD through `scripts/emulator-lock.sh`. Only one emulator runs at a time.
 - Correct basic strategy is the product. Every strategy decision comes from published, cited sources, cross-checked across independent sources for the selected rule set. Unit tests pin every chart cell. Never change a chart cell from intuition.
-- Every change after the initial scaffold ships as a PR against `main`, using the PR template. Code changes get an adversarial-review pass and `/simplify` on the branch before handover; docs-only PRs skip those.
 - A PR that only refreshes shared files through `sync-common` can be merged by Claude once its checks pass, without waiting for the user. Any other change in the same PR leaves the merge to the user.
-- User-visible changes carry screenshots (or a recording) in the PR's "Screenshots / recording" section:
-  - Shoot every state the change touches, not one before and one after. Empty and filled, and before and after an answer, are separate states. Light and dark theme are separate states only when the change is about colour or theming; otherwise one theme is enough.
-  - Take the before shots on `main` and the after shots on the branch.
-  - Publish with `scripts/pr-media.sh` and paste its tags into one `| Before | After |` table per state, under a one-line bold caption, at most about four states. A screen that is new in the PR gets an After column only.
-  - Media is uploaded as GitHub attachments, never committed. Shots must never show a signed-in Google account.
-- The emulator is the test target. Gradle auto-downloads the platform and build-tools for `compileSdk` on first build; system images come from the machine setup (toggles in `~/.zsh_toggles`); `scripts/emulator.sh` only creates an AVD from the installed Play Store image and names the toggle to set if it is missing. Never run `android sdk` (or the deprecated `sdkmanager`) installs from this repo.
-- Pure logic goes in `domain` with a unit test. UI behaviour gets a Compose test in `androidTest` that renders the composable with fake data. `MainActivityTest` is the one end-to-end smoke test against the real system.
-- A passing test is not a passing feature: for UI changes, install on the emulator, screenshot, and look at the PNG before calling it done. Build first, then do the device part in one lock: `scripts/emulator-lock.sh zsh -c 'scripts/run.sh && scripts/screenshot.sh <name>'`. That after shot is the one that goes in the PR.
-- Pre-commit runs hygiene checks, markdownlint, lint and the unit tests. Install with `pre-commit install`.
-- GitHub Actions run on every push: `android-ci` (build, lint, unit tests) and the pre-commit hooks. The emulator tests run locally only.
-- Every merge to `main` publishes to the Play Store internal testing track through the shared `play_internal.yaml`, versioned by commit count, and to the closed testing track ("Alpha") too while that has a live release. Only listed testers can install it. The workflow header names the repo secrets it needs.
-
-## Conventions
-
-- Kotlin official code style, 4-space indent (`.editorconfig`). Terse over verbose.
-- Comments explain *why*, never *what*. Self-evident code gets no comment.
-- Commit messages describe the change and the reason. No `Co-Authored-By` trailers.
-- PR template: check or uncheck items, never delete them.
+- Pure logic goes in `domain` with a unit test. `MainActivityTest` is the one end-to-end smoke test against the real system.
+- For the UI check, build first, then install and screenshot in one lock: `scripts/emulator-lock.sh zsh -c 'scripts/run.sh && scripts/screenshot.sh <name>'`. That after shot is the one that goes in the PR.
 
 ## Don't
 
-- Add Android Studio-only files or workflows (`.idea/`, run configurations).
 - Put Android imports in `domain`.
 - Change a strategy chart cell without a cited source and a test that pins it.
-- Add libraries (DI, navigation, Hilt) before a feature needs them.
