@@ -16,7 +16,7 @@ Spanish 21 basic strategy trainer for Android ("Spanish 21 Ace"): set the table 
 ./gradlew testDebugUnitTest          # JVM unit tests (pre-commit runs them too)
 ./gradlew assembleDebug              # → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew lintDebug                  # Android lint → app/build/reports/lint-results-debug.html (pre-commit runs it too)
-scripts/emulator-lock.sh <command>   # device work (the commands below that touch the emulator): boots this repo's AVD, runs it, stops it (IMAGE_TAG=google_apis for adb root, HEADLESS=1 for no window)
+scripts/emulator-lock.sh <command>   # device work (the commands below that touch the emulator): boots this repo's AVD, runs it, stops it (IMAGE_TAG=google_apis for adb root, WINDOW=1 to show the emulator window, headless otherwise)
 scripts/emulator-lock.sh ./gradlew connectedDebugAndroidTest  # Compose UI + activity tests on the emulator
 scripts/run.sh                       # install the debug build and open it (VARIANT=Release: the minified, store-speed build, over the debug one)
 scripts/screenshot.sh [name]         # adb screencap → screenshots/<name>.png (gitignored)
@@ -50,6 +50,7 @@ Dependencies flow down only: `ui → domain` and `data → domain`, and `MainAct
 - The reference app lives on a separate emulator that is signed in to Google Play. Work that does not need the reference app uses this repo's own AVD through `scripts/emulator-lock.sh`. Only one emulator runs at a time.
 - Correct basic strategy is the product. Every strategy decision comes from published, cited sources, cross-checked across independent sources for the selected rule set. Unit tests pin every chart cell. Never change a chart cell from intuition.
 - Every change after the initial scaffold ships as a PR against `main`, using the PR template. Code changes get an adversarial-review pass and `/simplify` on the branch before handover; docs-only PRs skip those.
+- A PR that only refreshes shared files through `sync-common` can be merged by Claude once its checks pass, without waiting for the user. Any other change in the same PR leaves the merge to the user.
 - User-visible changes carry screenshots (or a recording) in the PR's "Screenshots / recording" section:
   - Shoot every state the change touches, not one before and one after. Empty and filled, and before and after an answer, are separate states. Light and dark theme are separate states only when the change is about colour or theming; otherwise one theme is enough.
   - Take the before shots on `main` and the after shots on the branch.
