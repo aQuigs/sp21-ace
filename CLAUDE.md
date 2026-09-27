@@ -16,8 +16,9 @@ Spanish 21 basic strategy trainer for Android ("Spanish 21 Ace"): set the table 
 ./gradlew testDebugUnitTest          # JVM unit tests (pre-commit runs them too)
 ./gradlew assembleDebug              # → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew lintDebug                  # Android lint → app/build/reports/lint-results-debug.html (pre-commit runs it too)
-scripts/emulator-lock.sh <command>   # device work (the commands below that touch the emulator): boots this repo's AVD, runs it, stops it (IMAGE_TAG=google_apis for adb root, WINDOW=1 to show the emulator window, headless otherwise)
+scripts/emulator-lock.sh <command>   # device work (the commands below that touch the emulator): boots the emulator under the shared lock, runs <command>, stops it
 scripts/emulator-lock.sh ./gradlew connectedDebugAndroidTest  # Compose UI + activity tests on the emulator
+scripts/emulator.sh [stop]           # boot (or stop) this repo's AVD from the installed Play Store image by hand (IMAGE_TAG=google_apis for adb root, WINDOW=1 to show the emulator window, headless otherwise)
 scripts/run.sh                       # install the debug build and open it (VARIANT=Release: the minified, store-speed build, over the debug one)
 scripts/screenshot.sh [name]         # adb screencap → screenshots/<name>.png (gitignored)
 scripts/record.sh [name] [seconds]   # adb screenrecord → screenshots/<name>.mp4 (gitignored)
@@ -58,7 +59,7 @@ Dependencies flow down only: `ui → domain` and `data → domain`, and `MainAct
   - Media is uploaded as GitHub attachments, never committed. Shots must never show a signed-in Google account.
 - The emulator is the test target. Gradle auto-downloads the platform and build-tools for `compileSdk` on first build; system images come from the machine setup (toggles in `~/.zsh_toggles`); `scripts/emulator.sh` only creates an AVD from the installed Play Store image and names the toggle to set if it is missing. Never run `android sdk` (or the deprecated `sdkmanager`) installs from this repo.
 - Pure logic goes in `domain` with a unit test. UI behaviour gets a Compose test in `androidTest` that renders the composable with fake data. `MainActivityTest` is the one end-to-end smoke test against the real system.
-- A passing test is not a passing feature: for UI changes, install on the emulator, screenshot, and look at the PNG before calling it done. That after shot is the one that goes in the PR.
+- A passing test is not a passing feature: for UI changes, install on the emulator, screenshot, and look at the PNG before calling it done. Build first, then do the device part in one lock: `scripts/emulator-lock.sh zsh -c 'scripts/run.sh && scripts/screenshot.sh <name>'`. That after shot is the one that goes in the PR.
 - Pre-commit runs hygiene checks, markdownlint, lint and the unit tests. Install with `pre-commit install`.
 - GitHub Actions run on every push: `android-ci` (build, lint, unit tests) and the pre-commit hooks. The emulator tests run locally only.
 - Every merge to `main` publishes to the Play Store internal testing track through the shared `play_internal.yaml`, versioned by commit count, and to the closed testing track ("Alpha") too while that has a live release. Only listed testers can install it. The workflow header names the repo secrets it needs.
