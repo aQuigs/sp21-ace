@@ -46,7 +46,7 @@ Dependencies flow down only: `ui → domain` and `data → domain`, and `MainAct
 - Blackjack Ace (`com.blackjack_ace.blackjackace`) is the behaviour reference. Where it has a feature, mimic how it behaves and how it is laid out, in our own colours, for Spanish 21. Unsure how it does something? Open it on the emulator that has it installed and look, do not guess. Where it has no such feature, use your judgement or ask.
 - The reference app lives on a separate emulator that is signed in to Google Play. Work that does not need the reference app uses this repo's own AVD through `scripts/emulator-lock.sh`. Only one emulator runs at a time.
 - Correct basic strategy is the product. Every strategy decision comes from published, cited sources, cross-checked across independent sources for the selected rule set. Unit tests pin every chart cell. Never change a chart cell from intuition.
-- A PR that only refreshes shared files through `sync-common` can be merged by Claude once its checks pass, without waiting for the user. Any other change in the same PR leaves the merge to the user.
+- A PR that only refreshes shared files through `sync-common` is done when merged, not when opened: Claude merges it once its checks pass, even if the task only says to open it. Any other change in it leaves the merge to the user.
 - Pure logic goes in `domain` with a unit test. `MainActivityTest` is the one end-to-end smoke test against the real system.
 - For the UI check, build first, then install and screenshot in one lock: `scripts/emulator-lock.sh zsh -c 'scripts/run.sh && scripts/screenshot.sh <name>'`. That after shot is the one that goes in the PR.
 
