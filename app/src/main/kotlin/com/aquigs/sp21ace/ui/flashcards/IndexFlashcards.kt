@@ -13,7 +13,7 @@ data class IndexFlashcardsState(
     val run: FlashcardRun,
     val presets: IndexPresets,
     val options: FlashcardOptions,
-    val history: List<FlashcardAnswer> = emptyList(),
+    val history: List<FlashcardAnswer>,
 )
 
 /** What the card-counting screens ask for, which the composition root carries out with the stores. */

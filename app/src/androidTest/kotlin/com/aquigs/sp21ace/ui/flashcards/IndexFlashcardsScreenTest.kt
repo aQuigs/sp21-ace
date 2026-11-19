@@ -151,7 +151,7 @@ class IndexFlashcardsScreenTest {
                     Sp21AceTheme {
                         if (onScreen) {
                             IndexFlashcardsScreen(
-                                state = IndexFlashcardsState(fake.run, fake.presets, FlashcardOptions()),
+                                state = IndexFlashcardsState(fake.run, fake.presets, FlashcardOptions(), history = emptyList()),
                                 settings = settings,
                                 covered = covered,
                                 actions = fake,

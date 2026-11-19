@@ -157,11 +157,15 @@ fun SettingsGroup(title: String, summary: String, @DrawableRes icon: Int, modifi
         supporting = summary,
         icon = icon,
         emphasized = true,
-        trailing = {
-            Icon(painterResource(R.drawable.ic_expand_less), contentDescription = null, modifier = Modifier.rotate(if (expanded) 0f else 180f))
-        },
+        trailing = { ExpandIcon(expanded) },
     )
     if (expanded) content()
+}
+
+/** The chevron of something that opens and closes, pointing up while it's open. */
+@Composable
+fun ExpandIcon(expanded: Boolean, modifier: Modifier = Modifier) {
+    Icon(painterResource(R.drawable.ic_expand_less), contentDescription = null, modifier = modifier.rotate(if (expanded) 0f else 180f))
 }
 
 /**

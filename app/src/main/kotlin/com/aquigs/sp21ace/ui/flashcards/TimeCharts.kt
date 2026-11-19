@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.CacheDrawScope
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalDensity
@@ -23,8 +26,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.indices.TimeHistogram
@@ -39,6 +45,8 @@ private val HistogramHeight = 120.dp
 private val StripHeight = 24.dp
 
 private val BoxHeight = 14.dp
+
+private val LabelGap = 4.dp
 
 // Whole seconds between the time axis' labels, the fewest that keep them apart at the font size in force
 private val LABEL_STEPS = listOf(1, 2, 5, 10)
@@ -60,7 +68,7 @@ fun TimeHistogramChart(histogram: TimeHistogram, modifier: Modifier = Modifier) 
     val axis = MaterialTheme.colorScheme.outline
     val labelStyle = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.onSurface)
     val measurer = rememberTextMeasurer()
-    val labelHeight = with(LocalDensity.current) { measurer.measure("0", labelStyle).size.height.toDp() }
+    val labelHeight = rememberLabelHeight(measurer, labelStyle)
     val overflowLabel = "${TimeHistogram.OVERFLOW_FROM.inWholeSeconds}+"
 
     Column(modifier = modifier.clearAndSetSemantics { contentDescription = description }) {
@@ -75,7 +83,8 @@ fun TimeHistogramChart(histogram: TimeHistogram, modifier: Modifier = Modifier) 
                     val stroke = 1.dp.toPx()
                     val gap = 2.dp.toPx()
                     val slot = size.width / histogram.counts.size
-                    val highest = histogram.counts.max().coerceAtLeast(1)
+                    val tallest = histogram.counts.indices.maxBy { histogram.counts[it] }
+                    val highest = histogram.counts[tallest].coerceAtLeast(1)
                     val counts = histogram.counts.map { measurer.measure(it.toString(), labelStyle) }
                     val bottom = size.height - labelHeight.toPx() - gap
                     val top = labelHeight.toPx() + gap
@@ -83,18 +92,12 @@ fun TimeHistogramChart(histogram: TimeHistogram, modifier: Modifier = Modifier) 
                     fun barHeight(count: Int) = if (count == 0) 0f else maxOf(2.dp.toPx(), (bottom - top) * count / highest)
 
                     val everyCountFits = counts.all { it.size.width <= slot }
-                    val tallest = histogram.counts.indexOf(histogram.counts.max())
                     val countLabels = counts.withIndex().filter { (bucket, _) ->
                         histogram.counts[bucket] > 0 && (everyCountFits || bucket == tallest)
                     }
-
-                    val bucketsPerSecond = (1.seconds / TimeHistogram.BUCKET_WIDTH).toInt()
-                    val seconds = (0 until TimeHistogram.OVERFLOW_FROM.inWholeSeconds.toInt()).map { measurer.measure(it.toString(), labelStyle) }
-                    val step = labelStep(slot * bucketsPerSecond, seconds.maxOf { it.size.width } + 4.dp.toPx())
-                    val secondLabels = seconds.withIndex().filter { (second, _) -> second % step == 0 }
-                        .map { (second, label) -> label to second * bucketsPerSecond * slot }
                     val overflow = measurer.measure(overflowLabel, labelStyle) to (TimeHistogram.BUCKETS + 0.5f) * slot
-                    val axisLabels = clearOfEachOther(secondLabels + overflow, size.width, 4.dp.toPx())
+                    val seconds = TimeHistogram.OVERFLOW_FROM.inWholeSeconds.toInt() - 1
+                    val axisLabels = secondLabels(measurer, labelStyle, seconds, slot * TimeHistogram.position(1.seconds), overflow)
 
                     onDrawBehind {
                         histogram.counts.forEachIndexed { bucket, count ->
@@ -122,13 +125,13 @@ fun TimeHistogramChart(histogram: TimeHistogram, modifier: Modifier = Modifier) 
 
 @Composable
 private fun histogramDescription(histogram: TimeHistogram): String {
-    val width = TimeHistogram.BUCKET_WIDTH.inSeconds
     val buckets = histogram.counts.withIndex().filter { it.value > 0 }.map { (bucket, count) ->
         val start = TimeHistogram.start(bucket).inSeconds
-        when (bucket) {
-            0 -> pluralStringResource(R.plurals.bucket_under, count, count, width)
-            TimeHistogram.BUCKETS -> pluralStringResource(R.plurals.bucket_overflow, count, count, start)
-            else -> pluralStringResource(R.plurals.bucket_between, count, count, start, start + width)
+        val end = TimeHistogram.end(bucket)?.inSeconds
+        when {
+            end == null -> pluralStringResource(R.plurals.bucket_overflow, count, count, start)
+            start == 0.0 -> pluralStringResource(R.plurals.bucket_under, count, count, end)
+            else -> pluralStringResource(R.plurals.bucket_between, count, count, start, end)
         }
     }
     return pluralStringResource(R.plurals.histogram_description, histogram.total, histogram.total, buckets.joinToString(", "))
@@ -142,20 +145,15 @@ private fun histogramDescription(histogram: TimeHistogram): String {
 fun TimeAxis(end: Duration, modifier: Modifier = Modifier) {
     val labelStyle = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
     val measurer = rememberTextMeasurer()
-    val labelHeight = with(LocalDensity.current) { measurer.measure("0", labelStyle).size.height.toDp() }
+    val labelHeight = rememberLabelHeight(measurer, labelStyle)
     val endSeconds = end.inWholeSeconds.toInt()
 
     Column(modifier = modifier.clearAndSetSemantics {}) {
         Text(text = stringResource(R.string.seconds_axis), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         Spacer(
             modifier = Modifier.fillMaxWidth().height(labelHeight).drawWithCache {
-                val labels = (0..endSeconds).map { measurer.measure(it.toString(), labelStyle) }
-                val step = labelStep(size.width / endSeconds, labels.maxOf { it.size.width } + 4.dp.toPx())
-                val shown = labels.withIndex().filter { (second, _) -> second % step == 0 || second == endSeconds }
-                    .map { (second, label) -> label to size.width * second / endSeconds }
-                val placed = clearOfEachOther(shown, size.width, 4.dp.toPx())
-
-                onDrawBehind { placed.forEach { (label, left) -> drawText(label, topLeft = Offset(left, 0f)) } }
+                val labels = secondLabels(measurer, labelStyle, endSeconds, size.width / endSeconds)
+                onDrawBehind { labels.forEach { (label, left) -> drawText(label, topLeft = Offset(left, 0f)) } }
             },
         )
     }
@@ -176,7 +174,7 @@ fun TimeSpreadStrip(spread: TimeSpread, axisEnd: Duration, modifier: Modifier = 
         spread.p10.inSeconds,
         spread.p90.inSeconds,
     )
-    val onAxis = spread.onAxis(axisEnd)
+    val onAxis = remember(spread, axisEnd) { spread.onAxis(axisEnd) }
     val grid = MaterialTheme.colorScheme.outlineVariant
     val whisker = MaterialTheme.colorScheme.onSurfaceVariant
     val box = MaterialTheme.colorScheme.primary
@@ -190,52 +188,78 @@ fun TimeSpreadStrip(spread: TimeSpread, axisEnd: Duration, modifier: Modifier = 
             val boxTop = middle - boxHeight / 2
             val cap = 4.dp.toPx()
             val line = 2.dp.toPx()
+            val gridLine = 1.dp.toPx()
+            val tick = 3.dp.toPx()
+            val whiskerStroke = Stroke(width = line)
+            val boxStroke = Stroke(width = 1.5.dp.toPx())
             val arrow = Path().apply {
                 moveTo(size.width - cap * 1.5f, middle - cap)
                 lineTo(size.width, middle)
                 lineTo(size.width - cap * 1.5f, middle + cap)
             }
-            // At least wide enough to see, but never past the strip's end
-            val boxSpan = onAxis.box?.let { range ->
-                val width = maxOf(x(range.endInclusive - range.start), minOf(2.dp.toPx(), size.width))
-                val left = minOf(x(range.start), size.width - width)
-                left to left + width
-            }
             // A box cut at the end has no right side, so it reads as running on past it
-            val boxOutline = boxSpan?.let { (left, right) ->
+            val boxOutline = onAxis.box?.let { range ->
                 Path().apply {
-                    moveTo(right, boxTop)
-                    lineTo(left, boxTop)
-                    lineTo(left, boxTop + boxHeight)
-                    lineTo(right, boxTop + boxHeight)
+                    moveTo(x(range.endInclusive), boxTop)
+                    lineTo(x(range.start), boxTop)
+                    lineTo(x(range.start), boxTop + boxHeight)
+                    lineTo(x(range.endInclusive), boxTop + boxHeight)
                     if (!onAxis.boxCut) close()
                 }
             }
+            fun DrawScope.cap(at: Float) = drawLine(whisker, Offset(x(at), middle - cap), Offset(x(at), middle + cap), line)
 
             onDrawBehind {
                 clipRect {
                     for (second in 0..axisEnd.inWholeSeconds) {
                         val at = x(second / axisEnd.inSeconds.toFloat())
-                        drawLine(grid, Offset(at, 0f), Offset(at, size.height), 1.dp.toPx())
+                        drawLine(grid, Offset(at, 0f), Offset(at, size.height), gridLine)
                     }
 
-                    onAxis.whisker?.let { drawLine(whisker, Offset(x(it.start), middle), Offset(x(it.endInclusive), middle), line) }
-                    if (onAxis.lowCap) onAxis.whisker?.start?.let { drawLine(whisker, Offset(x(it), middle - cap), Offset(x(it), middle + cap), line) }
-                    if (onAxis.highCap) onAxis.whisker?.endInclusive?.let { drawLine(whisker, Offset(x(it), middle - cap), Offset(x(it), middle + cap), line) }
-                    if (onAxis.runsOff) drawPath(arrow, whisker, style = Stroke(width = line))
-
-                    if (boxSpan != null && boxOutline != null) {
-                        drawRect(box.copy(alpha = 0.3f), topLeft = Offset(boxSpan.first, boxTop), size = Size(boxSpan.second - boxSpan.first, boxHeight))
-                        drawPath(boxOutline, box, style = Stroke(width = 1.5.dp.toPx()))
+                    onAxis.whisker?.let {
+                        drawLine(whisker, Offset(x(it.start), middle), Offset(x(it.endInclusive), middle), line)
+                        cap(it.start)
+                        if (!onAxis.whiskerCut) cap(it.endInclusive)
                     }
-                    onAxis.median?.let { drawLine(median, Offset(x(it), boxTop - 3.dp.toPx()), Offset(x(it), boxTop + boxHeight + 3.dp.toPx()), 3.dp.toPx()) }
+                    if (onAxis.whiskerCut) drawPath(arrow, whisker, style = whiskerStroke)
+
+                    onAxis.box?.let { range ->
+                        drawRect(box.copy(alpha = 0.3f), topLeft = Offset(x(range.start), boxTop), size = Size(x(range.endInclusive - range.start), boxHeight))
+                    }
+                    boxOutline?.let { drawPath(it, box, style = boxStroke) }
+                    onAxis.median?.let { drawLine(median, Offset(x(it), boxTop - tick), Offset(x(it), boxTop + boxHeight + tick), tick) }
                 }
             }
         },
     )
 }
 
-private fun labelStep(perSecond: Float, labelWidth: Float): Int = LABEL_STEPS.firstOrNull { it * perSecond >= labelWidth } ?: LABEL_STEPS.last()
+// Measured once per style, since a chart's own measurer caches too few results to keep it through the labels it draws
+@Composable
+private fun rememberLabelHeight(measurer: TextMeasurer, style: TextStyle): Dp {
+    val density = LocalDensity.current
+    return remember(measurer, style, density) { with(density) { measurer.measure("0", style).size.height.toDp() } }
+}
+
+/**
+ * The labels 0 to [seconds] of a time axis [perSecond] pixels a second long, each with where to draw it, as often as they fit, and
+ * then [last] if given, which always stays.
+ */
+private fun CacheDrawScope.secondLabels(
+    measurer: TextMeasurer,
+    style: TextStyle,
+    seconds: Int,
+    perSecond: Float,
+    last: Pair<TextLayoutResult, Float>? = null,
+): List<Pair<TextLayoutResult, Float>> {
+    val labels = (0..seconds).map { measurer.measure(it.toString(), style) }
+    val widest = labels.maxOf { it.size.width } + LabelGap.toPx()
+    val step = LABEL_STEPS.firstOrNull { it * perSecond >= widest } ?: LABEL_STEPS.last()
+    // The axis' own end stays labeled where nothing follows it
+    val shown = labels.withIndex().filter { (second, _) -> second % step == 0 || (last == null && second == seconds) }
+        .map { (second, label) -> label to second * perSecond }
+    return clearOfEachOther(shown + listOfNotNull(last), size.width, LabelGap.toPx())
+}
 
 /**
  * Where to draw each of [labels], given as a label and the x it marks, so none overlaps another: centered on its x but kept within

@@ -89,10 +89,22 @@ fun CountRow(content: @Composable RowScope.() -> Unit) {
 /** Blackjack Ace's Today, Week, Month and All Time chips. */
 @Composable
 private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit, modifier: Modifier = Modifier) {
+    StatChips(Period.entries.map { it to it.title }, selected, onSelect, modifier, Alignment.CenterHorizontally)
+}
+
+/** A stats page's chips to choose one of [choices], each a value and its label. */
+@Composable
+fun <T> StatChips(
+    choices: List<Pair<T, Int>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    alignment: Alignment.Horizontal = Alignment.Start,
+) {
     // Wraps rather than running off a narrow screen at a large font size
-    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-        Period.entries.forEach { period ->
-            FilterChip(selected = period == selected, onClick = { onSelect(period) }, label = { Text(stringResource(period.title)) })
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp, alignment)) {
+        choices.forEach { (choice, label) ->
+            FilterChip(selected = choice == selected, onClick = { onSelect(choice) }, label = { Text(stringResource(label)) })
         }
     }
 }

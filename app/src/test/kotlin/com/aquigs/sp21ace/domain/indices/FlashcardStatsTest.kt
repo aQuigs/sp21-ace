@@ -35,7 +35,6 @@ class FlashcardStatsTest {
 
     @Test
     fun noTimesHaveNoPercentile() {
-        assertNull(percentile(ms(), 0.5))
         assertNull(TimeSpread.of(ms()))
     }
 
@@ -56,8 +55,6 @@ class FlashcardStatsTest {
         val times = ms(900, 100, 800, 200, 700, 300, 600, 400, 500, 1000)
 
         assertEquals(TimeSpread(190.milliseconds, 325.milliseconds, 550.milliseconds, 775.milliseconds, 910.milliseconds), TimeSpread.of(times))
-        assertEquals(100.milliseconds, percentile(times, 0.0))
-        assertEquals(1000.milliseconds, percentile(times, 1.0))
     }
 
     @Test
@@ -68,17 +65,13 @@ class FlashcardStatsTest {
 
     @Test
     fun aBucketHoldsItsLowerEdgeButNotItsUpperAndFiveSecondsOrMoreGoToTheLast() {
-        assertEquals(0, TimeHistogram.bucketOf(0))
-        assertEquals(0, TimeHistogram.bucketOf(499))
-        assertEquals(1, TimeHistogram.bucketOf(500))
-        assertEquals(9, TimeHistogram.bucketOf(4999))
-        assertEquals(10, TimeHistogram.bucketOf(5000))
-        assertEquals(10, TimeHistogram.bucketOf(Long.MAX_VALUE))
-        assertEquals(5.seconds, TimeHistogram.start(TimeHistogram.BUCKETS))
+        val histogram = TimeHistogram.of(ms(0, 499, 500, 2250, 4999, 5000, 60_000, Long.MAX_VALUE))
+        assertEquals(listOf(2, 1, 0, 0, 1, 0, 0, 0, 0, 1, 3), histogram.counts)
+        assertEquals(8, histogram.total)
 
-        val histogram = TimeHistogram.of(ms(0, 499, 500, 2250, 4999, 5000, 60_000))
-        assertEquals(listOf(2, 1, 0, 0, 1, 0, 0, 0, 0, 1, 2), histogram.counts)
-        assertEquals(7, histogram.total)
+        assertEquals(Duration.ZERO to 500.milliseconds, TimeHistogram.start(0) to TimeHistogram.end(0))
+        assertEquals(5.seconds to null, TimeHistogram.start(TimeHistogram.BUCKETS) to TimeHistogram.end(TimeHistogram.BUCKETS))
+        assertEquals(2f, TimeHistogram.position(1.seconds))
     }
 
     @Test
@@ -151,22 +144,21 @@ class FlashcardStatsTest {
     fun aSpreadOnTheAxisIsDrawnWhole() {
         val spread = TimeSpread(1.seconds, 2.seconds, 3.seconds, 4.seconds, 5.seconds)
 
-        assertEquals(SpreadOnAxis(0.1f..0.5f, lowCap = true, highCap = true, box = 0.2f..0.4f, boxCut = false, median = 0.3f), spread.onAxis(10.seconds))
+        assertEquals(SpreadOnAxis(0.1f..0.5f, whiskerCut = false, box = 0.2f..0.4f, boxCut = false, median = 0.3f), spread.onAxis(10.seconds))
     }
 
     @Test
     fun onlyTheUpperWhiskerPastTheEndRunsOffIt() {
         val onAxis = TimeSpread(1.seconds, 2.seconds, 3.seconds, 4.seconds, 15.seconds).onAxis(10.seconds)
 
-        assertEquals(SpreadOnAxis(0.1f..1f, lowCap = true, highCap = false, box = 0.2f..0.4f, boxCut = false, median = 0.3f), onAxis)
-        assertEquals(true, onAxis.runsOff)
+        assertEquals(SpreadOnAxis(0.1f..1f, whiskerCut = true, box = 0.2f..0.4f, boxCut = false, median = 0.3f), onAxis)
     }
 
     @Test
     fun aMedianPastTheEndHasNoTickAndTheBoxIsCutAtTheEnd() {
         val onAxis = TimeSpread(4.seconds, 8.seconds, 12.seconds, 13.seconds, 15.seconds).onAxis(10.seconds)
 
-        assertEquals(SpreadOnAxis(0.4f..1f, lowCap = true, highCap = false, box = 0.8f..1f, boxCut = true, median = null), onAxis)
+        assertEquals(SpreadOnAxis(0.4f..1f, whiskerCut = true, box = 0.8f..1f, boxCut = true, median = null), onAxis)
     }
 
     @Test
@@ -174,8 +166,7 @@ class FlashcardStatsTest {
         // As with times of 12, 13, 15 and 20 s, which must not draw a box at the end as if the median were 10 s
         val onAxis = TimeSpread(12.3.seconds, 12.75.seconds, 14.seconds, 16.25.seconds, 18.5.seconds).onAxis(10.seconds)
 
-        assertEquals(SpreadOnAxis(whisker = null, lowCap = false, highCap = false, box = null, boxCut = true, median = null), onAxis)
-        assertEquals(true, onAxis.runsOff)
+        assertEquals(SpreadOnAxis(whisker = null, whiskerCut = true, box = null, boxCut = true, median = null), onAxis)
     }
 
     private fun stats(index: PlayIndex, correct: Int, incorrect: Int, median: Duration? = null, p90: Duration? = median) = IndexStats(
