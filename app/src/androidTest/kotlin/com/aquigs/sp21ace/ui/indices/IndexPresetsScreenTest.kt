@@ -73,8 +73,8 @@ class IndexPresetsScreenTest {
         presets = seeded.update(s17) { it.copy(deckEstimate = DeckEstimate.PERCENTILE_95, rounding = CountRounding.ROUND, entries = it.entries.take(1)) }
         show()
 
-        assertEquals(listOf("Shoe, H17", "Blackjack, 22 indices\nDeck estimate: Truncate · Rounding: Floor"), preset("Shoe, H17").assertIsSelected().texts())
-        assertEquals(listOf("Shoe, S17", "Blackjack, 1 index\nDeck estimate: 95th percentile · Rounding: Round"), preset("Shoe, S17").assertIsNotSelected().texts())
+        assertEquals(listOf("Shoe, H17", "Blackjack, 22 indices\nDeck\u00A0estimate:\u00A0Truncate · Rounding:\u00A0Floor"), preset("Shoe, H17").assertIsSelected().texts())
+        assertEquals(listOf("Shoe, S17", "Blackjack, 1 index\nDeck\u00A0estimate:\u00A095th percentile · Rounding:\u00A0Round"), preset("Shoe, S17").assertIsNotSelected().texts())
     }
 
     @Test

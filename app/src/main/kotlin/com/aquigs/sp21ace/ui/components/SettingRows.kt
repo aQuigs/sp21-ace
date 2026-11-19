@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -49,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
@@ -251,7 +253,8 @@ fun <T> ChipChoices(name: String, choices: List<Pair<T, String>>, selected: T?, 
             FilterChip(
                 selected = value == selected,
                 onClick = { onSelect(value) },
-                label = { Text(label) },
+                // At least as wide as its touch target, which would otherwise center a one-digit chip out of line with the rest
+                label = { Text(label, modifier = Modifier.widthIn(min = 16.dp), textAlign = TextAlign.Center) },
                 modifier = Modifier.semantics { contentDescription = "$name, $label" },
             )
         }
