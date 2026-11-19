@@ -5,6 +5,8 @@ import androidx.core.content.edit
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
+import com.aquigs.sp21ace.domain.indices.CountRounding
+import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.IndexPresets
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -30,9 +32,10 @@ class IndexPresetsStoreTest {
         val changes = listOf(
             added,
             added.rename(added.activeId, "Renamed"),
-            added.duplicate(BuiltInIndexSet.SHOE_S17.name, "Twin"),
-            added.delete(BuiltInIndexSet.SHOE_H17.name),
-            IndexPresets.seeded().activate(BuiltInIndexSet.DOUBLE_DECK.name),
+            added.duplicate(BuiltInIndexSet.BJ_SHOE_S17.name, "Twin"),
+            added.delete(BuiltInIndexSet.BJ_SHOE_H17.name),
+            added.update(added.activeId) { it.copy(deckEstimate = DeckEstimate.ROUND, rounding = CountRounding.TRUNCATE) },
+            IndexPresets.seeded().activate(BuiltInIndexSet.BJ_SHOE_S17.name),
         )
 
         for (presets in changes) {

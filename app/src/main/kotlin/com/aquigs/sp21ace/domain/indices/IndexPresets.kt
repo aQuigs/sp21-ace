@@ -3,10 +3,19 @@ package com.aquigs.sp21ace.domain.indices
 import java.util.UUID
 
 /**
- * A named list of indices for one [game], to drill and swap between. [basedOn] is the built-in set it started from, or null for
- * one started empty, and tells the indices the user changed or added from the published ones. No deviation is listed twice.
+ * A named list of indices for one [game], to drill and swap between. [deckEstimate] and [rounding] are how the player computes
+ * the true count the numbers are for; they change no number. [basedOn] is the built-in set it started from, or null for one
+ * started empty, and tells the indices the user changed or added from the published ones. No deviation is listed twice.
  */
-data class IndexPreset(val id: String, val name: String, val game: Game, val basedOn: BuiltInIndexSet?, val entries: List<IndexEntry>) {
+data class IndexPreset(
+    val id: String,
+    val name: String,
+    val game: Game,
+    val deckEstimate: DeckEstimate = DeckEstimate.DEFAULT,
+    val rounding: CountRounding = CountRounding.DEFAULT,
+    val basedOn: BuiltInIndexSet?,
+    val entries: List<IndexEntry>,
+) {
     init {
         require(name.isNotBlank()) { "A preset needs a name" }
         require(basedOn == null || basedOn.game == game) { "$name is for $game but based on $basedOn" }
@@ -16,16 +25,16 @@ data class IndexPreset(val id: String, val name: String, val game: Game, val bas
     /** The indices a run drills, in list order. */
     val enabledIndices: List<PlayIndex> get() = entries.filter { it.enabled }.map { it.index }
 
-    /** Whether [index] is the user's own: a number [basedOn] doesn't print for its deviation, or a deviation it doesn't have. */
+    /** Whether [index] is the user's own: a number or direction [basedOn] doesn't print for its deviation, or a deviation it doesn't have. */
     fun isCustom(index: PlayIndex): Boolean = basedOn?.find(index.deviation)?.index != index
 
     /** Whether [index] is [basedOn]'s own number and one the sources debate. */
     fun isDebated(index: PlayIndex): Boolean = basedOn?.find(index.deviation)?.let { it.debated && it.index == index } == true
 
     companion object {
-        /** A preset of every index in [set], all enabled. */
+        /** A preset of every index in [set], all enabled, with the default conventions. */
         fun from(set: BuiltInIndexSet, id: String, name: String = set.title): IndexPreset =
-            IndexPreset(id, name, set.game, set, set.indices.map { IndexEntry(it.index) })
+            IndexPreset(id, name, set.game, basedOn = set, entries = set.indices.map { IndexEntry(it.index) })
     }
 }
 
@@ -50,7 +59,10 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
 
     fun activate(id: String): IndexPresets = copy(activeId = id)
 
-    /** Adds a preset of every index in [from], or an empty one for [game] with no [from], at the end, and makes it active to edit. */
+    /**
+     * Adds a preset of every index in [from], or an empty one for [game] with no [from], with the default conventions, at the
+     * end, and makes it active to edit.
+     */
     fun add(name: String, from: BuiltInIndexSet?, game: Game = from?.game ?: Game.BLACKJACK, id: String = newPresetId()): IndexPresets {
         val preset = from?.let { IndexPreset.from(it, id, name) } ?: IndexPreset(id, name, game, basedOn = null, entries = emptyList())
         return IndexPresets(presets + preset, preset.id)
@@ -58,7 +70,7 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
 
     fun rename(id: String, name: String): IndexPresets = update(id) { it.copy(name = name) }
 
-    /** Copies preset [id] as [name] just after it, and makes the copy active to edit. */
+    /** Copies preset [id], conventions and all, as [name] just after it, and makes the copy active to edit. */
     fun duplicate(id: String, name: String, newId: String = newPresetId()): IndexPresets {
         val at = indexOf(id)
         val copy = presets[at].copy(id = newId, name = name)
@@ -74,7 +86,7 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
         return IndexPresets(left, if (id == activeId) left[at.coerceAtMost(left.lastIndex)].id else activeId)
     }
 
-    /** Replaces preset [id] with what [change] makes of it, which keeps its id. */
+    /** Replaces preset [id] with what [change] makes of it, which keeps its id, such as its entries or conventions changed. */
     fun update(id: String, change: (IndexPreset) -> IndexPreset): IndexPresets {
         val at = indexOf(id)
         val changed = change(presets[at])
@@ -85,8 +97,11 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
     private fun indexOf(id: String): Int = presets.indexOfFirst { it.id == id }.also { require(it >= 0) { "No preset $id" } }
 
     companion object {
-        /** The presets of a first launch: one per built-in set, named after it and with its name as id, and shoe H17 active. */
+        /**
+         * The presets of a first launch: one per built-in set, named after it and with its name as id, with the default
+         * conventions, and shoe H17 active.
+         */
         fun seeded(): IndexPresets =
-            IndexPresets(BuiltInIndexSet.entries.map { IndexPreset.from(it, id = it.name) }, activeId = BuiltInIndexSet.SHOE_H17.name)
+            IndexPresets(BuiltInIndexSet.entries.map { IndexPreset.from(it, id = it.name) }, activeId = BuiltInIndexSet.BJ_SHOE_H17.name)
     }
 }

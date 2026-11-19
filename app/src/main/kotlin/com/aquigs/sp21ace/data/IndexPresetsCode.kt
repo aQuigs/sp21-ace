@@ -1,6 +1,8 @@
 package com.aquigs.sp21ace.data
 
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
+import com.aquigs.sp21ace.domain.indices.CountRounding
+import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.Game
 import com.aquigs.sp21ace.domain.indices.IndexEntry
 import com.aquigs.sp21ace.domain.indices.IndexPreset
@@ -12,16 +14,19 @@ import java.net.URLEncoder
  * Every preset as text, a [LineFields] line each: the active preset's id first, then each preset's line followed by a line for
  * each of its entries, such as
  * ```
- * active=SHOE_H17
- * preset=SHOE_H17 game=BLACKJACK basedOn=SHOE_H17 name=Shoe%2C+H17
- * index=STAND:16:10:0 on=true
+ * active=BJ_SHOE_H17
+ * preset=BJ_SHOE_H17 game=BLACKJACK deckEstimate=TRUNCATE rounding=FLOOR basedOn=BJ_SHOE_H17 name=Shoe%2C+H17
+ * index=STAND:16:10:0:AT_OR_ABOVE on=true
  * ```
- * The name is URL-encoded, so it holds no space. A preset started empty has no `basedOn`.
+ * The name is URL-encoded, so it holds no space. A preset started empty has no `basedOn`. A convention missing, or one this
+ * version doesn't know, reads as its default.
  */
 internal object IndexPresetsCode {
     private const val ACTIVE = "active"
     private const val PRESET = "preset"
     private const val GAME = "game"
+    private const val DECK_ESTIMATE = "deckEstimate"
+    private const val ROUNDING = "rounding"
     private const val BASED_ON = "basedOn"
     private const val NAME = "name"
     private const val INDEX = "index"
@@ -31,8 +36,15 @@ internal object IndexPresetsCode {
     fun print(presets: IndexPresets): String = buildList {
         add(LineFields.print(ACTIVE to presets.activeId))
         presets.presets.forEach { preset ->
-            val basedOn = listOfNotNull(preset.basedOn?.let { BASED_ON to it.name })
-            add(LineFields.print(PRESET to preset.id, GAME to preset.game.name, *basedOn.toTypedArray(), NAME to URLEncoder.encode(preset.name, UTF_8)))
+            val head = listOfNotNull(
+                PRESET to preset.id,
+                GAME to preset.game.name,
+                DECK_ESTIMATE to preset.deckEstimate.name,
+                ROUNDING to preset.rounding.name,
+                preset.basedOn?.let { BASED_ON to it.name },
+                NAME to URLEncoder.encode(preset.name, UTF_8),
+            )
+            add(LineFields.print(*head.toTypedArray()))
             preset.entries.forEach { add(LineFields.print(INDEX to IndexCode.print(it.index), ON to it.enabled)) }
         }
     }.joinToString("\n")
@@ -62,6 +74,8 @@ internal object IndexPresetsCode {
             id = fields[PRESET],
             name = URLDecoder.decode(fields[NAME], UTF_8),
             game = Game.valueOf(fields[GAME]),
+            deckEstimate = DeckEstimate.entries.firstOrNull { it.name == fields.ifSaved(DECK_ESTIMATE) } ?: DeckEstimate.DEFAULT,
+            rounding = CountRounding.entries.firstOrNull { it.name == fields.ifSaved(ROUNDING) } ?: CountRounding.DEFAULT,
             basedOn = fields.ifSaved(BASED_ON)?.let(BuiltInIndexSet::valueOf),
             entries = block.drop(1).mapNotNull(::readEntry).distinctBy { it.index.deviation },
         )

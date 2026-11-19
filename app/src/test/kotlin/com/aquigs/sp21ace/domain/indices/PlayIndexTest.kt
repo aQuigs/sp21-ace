@@ -49,11 +49,18 @@ class PlayIndexTest {
     @Test
     fun wordsAnIndexAsTheFlashcardsAndIndicesPageShowIt() {
         assertEquals(
-            listOf("Hard 20 vs 2", "Pair of aces vs 3", "Soft 20 vs 10", "Hard 5 vs 9", "Insurance"),
+            listOf("Hard 20 vs 2", "Pair of aces vs 3", "Soft 20 vs 10", "Hard 5 vs 9", "Hard 19 vs 4", "Insurance"),
             FakeIndices.ALL.map { it.deviation.title },
         )
         assertEquals(
-            listOf("Stand at +99 or higher", "Split at −99 or higher", "Double at 0 or higher", "Surrender at +98 or higher", "Insurance at −98 or higher"),
+            listOf(
+                "Stand at +99 or higher",
+                "Split at −99 or higher",
+                "Double at 0 or higher",
+                "Surrender at +98 or higher",
+                "Hit at −97 or lower",
+                "Insurance at −98 or higher",
+            ),
             FakeIndices.ALL.map { it.inPlainWords },
         )
         assertEquals("Pair of 10s", IndexHand(HandKind.PAIR, 10).title)

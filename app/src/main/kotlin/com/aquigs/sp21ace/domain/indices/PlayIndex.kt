@@ -49,7 +49,8 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
     }
 }
 
-enum class DeviationPlay { STAND, DOUBLE, SPLIT, SURRENDER }
+/** The play an index names, which a negative index is often a hit: the play to switch to as the count falls. */
+enum class DeviationPlay { HIT, STAND, DOUBLE, SPLIT, SURRENDER }
 
 /** The question an index answers: when to make a play basic strategy doesn't, a hand's play against an upcard, or insurance. */
 sealed interface Deviation : Serializable {
@@ -70,12 +71,19 @@ sealed interface Deviation : Serializable {
     }
 }
 
+/** Which side of its number an index makes its play on. Published charts print both forms, such as "hit at −1 or lower". */
+enum class IndexDirection { AT_OR_ABOVE, AT_OR_BELOW }
+
 /**
- * An index, the fact a flashcard asks for: make the [deviation]'s play at a true count of [threshold] or higher, and play basic
- * strategy below it. One direction expresses every published index, so there is no "or lower". The same deviation with another
- * threshold, as under other rules or after an edit, is another fact.
+ * An index, the fact a flashcard asks for: make the [deviation]'s play at a true count of [threshold] or higher, or at
+ * [threshold] or lower for [IndexDirection.AT_OR_BELOW], and play basic strategy on the other side. The same deviation with
+ * another threshold or direction, as under other rules or after an edit, is another fact.
  */
-data class PlayIndex(val deviation: Deviation, val threshold: Int) : Serializable
+data class PlayIndex(
+    val deviation: Deviation,
+    val threshold: Int,
+    val direction: IndexDirection = IndexDirection.AT_OR_ABOVE,
+) : Serializable
 
 /** An index in a preset, which is drilled while [enabled]. */
 data class IndexEntry(val index: PlayIndex, val enabled: Boolean = true)

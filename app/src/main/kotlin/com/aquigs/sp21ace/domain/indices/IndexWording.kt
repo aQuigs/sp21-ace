@@ -15,7 +15,7 @@ val Deviation.title: String
         Deviation.Insurance -> "Insurance"
     }
 
-/** The play an index makes from its threshold up: "Stand", "Double", "Split", "Surrender" or "Insurance". */
+/** The play an index names: "Hit", "Stand", "Double", "Split", "Surrender" or "Insurance". */
 val Deviation.playName: String
     get() = when (this) {
         is Deviation.OnHand -> play.name.lowercase().replaceFirstChar(Char::uppercase)
@@ -29,5 +29,12 @@ fun signedCount(count: Int): String = when {
     else -> "0"
 }
 
-/** "Stand at 0 or higher", "Insurance at +3 or higher". */
-val PlayIndex.inPlainWords: String get() = "${deviation.playName} at ${signedCount(threshold)} or higher"
+/** "or higher", or "or lower". */
+val IndexDirection.inPlainWords: String
+    get() = when (this) {
+        IndexDirection.AT_OR_ABOVE -> "or higher"
+        IndexDirection.AT_OR_BELOW -> "or lower"
+    }
+
+/** "Stand at 0 or higher", "Hit at −1 or lower", "Insurance at +3 or higher". */
+val PlayIndex.inPlainWords: String get() = "${deviation.playName} at ${signedCount(threshold)} ${direction.inPlainWords}"

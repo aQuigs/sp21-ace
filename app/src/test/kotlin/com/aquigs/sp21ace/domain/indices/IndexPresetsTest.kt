@@ -1,5 +1,6 @@
 package com.aquigs.sp21ace.domain.indices
 
+import com.aquigs.sp21ace.domain.strategy.Upcard
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -8,12 +9,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IndexPresetsTest {
-    private fun preset(id: String, vararg indices: PlayIndex) = IndexPreset(id, "Preset $id", Game.BLACKJACK, basedOn = null, indices.map { IndexEntry(it) })
+    private fun preset(id: String, vararg indices: PlayIndex) =
+        IndexPreset(id, "Preset $id", Game.BLACKJACK, basedOn = null, entries = indices.map { IndexEntry(it) })
 
     private val three = IndexPresets(listOf(preset("a", FakeIndices.STAND), preset("b"), preset("c", FakeIndices.SPLIT)), activeId = "b")
 
     @Test
-    fun aFirstLaunchSeedsAPresetOfEveryBuiltInSetWithShoeH17Active() {
+    fun aFirstLaunchSeedsAPresetOfEveryBuiltInSetWithDefaultConventionsAndShoeH17Active() {
         val seeded = IndexPresets.seeded()
 
         assertEquals(BuiltInIndexSet.entries, seeded.presets.map { it.basedOn })
@@ -22,18 +24,20 @@ class IndexPresetsTest {
             assertEquals(set.title, preset.name)
             assertEquals(set.game, preset.game)
             assertEquals(set.indices.map { IndexEntry(it.index, enabled = true) }, preset.entries)
+            assertEquals(DeckEstimate.TRUNCATE, preset.deckEstimate)
+            assertEquals(CountRounding.FLOOR, preset.rounding)
         }
-        assertEquals(BuiltInIndexSet.SHOE_H17, seeded.active.basedOn)
+        assertEquals(BuiltInIndexSet.BJ_SHOE_H17, seeded.active.basedOn)
     }
 
     @Test
-    fun addsAPresetAtTheEndAndMakesItActive() {
+    fun addsAPresetAtTheEndWithDefaultConventionsAndMakesItActive() {
         val empty = three.add("Mine", from = null, id = "new")
         assertEquals(listOf("a", "b", "c", "new"), empty.presets.map { it.id })
-        assertEquals(IndexPreset("new", "Mine", Game.BLACKJACK, basedOn = null, emptyList()), empty.active)
+        assertEquals(IndexPreset("new", "Mine", Game.BLACKJACK, DeckEstimate.TRUNCATE, CountRounding.FLOOR, null, emptyList()), empty.active)
 
-        val built = three.add("Copy of S17", from = BuiltInIndexSet.SHOE_S17, id = "new")
-        assertEquals(IndexPreset.from(BuiltInIndexSet.SHOE_S17, "new", "Copy of S17"), built.active)
+        val built = three.add("Copy of S17", from = BuiltInIndexSet.BJ_SHOE_S17, id = "new")
+        assertEquals(IndexPreset.from(BuiltInIndexSet.BJ_SHOE_S17, "new", "Copy of S17"), built.active)
 
         assertNotEquals(three.add("x", null).activeId, three.add("x", null).activeId)
     }
@@ -48,11 +52,12 @@ class IndexPresetsTest {
     }
 
     @Test
-    fun duplicatesAPresetJustAfterItAndMakesTheCopyActive() {
-        val duplicated = three.duplicate("a", "Twin", newId = "twin")
+    fun duplicatesAPresetWithItsConventionsJustAfterItAndMakesTheCopyActive() {
+        val original = three.update("a") { it.copy(deckEstimate = DeckEstimate.PERCENTILE_95, rounding = CountRounding.TRUNCATE) }
+        val duplicated = original.duplicate("a", "Twin", newId = "twin")
 
         assertEquals(listOf("a", "twin", "b", "c"), duplicated.presets.map { it.id })
-        assertEquals(three.presets[0].copy(id = "twin", name = "Twin"), duplicated.active)
+        assertEquals(original.presets[0].copy(id = "twin", name = "Twin"), duplicated.active)
     }
 
     @Test
@@ -78,13 +83,41 @@ class IndexPresetsTest {
     }
 
     @Test
-    fun anUpdateKeepsThePresetsIdAndItsDeviationsUnique() {
-        val switchedOff = three.update("a") { it.copy(entries = it.entries.map { entry -> entry.copy(enabled = false) }) }
-        assertEquals(emptyList<PlayIndex>(), switchedOff.presets[0].enabledIndices)
+    fun anUpdateChangesOnlyThatPresetKeepingItsIdAndItsDeviationsUnique() {
+        val changed = three.update("a") { it.copy(rounding = CountRounding.ROUND, entries = it.entries.map { entry -> entry.copy(enabled = false) }) }
+        assertEquals(CountRounding.ROUND, changed.presets[0].rounding)
+        assertEquals(emptyList<PlayIndex>(), changed.presets[0].enabledIndices)
+        assertEquals(three.presets.drop(1), changed.presets.drop(1))
 
         assertThrows(IllegalArgumentException::class.java) { three.update("a") { it.copy(id = "z") } }
         assertThrows(IllegalArgumentException::class.java) {
             three.update("a") { it.copy(entries = it.entries + IndexEntry(FakeIndices.STAND.copy(threshold = 1))) }
+        }
+    }
+
+    @Test
+    fun aBuiltInNumberIsNeitherCustomNorDebatedUnlessItsSourcesDebateIt() {
+        val s17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_S17, "s17")
+        val debated = s17.entries.map { it.index }.filter(s17::isDebated)
+
+        assertFalse(s17.entries.any { s17.isCustom(it.index) })
+        assertEquals(BuiltInIndexSet.BJ_SHOE_S17.indices.filter { it.debated }.map { it.index }, debated)
+        assertTrue(debated.isNotEmpty())
+    }
+
+    @Test
+    fun anEditedNumberDirectionOrAnAddedIndexIsCustomAndNeverDebated() {
+        val s17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_S17, "s17")
+        val debated = s17.entries.map { it.index }.first(s17::isDebated)
+        val edits = listOf(
+            debated.copy(threshold = debated.threshold + 1),
+            debated.copy(direction = IndexDirection.AT_OR_BELOW),
+            PlayIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 13), Upcard.TWO, DeviationPlay.HIT), -2, IndexDirection.AT_OR_BELOW),
+        )
+
+        for (edit in edits) {
+            assertTrue("$edit", s17.isCustom(edit))
+            assertFalse("$edit", s17.isDebated(edit))
         }
     }
 
@@ -98,8 +131,8 @@ class IndexPresetsTest {
 
     @Test
     fun enabledIndicesKeepListOrderAndSkipTheSwitchedOff() {
-        val mixed = IndexPreset("m", "Mixed", Game.BLACKJACK, null, FakeIndices.ALL.mapIndexed { i, index -> IndexEntry(index, enabled = i % 2 == 0) })
+        val mixed = IndexPreset("m", "Mixed", Game.BLACKJACK, basedOn = null, entries = FakeIndices.ALL.mapIndexed { i, index -> IndexEntry(index, enabled = i % 2 == 0) })
 
-        assertEquals(listOf(FakeIndices.STAND, FakeIndices.DOUBLE, FakeIndices.INSURANCE), mixed.enabledIndices)
+        assertEquals(listOf(FakeIndices.STAND, FakeIndices.DOUBLE, FakeIndices.HIT), mixed.enabledIndices)
     }
 }

@@ -1,0 +1,23 @@
+rule_set	rounding	hand	upcard	play	direction	index	status	sources	note
+BJ_SHOE_H17	FLOOR	-	A	INSURANCE	AT_OR_ABOVE	3	agree	CND=+3;BJT=+3;CAC(S17)=+3;BJAPP=3+	Wizard of Odds silent on H17. Whether the dealer hits soft 17 cannot affect the insurance bet.
+BJ_SHOE_H17	FLOOR	16	10	STAND	AT_OR_ABOVE	0	agree	CND=0;BJT=0;S17 evidence;BJAPP=0+	Wizard of Odds silent on H17. Upcard 7-10: the dealer can never hold soft 17, so the S17 evidence applies unchanged.
+BJ_SHOE_H17	FLOOR	15	10	STAND	AT_OR_ABOVE	4	agree	CND=+4;BJT=+4;S17 evidence;BJAPP=4+	Wizard of Odds silent on H17. Upcard 7-10: the dealer can never hold soft 17, so the S17 evidence applies unchanged.
+BJ_SHOE_H17	FLOOR	10-10	5	SPLIT	AT_OR_ABOVE	5	agree	CND=+5;BJINS=+5;BJT=+5;BJAPP=5+	Wizard of Odds silent on H17.
+BJ_SHOE_H17	FLOOR	10-10	6	SPLIT	AT_OR_ABOVE	4	conflict	BJAPP=4+;BJT=+4;BJINS=+5;CND=(gives only S17 +4)	Wizard of Odds silent on H17. Recommend +4 (BJAPP, BJT). CND words its shoe value 'if S17' and gives no H17 number; BJINS's +5 is doubtful (see S17 row).
+BJ_SHOE_H17	FLOOR	10	10	DOUBLE	AT_OR_ABOVE	4	agree	CND=+4;BJINS=+4;BJT=+4;S17 evidence;BJAPP=4+	Wizard of Odds silent on H17. Upcard 7-10: the dealer can never hold soft 17, so the S17 evidence applies unchanged.
+BJ_SHOE_H17	FLOOR	12	3	STAND	AT_OR_ABOVE	2	agree	CND=+2;BJT=+2;BJAPP=2+	Wizard of Odds silent on H17. CND gives one value for both rules.
+BJ_SHOE_H17	FLOOR	12	2	STAND	AT_OR_ABOVE	3	agree	CND=+3;BJT=+3;BJAPP=3+	Wizard of Odds silent on H17.
+BJ_SHOE_H17	FLOOR	11	A	DOUBLE	AT_OR_ABOVE	-1	conflict	BJINS(Table 10.1)=-1;BJT=-1;BJS(ref)=-1;CND=0;BJAPP=D(always double)	Wizard of Odds silent on H17. Basic strategy already doubles, so this is a stop-doubling threshold. Recommend -1: BJINS's copy of BA Table 10.1 says -1 against CND's 0, and two other sources say -1.
+BJ_SHOE_H17	FLOOR	9	2	DOUBLE	AT_OR_ABOVE	1	agree	CND=+1;BJINS=+1;BJT=+1;BJAPP=1+	Wizard of Odds silent on H17.
+BJ_SHOE_H17	FLOOR	10	A	DOUBLE	AT_OR_ABOVE	3	agree	CND=+3;BJINS=+3;BJT=+3;BJAPP=3+;BJS(ref)=+3	Wizard of Odds silent on H17. One lower than S17.
+BJ_SHOE_H17	FLOOR	9	7	DOUBLE	AT_OR_ABOVE	3	agree	CND=+3;BJT=+3;S17 evidence;BJAPP=3+;BJINS=+4	Wizard of Odds silent on H17. Upcard 7-10: the dealer can never hold soft 17, so the S17 evidence applies unchanged. BJINS +4 looks like a slip (see S17 row).
+BJ_SHOE_H17	FLOOR	16	9	STAND	AT_OR_ABOVE	5	conflict	CND=+5;BJINS=+5;BJT=+5;CAC(S17)=+4;BJAPP=4+	Shipped +5 by the user's ruling, as Schlesinger's Blackjack Attack prints it (Wizard of Odds is silent on H17, and prints +5 for S17). With a 9 up the dealer can never hold soft 17, so it matches S17; Cacarulo (S17) and Blackjack Apprenticeship say +4, so it stays debated.
+BJ_SHOE_H17	FLOOR	13	2	STAND	AT_OR_ABOVE	-1	single-source	CND='hit at -1 or lower'(read as index -1);BJINS=-1;BJT=-1;BJAPP='-1-'(not counted);BJS(ref)=-1	Wizard of Odds silent on H17. BA (Blackjack Attack) lineage only for H17. With a 2 up the dealer can hold soft 17, so CAC's S17 -1 does not carry over.
+BJ_SHOE_H17	FLOOR	12	4	STAND	AT_OR_ABOVE	0	agree	CND='hit at 0 or lower'(read as index 0);BJT=0;BJAPP='0-'	Wizard of Odds silent on H17.
+BJ_SHOE_H17	FLOOR	12	5	STAND	AT_OR_ABOVE	-2	single-source	CND='hit at -2 or lower';BJT=-2;BJS(ref)=-2	Wizard of Odds silent on H17. BA (Blackjack Attack) lineage only. BJAPP lists no index here.
+BJ_SHOE_H17	FLOOR	12	6	STAND	AT_OR_ABOVE	-3	single-source	CND='hit at -3 or lower';BJT=-3;BJS(ref)=-3	Wizard of Odds silent on H17. BA (Blackjack Attack) lineage only. Two lower than S17.
+BJ_SHOE_H17	FLOOR	13	3	STAND	AT_OR_ABOVE	-2	single-source	CND='hit at -2 or lower';BJT=-2;BJS(ref)=-2	Wizard of Odds silent on H17. BA (Blackjack Attack) lineage only.
+BJ_SHOE_H17	FLOOR	14	10	SURRENDER	AT_OR_ABOVE	3	single-source	CND=+3;BJT=+3;S17 evidence;BJS(ref)=+3	Wizard of Odds silent on H17. Upcard 7-10: the dealer can never hold soft 17, so the S17 evidence applies unchanged. S17 evidence is also BA (Blackjack Attack) lineage only.
+BJ_SHOE_H17	FLOOR	15	9	SURRENDER	AT_OR_ABOVE	2	agree	CND=+2;BJT=+2;S17 evidence;BJAPP=2+	Wizard of Odds silent on H17. Upcard 7-10: the dealer can never hold soft 17, so the S17 evidence applies unchanged.
+BJ_SHOE_H17	FLOOR	15	10	SURRENDER	AT_OR_ABOVE	0	agree	CND=0;BJT=0;S17 evidence;BJAPP='0-'	Wizard of Odds silent on H17. Upcard 7-10: the dealer can never hold soft 17, so the S17 evidence applies unchanged.
+BJ_SHOE_H17	FLOOR	15	A	SURRENDER	AT_OR_ABOVE	-1	single-source	CND=-1;BJT=-1;BJAPP=-1+(not counted);BJS(ref)=-1;CG=-1	Wizard of Odds silent on H17. Basic strategy already surrenders. BJAPP shows the same number, but its rounding convention matters for a negative index, so it is not counted. BA (Blackjack Attack) lineage only.
