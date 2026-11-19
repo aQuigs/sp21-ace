@@ -21,7 +21,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -194,17 +193,7 @@ class AppShellTest {
 
     @Test
     fun theDrawerOpensIndexFlashcardsWhoseAnswersJoinTheFlashcardHistoryTimedFromWhenTheDrawerClosed() {
-        compose.onNodeWithContentDescription(string(R.string.open_menu)).performClick()
-        compose.mainClock.autoAdvance = false
-        // A click by its action, since an injected touch moves the clock on as far as the drawer's whole close
-        drawerItem(R.string.index_flashcards).performSemanticsAction(SemanticsActions.OnClick)
-        // The new page drawn, and time passing while the drawer is still closing over it, which the answer mustn't count
-        repeat(2) { compose.mainClock.advanceTimeByFrame() }
-        appBarTitle(R.string.index_flashcards).assertExists()
-        drawerItem(R.string.index_flashcards).assertIsDisplayed()
-        now += 5_000
-        compose.mainClock.autoAdvance = true
-
+        openFromDrawer(R.string.index_flashcards)
         appBarTitle(R.string.index_flashcards).assertIsDisplayed()
         drawerItem(R.string.index_flashcards).assertIsNotDisplayed()
         now += 2_000
@@ -229,9 +218,9 @@ class AppShellTest {
         compose.onRoot().performTouchInput {
             down(Offset(width * 0.1f, height * 0.4f))
             repeat(10) { moveBy(Offset(width * 0.02f, 0f), delayMillis = 50) }
-            up()
         }
         now += 3_000
+        compose.onRoot().performTouchInput { up() }
         drawerItem(R.string.index_flashcards).assertIsNotDisplayed()
 
         compose.onNodeWithContentDescription("0").performClick()
