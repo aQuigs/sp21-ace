@@ -4,11 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,10 +19,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.history.Period
@@ -67,6 +75,8 @@ fun FlashcardStatsScreen(
 ) {
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
     var order by rememberSaveable { mutableStateOf(IndexOrder.LEAST_ACCURATE) }
+    // Here rather than with the rows, which a period with no answers takes off the page, so rows opened stay open past it
+    var expanded by rememberSaveable { mutableStateOf(emptySet<PlayIndex>()) }
     val asOf = rememberNow(now)
     // Keyed on where the period starts rather than the time, so All Time, which has no start, isn't counted again every minute
     val stats = remember(history, preset, period, period.start(asOf)) { history.flashcardStats(preset, period, asOf) }
@@ -77,7 +87,20 @@ fun FlashcardStatsScreen(
             StatCards {
                 AccuracyCard(title = stringResource(R.string.accuracy), tally = stats.overall)
                 SpeedCard(stats.times, answered = stats.overall.total > 0)
-                IndicesSection(stats, rows, order, onOrder = { order = it })
+                StatSection(title = stringResource(R.string.indices)) {
+                    if (stats.overall.total == 0) {
+                        Note(stringResource(R.string.no_answers_in_period))
+                    } else {
+                        IndexRows(
+                            stats,
+                            rows,
+                            order,
+                            onOrder = { order = it },
+                            expanded = expanded,
+                            onToggle = { index -> expanded = if (index in expanded) expanded - index else expanded + index },
+                        )
+                    }
+                }
             }
         }
     }
@@ -86,11 +109,17 @@ fun FlashcardStatsScreen(
 @Composable
 private fun SpeedCard(times: AnswerTimes, answered: Boolean) {
     val spread = times.spread
+    // Said in plain words, since the figure is where the slowest tenth begins, not how long it took
+    val p90Spoken = spread?.let { stringResource(R.string.percentile_90_spoken, it.p90.inSeconds) }
 
     StatCard(title = stringResource(R.string.speed)) {
         Figure(value = spread?.median?.let { secondsText(it) }, label = stringResource(R.string.median_time), color = MaterialTheme.colorScheme.primary)
         CountRow {
-            Count(value = spread?.p90?.let { secondsText(it) } ?: stringResource(R.string.no_data), label = stringResource(R.string.slowest_tenth), modifier = Modifier.weight(1f))
+            Count(
+                value = spread?.p90?.let { secondsText(it) } ?: stringResource(R.string.no_data),
+                label = stringResource(R.string.percentile_90),
+                modifier = Modifier.weight(1f).then(if (p90Spoken == null) Modifier else Modifier.clearAndSetSemantics { contentDescription = p90Spoken }),
+            )
             Count(value = times.timed.toString(), label = stringResource(R.string.timed_answers), modifier = Modifier.weight(1f))
         }
         when {
@@ -101,53 +130,52 @@ private fun SpeedCard(times: AnswerTimes, answered: Boolean) {
 }
 
 @Composable
-private fun IndicesSection(stats: FlashcardStats, rows: List<IndexStats>, order: IndexOrder, onOrder: (IndexOrder) -> Unit) {
-    StatSection(title = stringResource(R.string.indices)) {
-        if (stats.overall.total == 0) Note(stringResource(R.string.no_answers_in_period)) else IndexRows(stats, rows, order, onOrder)
+private fun IndexRows(
+    stats: FlashcardStats,
+    rows: List<IndexStats>,
+    order: IndexOrder,
+    onOrder: (IndexOrder) -> Unit,
+    expanded: Set<PlayIndex>,
+    onToggle: (PlayIndex) -> Unit,
+) {
+    // Chips like the period's, which wrap at a large font where a segmented button's halves would squeeze their words
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ORDERS.forEach { (choice, label) ->
+            FilterChip(selected = choice == order, onClick = { onOrder(choice) }, label = { Text(stringResource(label)) })
+        }
     }
-}
+    if (stats.times.timed > 0) TimeAxis(stats.axisEnd, Modifier.padding(top = 16.dp).fillMaxWidth())
 
-@Composable
-private fun IndexRows(stats: FlashcardStats, rows: List<IndexStats>, order: IndexOrder, onOrder: (IndexOrder) -> Unit) {
-    var expanded by rememberSaveable { mutableStateOf(emptySet<PlayIndex>()) }
-
-    Column {
-        // Chips like the period's, which wrap at a large font where a segmented button's halves would squeeze their words
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ORDERS.forEach { (choice, label) ->
-                FilterChip(selected = choice == order, onClick = { onOrder(choice) }, label = { Text(stringResource(label)) })
-            }
-        }
-        if (stats.times.timed > 0) TimeAxis(stats.axisEnd, Modifier.padding(top = 16.dp).fillMaxWidth())
-
-        rows.forEach { row ->
-            IndexRow(
-                row,
-                axisEnd = stats.axisEnd,
-                expanded = row.index in expanded,
-                onToggle = { expanded = if (row.index in expanded) expanded - row.index else expanded + row.index },
-            )
-            HorizontalDivider()
-        }
+    rows.forEach { row ->
+        IndexRow(row, axisEnd = stats.axisEnd, expanded = row.index in expanded, onToggle = { onToggle(row.index) })
+        HorizontalDivider()
     }
 }
 
 /**
  * An index's name and number, its accuracy, answers and median time, and its spread of times on the axis every row shares. A row
- * with timed answers opens and closes its own histogram, and a screen reader hears it as one item.
+ * with timed answers opens and closes its own histogram, shown by its chevron, and a screen reader hears it as one item.
  */
 @Composable
 private fun IndexRow(row: IndexStats, axisEnd: Duration, expanded: Boolean, onToggle: () -> Unit) {
     val spread = row.times.spread
     val words = row.index.inPlainWords
+    val state = stringResource(if (expanded) R.string.expanded else R.string.collapsed)
     val toggle = if (spread == null) {
         Modifier.semantics(mergeDescendants = true) {}
     } else {
-        Modifier.clickable(onClickLabel = stringResource(if (expanded) R.string.collapse else R.string.expand), onClick = onToggle)
+        Modifier
+            .clickable(onClickLabel = stringResource(if (expanded) R.string.collapse else R.string.expand), onClick = onToggle)
+            .semantics { stateDescription = state }
     }
 
     Column(modifier = Modifier.fillMaxWidth().then(toggle).padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = row.index.deviation.title, style = MaterialTheme.typography.titleMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = row.index.deviation.title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            if (spread != null) {
+                Icon(painterResource(R.drawable.ic_expand_less), contentDescription = null, modifier = Modifier.rotate(if (expanded) 0f else 180f))
+            }
+        }
         Text(
             text = if (row.enabled) words else stringResource(R.string.index_switched_off, words),
             color = MaterialTheme.colorScheme.onSurfaceVariant,

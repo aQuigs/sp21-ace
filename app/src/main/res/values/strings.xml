@@ -260,7 +260,8 @@
     <string name="flashcard_stats">Flashcard Stats</string>
     <string name="speed">Speed</string>
     <string name="median_time">Median time</string>
-    <string name="slowest_tenth">Slowest tenth</string>
+    <string name="percentile_90">90th percentile</string>
+    <string name="percentile_90_spoken">90th percentile, %1$.1f seconds: nine in ten answers took that long or less</string>
     <string name="timed_answers">Timed answers</string>
     <string name="seconds_value">%1$.1f s</string>
     <string name="none_timed">None of these answers was timed. An answer goes untimed when its card was covered or left before you answered.</string>
@@ -282,7 +283,7 @@
         <item quantity="one">%1$d answer at %2$.1f seconds or more</item>
         <item quantity="other">%1$d answers at %2$.1f seconds or more</item>
     </plurals>
-    <string name="box_plot_description">Times: median %1$.1f seconds, middle half from %2$.1f to %3$.1f seconds, 10th to 90th percentile from %4$.1f to %5$.1f seconds</string>
+    <string name="box_plot_description">Answer times: median %1$.1f seconds, the middle half from %2$.1f to %3$.1f seconds, one in ten answers took %4$.1f seconds or less, and nine in ten %5$.1f seconds or less</string>
     <string name="least_accurate">Least accurate</string>
     <string name="slowest">Slowest</string>
     <string name="no_answers_in_period">No flashcard answers for this preset in this period.</string>
@@ -294,6 +295,8 @@
     <string name="index_median">Median %1$s</string>
     <string name="no_answers">No answers</string>
     <string name="no_timed_answers">No timed answers</string>
+    <string name="expanded">Expanded</string>
+    <string name="collapsed">Collapsed</string>
     <string name="index_switched_off">%1$s\u00A0·\u00A0Off</string>
     <string name="clear_flashcard_history">Clear flashcard history</string>
     <string name="clear_flashcard_history_message">Are you sure you want to clear your flashcard history? This resets everything built on it: Flashcard Stats, and which indices Prioritize worse indices favors.</string>

@@ -26,7 +26,8 @@ class FlashcardStatsTest {
     private fun answer(index: PlayIndex, right: Boolean = true, time: Duration? = 1.seconds, at: Instant = now) =
         FlashcardAnswer(at, Game.BLACKJACK, index, if (right) index.threshold else index.threshold + 1, time, cards = 2)
 
-    private fun ms(vararg times: Long) = times.map { it.milliseconds }
+    // Sorted, as the stats hand them over
+    private fun ms(vararg times: Long) = times.sortedArray()
 
     private fun List<FlashcardAnswer>.stats(period: Period = Period.ALL_TIME, of: IndexPreset = preset) = flashcardStats(of, period, now)
 
@@ -34,14 +35,14 @@ class FlashcardStatsTest {
 
     @Test
     fun noTimesHaveNoPercentile() {
-        assertNull(percentile(emptyList(), 0.5))
-        assertNull(TimeSpread.of(emptyList()))
+        assertNull(percentile(ms(), 0.5))
+        assertNull(TimeSpread.of(ms()))
     }
 
     @Test
     fun oneTimeIsEveryPercentile() {
         val time = 1700.milliseconds
-        assertEquals(TimeSpread(time, time, time, time, time), TimeSpread.of(listOf(time)))
+        assertEquals(TimeSpread(time, time, time, time, time), TimeSpread.of(ms(1700)))
     }
 
     @Test
@@ -55,26 +56,30 @@ class FlashcardStatsTest {
         val times = ms(900, 100, 800, 200, 700, 300, 600, 400, 500, 1000)
 
         assertEquals(TimeSpread(190.milliseconds, 325.milliseconds, 550.milliseconds, 775.milliseconds, 910.milliseconds), TimeSpread.of(times))
-        assertEquals(100.milliseconds, percentile(times.sorted(), 0.0))
-        assertEquals(1000.milliseconds, percentile(times.sorted(), 1.0))
+        assertEquals(100.milliseconds, percentile(times, 0.0))
+        assertEquals(1000.milliseconds, percentile(times, 1.0))
+    }
+
+    @Test
+    fun sortedTimesMergeIntoOneSortedList() {
+        assertEquals(listOf<Long>(), mergeSorted(emptyList()).toList())
+        assertEquals(listOf<Long>(1, 2, 2, 3, 5, 8, 9), mergeSorted(listOf(ms(2, 9), ms(), ms(1, 3, 8), ms(2, 5))).toList())
     }
 
     @Test
     fun aBucketHoldsItsLowerEdgeButNotItsUpperAndFiveSecondsOrMoreGoToTheLast() {
-        assertEquals(0, TimeHistogram.bucketOf(Duration.ZERO))
-        assertEquals(0, TimeHistogram.bucketOf(499.milliseconds))
-        assertEquals(1, TimeHistogram.bucketOf(500.milliseconds))
-        assertEquals(9, TimeHistogram.bucketOf(4999.milliseconds))
-        assertEquals(10, TimeHistogram.bucketOf(5.seconds))
-        assertEquals(10, TimeHistogram.bucketOf(10.minutes()))
+        assertEquals(0, TimeHistogram.bucketOf(0))
+        assertEquals(0, TimeHistogram.bucketOf(499))
+        assertEquals(1, TimeHistogram.bucketOf(500))
+        assertEquals(9, TimeHistogram.bucketOf(4999))
+        assertEquals(10, TimeHistogram.bucketOf(5000))
+        assertEquals(10, TimeHistogram.bucketOf(Long.MAX_VALUE))
         assertEquals(5.seconds, TimeHistogram.start(TimeHistogram.BUCKETS))
 
         val histogram = TimeHistogram.of(ms(0, 499, 500, 2250, 4999, 5000, 60_000))
         assertEquals(listOf(2, 1, 0, 0, 1, 0, 0, 0, 0, 1, 2), histogram.counts)
         assertEquals(7, histogram.total)
     }
-
-    private fun Int.minutes() = (this * 60).seconds
 
     @Test
     fun anUntimedAnswerCountsForAccuracyButNeverForSpeed() {
@@ -142,11 +147,42 @@ class FlashcardStatsTest {
         assertEquals(10.seconds, axis(30.seconds))
     }
 
+    @Test
+    fun aSpreadOnTheAxisIsDrawnWhole() {
+        val spread = TimeSpread(1.seconds, 2.seconds, 3.seconds, 4.seconds, 5.seconds)
+
+        assertEquals(SpreadOnAxis(0.1f..0.5f, lowCap = true, highCap = true, box = 0.2f..0.4f, boxCut = false, median = 0.3f), spread.onAxis(10.seconds))
+    }
+
+    @Test
+    fun onlyTheUpperWhiskerPastTheEndRunsOffIt() {
+        val onAxis = TimeSpread(1.seconds, 2.seconds, 3.seconds, 4.seconds, 15.seconds).onAxis(10.seconds)
+
+        assertEquals(SpreadOnAxis(0.1f..1f, lowCap = true, highCap = false, box = 0.2f..0.4f, boxCut = false, median = 0.3f), onAxis)
+        assertEquals(true, onAxis.runsOff)
+    }
+
+    @Test
+    fun aMedianPastTheEndHasNoTickAndTheBoxIsCutAtTheEnd() {
+        val onAxis = TimeSpread(4.seconds, 8.seconds, 12.seconds, 13.seconds, 15.seconds).onAxis(10.seconds)
+
+        assertEquals(SpreadOnAxis(0.4f..1f, lowCap = true, highCap = false, box = 0.8f..1f, boxCut = true, median = null), onAxis)
+    }
+
+    @Test
+    fun aSpreadWhollyPastTheEndDrawsNothingButRunsOff() {
+        // As with times of 12, 13, 15 and 20 s, which must not draw a box at the end as if the median were 10 s
+        val onAxis = TimeSpread(12.3.seconds, 12.75.seconds, 14.seconds, 16.25.seconds, 18.5.seconds).onAxis(10.seconds)
+
+        assertEquals(SpreadOnAxis(whisker = null, lowCap = false, highCap = false, box = null, boxCut = true, median = null), onAxis)
+        assertEquals(true, onAxis.runsOff)
+    }
+
     private fun stats(index: PlayIndex, correct: Int, incorrect: Int, median: Duration? = null, p90: Duration? = median) = IndexStats(
         index,
         enabled = true,
         Tally(correct, incorrect),
-        AnswerTimes(median?.let { TimeSpread(it, it, it, it, p90!!) }, TimeHistogram(List(TimeHistogram.BUCKETS + 1) { 0 })),
+        AnswerTimes(median?.let { TimeSpread(it, it, it, it, p90!!) }, TimeHistogram.of(ms())),
     )
 
     @Test

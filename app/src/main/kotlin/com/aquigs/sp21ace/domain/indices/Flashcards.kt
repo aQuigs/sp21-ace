@@ -46,7 +46,7 @@ data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = n
  */
 data class FlashcardAnswer(val answeredAt: Instant, val game: Game, val index: PlayIndex, val answer: Int, val time: Duration?, val cards: Int) {
     init {
-        require(time == null || !time.isNegative()) { "A negative answer time: $time" }
+        require(time == null || (!time.isNegative() && time.isFinite())) { "An answer time out of range: $time" }
         require(cards >= 0) { "A hand of $cards cards" }
     }
 

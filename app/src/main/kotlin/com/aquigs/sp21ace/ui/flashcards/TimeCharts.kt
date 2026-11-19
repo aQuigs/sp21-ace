@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -98,11 +99,11 @@ fun TimeHistogramChart(histogram: TimeHistogram, modifier: Modifier = Modifier) 
                     onDrawBehind {
                         histogram.counts.forEachIndexed { bucket, count ->
                             val height = barHeight(count)
-                            drawRect(bar, topLeft = Offset(bucket * slot + gap / 2, bottom - height), size = Size(slot - gap, height))
+                            drawRect(bar, topLeft = Offset(bucket * slot + gap / 2, bottom - height), size = Size(maxOf(0f, slot - gap), height))
                         }
                         countLabels.forEach { (bucket, label) ->
-                            val x = (bucket + 0.5f) * slot - label.size.width / 2f
-                            drawText(label, topLeft = Offset(x.coerceIn(0f, size.width - label.size.width), bottom - barHeight(histogram.counts[bucket]) - label.size.height - gap))
+                            val left = centeredWithin((bucket + 0.5f) * slot, label, size.width)
+                            drawText(label, topLeft = Offset(left, bottom - barHeight(histogram.counts[bucket]) - label.size.height - gap))
                         }
                         drawLine(axis, Offset(0f, bottom), Offset(size.width, bottom), stroke)
                         drawLine(axis, Offset(0f, top), Offset(0f, bottom), stroke)
@@ -162,7 +163,8 @@ fun TimeAxis(end: Duration, modifier: Modifier = Modifier) {
 
 /**
  * A box plot of [spread] on an axis from 0 to [axisEnd], with a faint line each second: a whisker from the 10th to the 90th
- * percentile, a box over the middle half and a tick at the median. A whisker past the axis' end runs off it as an arrow.
+ * percentile, a box over the middle half and a tick at the median. Only what lies on the axis is drawn, so a time past its end never
+ * reads as one at the end: a whisker past it runs off as an arrow, a box is cut open there, and a median past it has no tick.
  */
 @Composable
 fun TimeSpreadStrip(spread: TimeSpread, axisEnd: Duration, modifier: Modifier = Modifier) {
@@ -174,6 +176,7 @@ fun TimeSpreadStrip(spread: TimeSpread, axisEnd: Duration, modifier: Modifier = 
         spread.p10.inSeconds,
         spread.p90.inSeconds,
     )
+    val onAxis = spread.onAxis(axisEnd)
     val grid = MaterialTheme.colorScheme.outlineVariant
     val whisker = MaterialTheme.colorScheme.onSurfaceVariant
     val box = MaterialTheme.colorScheme.primary
@@ -181,36 +184,52 @@ fun TimeSpreadStrip(spread: TimeSpread, axisEnd: Duration, modifier: Modifier = 
 
     Spacer(
         modifier = modifier.fillMaxWidth().height(StripHeight).clearAndSetSemantics { contentDescription = description }.drawWithCache {
-            fun x(time: Duration) = (time / axisEnd).toFloat().coerceIn(0f, 1f) * size.width
+            fun x(fraction: Float) = fraction * size.width
             val middle = size.height / 2
-            val boxTop = middle - BoxHeight.toPx() / 2
-            val left = x(spread.p25)
-            val boxWidth = maxOf(x(spread.p75) - left, 2.dp.toPx())
+            val boxHeight = BoxHeight.toPx()
+            val boxTop = middle - boxHeight / 2
             val cap = 4.dp.toPx()
-            val runsOff = spread.p90 > axisEnd
+            val line = 2.dp.toPx()
             val arrow = Path().apply {
                 moveTo(size.width - cap * 1.5f, middle - cap)
                 lineTo(size.width, middle)
                 lineTo(size.width - cap * 1.5f, middle + cap)
             }
+            // At least wide enough to see, but never past the strip's end
+            val boxSpan = onAxis.box?.let { range ->
+                val width = maxOf(x(range.endInclusive - range.start), minOf(2.dp.toPx(), size.width))
+                val left = minOf(x(range.start), size.width - width)
+                left to left + width
+            }
+            // A box cut at the end has no right side, so it reads as running on past it
+            val boxOutline = boxSpan?.let { (left, right) ->
+                Path().apply {
+                    moveTo(right, boxTop)
+                    lineTo(left, boxTop)
+                    lineTo(left, boxTop + boxHeight)
+                    lineTo(right, boxTop + boxHeight)
+                    if (!onAxis.boxCut) close()
+                }
+            }
 
             onDrawBehind {
-                for (second in 0..axisEnd.inWholeSeconds) {
-                    val at = x(second.seconds)
-                    drawLine(grid, Offset(at, 0f), Offset(at, size.height), 1.dp.toPx())
-                }
+                clipRect {
+                    for (second in 0..axisEnd.inWholeSeconds) {
+                        val at = x(second / axisEnd.inSeconds.toFloat())
+                        drawLine(grid, Offset(at, 0f), Offset(at, size.height), 1.dp.toPx())
+                    }
 
-                drawLine(whisker, Offset(x(spread.p10), middle), Offset(x(spread.p90), middle), 2.dp.toPx())
-                drawLine(whisker, Offset(x(spread.p10), middle - cap), Offset(x(spread.p10), middle + cap), 2.dp.toPx())
-                if (runsOff) {
-                    drawPath(arrow, whisker, style = Stroke(width = 2.dp.toPx()))
-                } else {
-                    drawLine(whisker, Offset(x(spread.p90), middle - cap), Offset(x(spread.p90), middle + cap), 2.dp.toPx())
-                }
+                    onAxis.whisker?.let { drawLine(whisker, Offset(x(it.start), middle), Offset(x(it.endInclusive), middle), line) }
+                    if (onAxis.lowCap) onAxis.whisker?.start?.let { drawLine(whisker, Offset(x(it), middle - cap), Offset(x(it), middle + cap), line) }
+                    if (onAxis.highCap) onAxis.whisker?.endInclusive?.let { drawLine(whisker, Offset(x(it), middle - cap), Offset(x(it), middle + cap), line) }
+                    if (onAxis.runsOff) drawPath(arrow, whisker, style = Stroke(width = line))
 
-                drawRect(box.copy(alpha = 0.3f), topLeft = Offset(left, boxTop), size = Size(boxWidth, BoxHeight.toPx()))
-                drawRect(box, topLeft = Offset(left, boxTop), size = Size(boxWidth, BoxHeight.toPx()), style = Stroke(width = 1.5.dp.toPx()))
-                drawLine(median, Offset(x(spread.median), boxTop - 3.dp.toPx()), Offset(x(spread.median), boxTop + BoxHeight.toPx() + 3.dp.toPx()), 3.dp.toPx())
+                    if (boxSpan != null && boxOutline != null) {
+                        drawRect(box.copy(alpha = 0.3f), topLeft = Offset(boxSpan.first, boxTop), size = Size(boxSpan.second - boxSpan.first, boxHeight))
+                        drawPath(boxOutline, box, style = Stroke(width = 1.5.dp.toPx()))
+                    }
+                    onAxis.median?.let { drawLine(median, Offset(x(it), boxTop - 3.dp.toPx()), Offset(x(it), boxTop + boxHeight + 3.dp.toPx()), 3.dp.toPx()) }
+                }
             }
         },
     )
@@ -224,7 +243,7 @@ private fun labelStep(perSecond: Float, labelWidth: Float): Int = LABEL_STEPS.fi
  * last. The last always stays, so the axis' end is labeled.
  */
 private fun clearOfEachOther(labels: List<Pair<TextLayoutResult, Float>>, width: Float, gap: Float): List<Pair<TextLayoutResult, Float>> {
-    val placed = labels.map { (label, x) -> label to (x - label.size.width / 2f).coerceIn(0f, width - label.size.width) }
+    val placed = labels.map { (label, x) -> label to centeredWithin(x, label, width) }
     val last = placed.lastOrNull() ?: return emptyList()
     var right = Float.NEGATIVE_INFINITY
 
@@ -232,3 +251,7 @@ private fun clearOfEachOther(labels: List<Pair<TextLayoutResult, Float>>, width:
         (left >= right + gap && left + label.size.width + gap <= last.second).also { if (it) right = left + label.size.width }
     } + last
 }
+
+// Kept inside the chart, or at its start when the chart is narrower than the label, as in a window too small to show it
+private fun centeredWithin(x: Float, label: TextLayoutResult, width: Float): Float =
+    (x - label.size.width / 2f).coerceIn(0f, maxOf(0f, width - label.size.width))

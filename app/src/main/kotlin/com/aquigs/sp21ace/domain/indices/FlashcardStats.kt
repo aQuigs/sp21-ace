@@ -11,33 +11,62 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * The [fraction] (0 to 1) percentile of [sorted] times, interpolated linearly between the two either side of its rank, as
- * spreadsheets' PERCENTILE and most statistics tools do by default. Every figure on the page uses it, so a median and a box read
- * alike. It behaves with few answers: one is every percentile, two give their mean as the median and a box between them, and no
- * percentile ever falls outside the times given. Null with none.
+ * The [fraction] (0 to 1) percentile of [sorted] times in milliseconds, interpolated linearly between the two either side of its
+ * rank, as spreadsheets' PERCENTILE and most statistics tools do by default. Every figure on the page uses it, so a median and a box
+ * read alike. It behaves with few answers: one is every percentile, two give their mean as the median and a box between them, and
+ * no percentile ever falls outside the times given. Null with none.
  */
-fun percentile(sorted: List<Duration>, fraction: Double): Duration? {
+internal fun percentile(sorted: LongArray, fraction: Double): Duration? {
     require(fraction in 0.0..1.0) { "No percentile at $fraction" }
     if (sorted.isEmpty()) return null
 
     val rank = (sorted.size - 1) * fraction
     val below = floor(rank).toInt()
     val above = ceil(rank).toInt()
-    return sorted[below] + (sorted[above] - sorted[below]) * (rank - below)
+    return (sorted[below] + (sorted[above] - sorted[below]) * (rank - below)).milliseconds
 }
 
 /** The 10th, 25th, 50th, 75th and 90th percentiles of some answer times, as [percentile] works them out: a box plot's figures. */
 data class TimeSpread(val p10: Duration, val p25: Duration, val median: Duration, val p75: Duration, val p90: Duration) {
-    companion object {
-        /** The spread of [times], in any order, or null with none. */
-        fun of(times: List<Duration>): TimeSpread? {
-            if (times.isEmpty()) return null
+    /** Where the parts of this spread's box plot lie on an axis from 0 to [end]. */
+    fun onAxis(end: Duration): SpreadOnAxis {
+        fun at(time: Duration) = (time / end).toFloat().coerceAtMost(1f)
 
-            val sorted = times.sorted()
+        return SpreadOnAxis(
+            whisker = if (p10 > end) null else at(p10)..at(p90),
+            lowCap = p10 <= end,
+            highCap = p90 <= end,
+            box = if (p25 > end) null else at(p25)..at(p75),
+            boxCut = p75 > end,
+            median = median.takeIf { it <= end }?.let(::at),
+        )
+    }
+
+    companion object {
+        /** The spread of [sorted] times in milliseconds, or null with none. */
+        internal fun of(sorted: LongArray): TimeSpread? {
+            if (sorted.isEmpty()) return null
+
             fun at(fraction: Double) = requireNotNull(percentile(sorted, fraction))
             return TimeSpread(at(0.1), at(0.25), at(0.5), at(0.75), at(0.9))
         }
     }
+}
+
+/**
+ * The parts of a box plot that lie on an axis, each as a fraction of its length, so nothing past the end is drawn at the end as if it
+ * were there: the [whisker], with a cap at each end it reaches, the [box], cut short at the end when [boxCut], and the [median]'s
+ * tick. A part wholly past the end is null. A whisker without its high cap runs off the axis.
+ */
+data class SpreadOnAxis(
+    val whisker: ClosedFloatingPointRange<Float>?,
+    val lowCap: Boolean,
+    val highCap: Boolean,
+    val box: ClosedFloatingPointRange<Float>?,
+    val boxCut: Boolean,
+    val median: Float?,
+) {
+    val runsOff: Boolean get() = !highCap
 }
 
 /**
@@ -60,15 +89,15 @@ data class TimeHistogram(val counts: List<Int>) {
 
         val OVERFLOW_FROM: Duration = BUCKET_WIDTH * BUCKETS
 
-        /** The bucket [time] falls in, each holding its lower edge but not its upper. */
-        fun bucketOf(time: Duration): Int = minOf((time / BUCKET_WIDTH).toInt(), BUCKETS)
+        /** The bucket a time of [millis] falls in, each holding its lower edge but not its upper. */
+        internal fun bucketOf(millis: Long): Int = minOf(millis / BUCKET_WIDTH.inWholeMilliseconds, BUCKETS.toLong()).toInt()
 
         /** Where [bucket] starts. */
         fun start(bucket: Int): Duration = BUCKET_WIDTH * bucket
 
-        fun of(times: List<Duration>): TimeHistogram {
+        internal fun of(millis: LongArray): TimeHistogram {
             val counts = IntArray(BUCKETS + 1)
-            for (time in times) counts[bucketOf(time)]++
+            for (time in millis) counts[bucketOf(time)]++
             return TimeHistogram(counts.toList())
         }
     }
@@ -79,7 +108,8 @@ data class AnswerTimes(val spread: TimeSpread?, val histogram: TimeHistogram) {
     val timed: Int get() = histogram.total
 
     companion object {
-        fun of(times: List<Duration>): AnswerTimes = AnswerTimes(TimeSpread.of(times), TimeHistogram.of(times))
+        /** The figures of [sorted] times in milliseconds. */
+        internal fun of(sorted: LongArray): AnswerTimes = AnswerTimes(TimeSpread.of(sorted), TimeHistogram.of(sorted))
     }
 }
 
@@ -113,24 +143,65 @@ data class FlashcardStats(val overall: Tally, val times: AnswerTimes, val indice
 /**
  * [preset]'s figures over [period] as of [now]. An answer counts when it was to one of the preset's indices, number and direction
  * included, so an index whose number was edited starts afresh, as Prioritize worse counts it. Every answer counts for accuracy,
- * and only a timed one for speed: an untimed one had its card interrupted, so its time says nothing. Every index switched on has
- * a row, answered or not, to show what is left to drill; a switched-off one has a row only while it has answers in the period.
+ * and only a timed one for speed: an untimed one had its card interrupted, so its time says nothing. Each index switched on gets a
+ * row, answered or not, and a switched-off one only while it has answers in the period; the page lists the rows only when the
+ * period has an answer at all. One pass over the history, finding each answer's index by hash, and every list of times sorted once
+ * as plain numbers, since the page works it out again on every change of period, preset or history.
  */
 fun List<FlashcardAnswer>.flashcardStats(preset: IndexPreset, period: Period, now: Instant): FlashcardStats {
     val counts = period.counter(now)
-    val indices = preset.entries.map { it.index }.toSet()
-    val byIndex = asSequence().filter { it.game == preset.game && it.index in indices && counts(it.answeredAt) }.groupBy { it.index }
-    val counted = byIndex.values.flatten()
+    val byIndex = HashMap<PlayIndex, Answers>()
+    for (entry in preset.entries) byIndex[entry.index] = Answers()
+
+    for (answer in this) {
+        if (answer.game != preset.game) continue
+        val answers = byIndex[answer.index] ?: continue
+        if (counts(answer.answeredAt)) answers.add(answer)
+    }
 
     val rows = preset.entries.mapNotNull { entry ->
-        val answers = byIndex[entry.index].orEmpty()
-        if (!entry.enabled && answers.isEmpty()) return@mapNotNull null
-        IndexStats(entry.index, entry.enabled, answers.tally(), AnswerTimes.of(answers.mapNotNull { it.time }))
+        val answers = byIndex.getValue(entry.index)
+        if (!entry.enabled && answers.tally.total == 0) null else IndexStats(entry.index, entry.enabled, answers.tally, AnswerTimes.of(answers.sortedTimes))
     }
-    return FlashcardStats(counted.tally(), AnswerTimes.of(counted.mapNotNull { it.time }), rows)
+    val every = byIndex.values
+    val overall = every.fold(Tally(correct = 0, incorrect = 0)) { sum, answers -> sum + answers.tally }
+    return FlashcardStats(overall, AnswerTimes.of(mergeSorted(every.map { it.sortedTimes })), rows)
 }
 
-private fun List<FlashcardAnswer>.tally(): Tally = count { it.isCorrect }.let { Tally(correct = it, incorrect = size - it) }
+/** [sorted] arrays merged into one sorted array, two at a time, so the times sorted for each index aren't sorted again. */
+internal fun mergeSorted(sorted: List<LongArray>): LongArray {
+    var arrays = sorted.ifEmpty { return LongArray(0) }
+    while (arrays.size > 1) arrays = arrays.chunked(2) { it.singleOrNull() ?: merge(it[0], it[1]) }
+    return arrays.single()
+}
+
+private fun merge(a: LongArray, b: LongArray): LongArray {
+    val merged = LongArray(a.size + b.size)
+    var i = 0
+    var j = 0
+    for (k in merged.indices) merged[k] = if (j == b.size || (i < a.size && a[i] <= b[j])) a[i++] else b[j++]
+    return merged
+}
+
+/** One index's answers as the pass counts them: right and wrong, and the times of the timed ones in milliseconds. */
+private class Answers {
+    private var correct = 0
+    private var incorrect = 0
+    private var times = LongArray(16)
+
+    private var timed = 0
+
+    val tally: Tally get() = Tally(correct, incorrect)
+
+    val sortedTimes: LongArray by lazy { times.copyOf(timed).apply { sort() } }
+
+    fun add(answer: FlashcardAnswer) {
+        if (answer.isCorrect) correct++ else incorrect++
+        val time = answer.time ?: return
+        if (timed == times.size) times = times.copyOf(timed * 2)
+        times[timed++] = time.inWholeMilliseconds
+    }
+}
 
 /** How the index rows are ordered, each putting the troublemakers at the top. */
 enum class IndexOrder { LEAST_ACCURATE, SLOWEST }
