@@ -36,8 +36,11 @@ fun spanishShoe(decks: Int): List<Card> = List(decks) { SPANISH_DECK }.flatten()
 /** A card written as its rank label and suit letter, such as "7h" or "Kc". */
 val Card.code: String get() = "${rank.label}${suit.letter}"
 
+/** A full deck of 52, the 10-spot included, unshuffled. */
+val FULL_DECK: List<Card> = deckOf(Rank.entries)
+
 // Every code reads as one of these, so answers loaded by the thousand share their cards
-private val CARDS_BY_CODE: Map<String, Card> = deckOf(Rank.entries).associateBy { it.code }
+private val CARDS_BY_CODE: Map<String, Card> = FULL_DECK.associateBy { it.code }
 
 /** The card [code] names, such as "7h", or "10h" for a 10-spot. */
 fun card(code: String): Card = requireNotNull(CARDS_BY_CODE[code]) { "Unknown card: $code" }

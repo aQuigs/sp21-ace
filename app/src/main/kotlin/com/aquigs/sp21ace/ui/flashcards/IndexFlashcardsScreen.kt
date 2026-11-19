@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,7 +38,6 @@ import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.Flashcard
 import com.aquigs.sp21ace.domain.indices.FlashcardGrade
 import com.aquigs.sp21ace.domain.indices.IndexDirection
-import com.aquigs.sp21ace.domain.indices.atCount
 import com.aquigs.sp21ace.domain.indices.flashcardAnswers
 import com.aquigs.sp21ace.domain.indices.inPlainWords
 import com.aquigs.sp21ace.domain.indices.playName
@@ -61,7 +61,7 @@ private val MaxButton = 56.dp
 
 /**
  * A flashcard of an index: the cards, the play it asks about, and a pad of true counts to answer with. Leaving the page or the
- * app, or the drawer [covered] over it, interrupts the card showing, so its answer records no time.
+ * app, the window losing focus, or the drawer [covered] over it, interrupts the card showing, so its answer records no time.
  */
 @Composable
 fun IndexFlashcardsScreen(
@@ -74,10 +74,13 @@ fun IndexFlashcardsScreen(
 ) {
     val card = state.run.card
     val currentActions by rememberUpdatedState(actions)
+    // A window without focus, as in split screen, under the notification shade or behind a system dialog, stays resumed but isn't
+    // where the player is looking
+    val hidden = covered || !LocalWindowInfo.current.isWindowFocused
 
     LifecycleResumeEffect(Unit) { onPauseOrDispose { currentActions.interrupted() } }
-    LaunchedEffect(covered) { if (covered) currentActions.interrupted() }
-    LaunchedEffect(card, covered) { if (card != null && !covered) currentActions.shown(card) }
+    LaunchedEffect(hidden) { if (hidden) currentActions.interrupted() }
+    LaunchedEffect(card, hidden) { if (card != null && !hidden) currentActions.shown(card) }
 
     Scaffold(modifier = modifier, topBar = { FlashcardBar(state.run.lastGrade, onOpenDrawer) }) { padding ->
         Column(
@@ -104,38 +107,37 @@ fun IndexFlashcardsScreen(
 
 @Composable
 private fun FlashcardBar(lastGrade: FlashcardGrade?, onOpenDrawer: () -> Unit) {
-    val answered = lastGrade?.takeUnless { it.isCorrect }?.let { stringResource(R.string.you_answered, signedCount(it.answer)) }
-
     FeedbackBar(
         verdict = lastGrade,
         title = stringResource(R.string.index_flashcards),
         isCorrect = { it.isCorrect },
-        spoken = lastGrade?.let { grade ->
-            val deviation = grade.card.index.deviation
-            listOfNotNull(deviation.title.takeIf { deviation is Deviation.OnHand }, grade.card.index.inPlainWords, answered).joinToString(". ")
-        },
+        spoken = lastGrade?.let { feedbackParts(it).joinToString(". ") },
         onOpenDrawer = onOpenDrawer,
     ) { grade ->
-        val index = grade.card.index
-        val wrong = if (grade.isCorrect) null else stringResource(R.string.you_answered, signedCount(grade.answer))
+        val deviation = grade.card.index.deviation
+        // The hand in bold, or for insurance, which has none, the play
+        val bold = (if (deviation is Deviation.OnHand) deviation.title else deviation.playName).unbroken()
+        val text = feedbackParts(grade).joinToString(SEPARATOR) { it.unbroken() }
 
         FeedbackText(
             buildAnnotatedString {
-                // Insurance names itself as the play, so it isn't named twice
-                if (index.deviation is Deviation.OnHand) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(index.deviation.title.unbroken()) }
-                    append("$SEPARATOR${index.inPlainWords.unbroken()}")
-                } else {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(index.deviation.playName) }
-                    append("\u00A0${index.atCount.unbroken()}")
-                }
-                wrong?.let { append("$SEPARATOR${it.unbroken()}") }
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(bold) }
+                append(text.removePrefix(bold))
             },
         )
     }
 }
 
-// The bar breaks its lines only after a part's bar, so a part such as "at −1 or higher" never ends one line and starts the next
+/** "Hard 16 vs 10", "Stand at 0 or higher" and, after a wrong answer, "You answered +2". Insurance names itself as the play, so only once. */
+@Composable
+private fun feedbackParts(grade: FlashcardGrade): List<String> {
+    val index = grade.card.index
+    val answered = if (grade.isCorrect) null else stringResource(R.string.you_answered, signedCount(grade.answer))
+
+    return listOfNotNull(index.deviation.title.takeIf { index.deviation is Deviation.OnHand }, index.inPlainWords, answered)
+}
+
+// The bar breaks its lines only after the bar between parts, so a part such as "at −1 or higher" never ends one line and starts the next
 private const val SEPARATOR = "\u00A0| "
 
 private fun String.unbroken() = replace(' ', '\u00A0')

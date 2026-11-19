@@ -29,8 +29,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.dealing.HandCustomization
@@ -59,6 +61,7 @@ import com.aquigs.sp21ace.ui.settings.SettingsScreen
 import com.aquigs.sp21ace.ui.statistics.PlayStatisticsScreen
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /** Root screens carry the menu. Every other destination opens over one as a sub-page with a back arrow. */
 enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
@@ -121,8 +124,12 @@ fun AppShell(
     val destination = backStack.last()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    // Opening, open or closing, so a card it covers for any time is untimed
-    val drawerShowing by remember { derivedStateOf { drawerState.currentValue == DrawerValue.Open || drawerState.targetValue == DrawerValue.Open } }
+    // Anywhere short of fully closed, so a card it covers for any time is untimed, even under a drag let spring back, which
+    // never changes the drawer's target. Closed lies the drawer's width off screen, and open at 0.
+    val closedOffset = with(LocalDensity.current) { DrawerWidth.toPx() }
+    val drawerShowing by remember(closedOffset) {
+        derivedStateOf { drawerState.currentOffset.let { !it.isNaN() && abs(it) < closedOffset - 1 } }
+    }
 
     // A page already open is returned to rather than stacked again, as a double tap would
     fun open(page: Destination) {
@@ -224,33 +231,34 @@ private fun Drawer(selected: Destination, onSelect: (Destination) -> Unit) {
     ModalDrawerSheet(modifier = Modifier.width(DrawerWidth).windowInsetsPadding(WindowInsets.statusBars)) {
         // Scrolls, as Blackjack Ace's does, so Settings at the bottom stays in reach on a short screen at a large font size
         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-            // The extra 16dp is the item's own start padding, so the header lines up with the icons
-            SectionHeading(
-                text = stringResource(R.string.basic_strategy),
-                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(start = 16.dp, top = 18.dp, bottom = 18.dp),
-            )
-
-            BASIC_STRATEGY_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
-
+            // The first section starts further down, clear of the sheet's top edge, and each after it below a divider
+            DrawerSection(R.string.basic_strategy, BASIC_STRATEGY_ITEMS, selected, onSelect, top = 18.dp)
             DrawerDivider()
-            SectionHeading(
-                text = stringResource(R.string.card_counting),
-                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(start = 16.dp, top = 10.dp, bottom = 18.dp),
-            )
-            CARD_COUNTING_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
-
+            DrawerSection(R.string.card_counting, CARD_COUNTING_ITEMS, selected, onSelect)
             DrawerDivider()
-            SectionHeading(
-                text = stringResource(R.string.play),
-                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(start = 16.dp, top = 10.dp, bottom = 18.dp),
-            )
-            PLAY_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
+            DrawerSection(R.string.play, PLAY_ITEMS, selected, onSelect)
 
             // As in Blackjack Ace, Settings belongs to no section, so it sits below them all, inset as far as the header
             DrawerDivider()
             DrawerItem(Destination.Settings, R.drawable.ic_settings, selected, onSelect)
         }
     }
+}
+
+@Composable
+private fun DrawerSection(
+    @StringRes title: Int,
+    items: List<Pair<Destination, Int>>,
+    selected: Destination,
+    onSelect: (Destination) -> Unit,
+    top: Dp = 10.dp,
+) {
+    // The extra 16dp is the item's own start padding, so the header lines up with the icons
+    SectionHeading(
+        text = stringResource(title),
+        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(start = 16.dp, top = top, bottom = 18.dp),
+    )
+    items.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
 }
 
 @Composable

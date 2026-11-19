@@ -104,26 +104,24 @@ internal fun Sp21AceApp(
     var table by rememberSaveable { mutableStateOf(Table(tableStore.loadChips(), Shoe.shuffled(random))) }
 
     val presets = remember { presetsStore.load() }
-    val flashcardHistory by flashcardHistoryStore.history.collectAsState()
     val flashcardDealer = remember(presets.active) { FlashcardDealer(presets.active) }
     // Not saved, so a card restored in a recreated activity, which showed before, is never timed from partway through
     val answerTimer = remember { AnswerTimer(clock) }
     var flashcardRun by rememberSaveable { mutableStateOf(FlashcardRun(dealFlashcard(flashcardDealer, null)).also { answerTimer.dealt(it.card) }) }
 
-    // A change of preset deals afresh in place of a card whose index it no longer drills, rather than grading a stale number
-    LaunchedEffect(flashcardDealer) {
-        val current = flashcardRun.dealtFrom(flashcardDealer) { dealFlashcard(flashcardDealer, it) }
-        if (current != flashcardRun) {
-            answerTimer.dealt(current.card)
-            flashcardRun = current
-        }
+    // Every card dealt starts its time afresh
+    fun showRun(next: FlashcardRun) {
+        if (next.card != flashcardRun.card) answerTimer.dealt(next.card)
+        flashcardRun = next
     }
+
+    // A change of preset deals afresh in place of a card whose index it no longer drills, rather than grading a stale number
+    LaunchedEffect(flashcardDealer) { showRun(flashcardRun.dealtFrom(flashcardDealer) { dealFlashcard(flashcardDealer, it) }) }
     val flashcardActions = object : IndexFlashcardsActions {
         override fun answer(asked: Flashcard, number: Int) {
             flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now()) { dealFlashcard(flashcardDealer, asked) }
                 ?.let { (next, answer) ->
-                    flashcardRun = next
-                    answerTimer.dealt(next.card)
+                    showRun(next)
                     flashcardHistoryStore.append(answer)
                     if (settings.soundEffects) answerSounds?.play(answer.isCorrect)
                 }
@@ -160,7 +158,7 @@ internal fun Sp21AceApp(
             settings = settings,
             history = history.orEmpty(),
             playHistory = playHistory.orEmpty(),
-            flashcards = IndexFlashcardsState(flashcardRun, presets, flashcardHistory.orEmpty()),
+            flashcards = IndexFlashcardsState(flashcardRun, presets),
             flashcardActions = flashcardActions,
             onAnswer = { asked, move ->
                 // The store's history, since the collected one can trail a quick second answer

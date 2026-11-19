@@ -2,10 +2,14 @@ package com.aquigs.sp21ace.ui.flashcards
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -21,7 +25,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
@@ -50,6 +53,8 @@ import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.ui.assertFits
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
+import com.aquigs.sp21ace.ui.flashcardBarText
+import com.aquigs.sp21ace.ui.overlaps
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
@@ -78,6 +83,7 @@ class IndexFlashcardsScreenTest {
     private var settings by mutableStateOf(Settings())
     private var covered by mutableStateOf(false)
     private var onScreen by mutableStateOf(true)
+    private var windowFocused by mutableStateOf(true)
 
     /** The run as the composition root carries it out, timed by the test's clock, with only [deals] left to deal after [first]. */
     private inner class FakeRun(preset: IndexPreset, first: Flashcard, deals: List<Flashcard>) : IndexFlashcardsActions {
@@ -103,9 +109,6 @@ class IndexFlashcardsScreenTest {
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
-    // The flashcard bar's text, which breaks lines only after the bar between its parts
-    private fun barText(vararg parts: String) = parts.joinToString("\u00A0| ") { it.replace(' ', '\u00A0') }
-
     private fun button(number: Int) = compose.onNodeWithContentDescription(
         when {
             number > 0 -> string(R.string.count_plus, number)
@@ -115,8 +118,6 @@ class IndexFlashcardsScreenTest {
     )
 
     private fun bounds(description: String) = compose.onNodeWithContentDescription(description).getBoundsInRoot()
-
-    private fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
 
     private fun show(
         preset: IndexPreset = h17,
@@ -128,17 +129,28 @@ class IndexFlashcardsScreenTest {
         val fake = FakeRun(preset, first, deals)
 
         compose.setContent {
+            // The window's focus as the test sets it, everything else about the window as it is
+            val window = LocalWindowInfo.current
+            val focus = remember(window) {
+                object : WindowInfo {
+                    override val isWindowFocused get() = windowFocused
+                    override val containerSize get() = window.containerSize
+                }
+            }
+
             DeviceConfigurationOverride(configuration) {
-                Sp21AceTheme {
-                    if (onScreen) {
-                        IndexFlashcardsScreen(
-                            state = IndexFlashcardsState(fake.run, fake.presets, fake.answers.toList()),
-                            settings = settings,
-                            covered = covered,
-                            actions = fake,
-                            onOpenDrawer = {},
-                            modifier = modifier,
-                        )
+                CompositionLocalProvider(LocalWindowInfo provides focus) {
+                    Sp21AceTheme {
+                        if (onScreen) {
+                            IndexFlashcardsScreen(
+                                state = IndexFlashcardsState(fake.run, fake.presets),
+                                settings = settings,
+                                covered = covered,
+                                actions = fake,
+                                onOpenDrawer = {},
+                                modifier = modifier,
+                            )
+                        }
                     }
                 }
             }
@@ -146,11 +158,7 @@ class IndexFlashcardsScreenTest {
         return fake
     }
 
-    // A preset of the one index, stand on hard 16 vs 10, at [threshold]
-    private fun oneIndex(threshold: Int): Pair<IndexPreset, Flashcard> {
-        val index = sixteenVsTen.copy(threshold = threshold)
-        return IndexPreset("one", "One", Game.BLACKJACK, basedOn = null, entries = listOf(IndexEntry(index))) to sixteenVsKing.copy(index = index)
-    }
+    private fun oneIndex(index: PlayIndex) = IndexPreset("one", "One", Game.BLACKJACK, basedOn = null, entries = listOf(IndexEntry(index)))
 
     @Test
     fun theCardAsksForThePlaysNumberInCapitals() {
@@ -170,7 +178,7 @@ class IndexFlashcardsScreenTest {
         button(0).performClick()
 
         compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher").assertIsDisplayed()
-        compose.onNodeWithText(barText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
         compose.onNodeWithText("INSURANCE at ? or higher").assertIsDisplayed()
     }
 
@@ -181,7 +189,7 @@ class IndexFlashcardsScreenTest {
         button(2).performClick()
 
         compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs 10. Stand at 0 or higher. You answered +2").assertIsDisplayed()
-        compose.onNodeWithText(barText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2")).assertIsDisplayed()
     }
 
     @Test
@@ -195,7 +203,7 @@ class IndexFlashcardsScreenTest {
         button(-3).performClick()
 
         compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Insurance at +3 or higher. You answered −3").assertIsDisplayed()
-        compose.onNodeWithText(barText("Insurance at +3 or higher", "You answered −3")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Insurance at +3 or higher", "You answered −3")).assertIsDisplayed()
     }
 
     @Test
@@ -223,7 +231,7 @@ class IndexFlashcardsScreenTest {
         compose.mainClock.autoAdvance = true
 
         assertEquals(listOf(0), fake.answers.map { it.answer })
-        compose.onNodeWithText(barText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
     }
 
     @Test
@@ -268,7 +276,6 @@ class IndexFlashcardsScreenTest {
         button(3).performClick()
 
         assertEquals(listOf<Duration?>(null, 500.milliseconds), fake.answers.map { it.time })
-        assertEquals(2, fake.answers.size)
     }
 
     @Test
@@ -283,6 +290,15 @@ class IndexFlashcardsScreenTest {
     fun theAppPausedLeavesTheCardsAnswerUntimed() = assertInterruptionLeavesTheAnswerUntimed {
         compose.activityRule.scenario.moveToState(Lifecycle.State.STARTED)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+    }
+
+    @Test
+    fun theWindowLosingFocusLeavesTheCardsAnswerUntimed() = assertInterruptionLeavesTheAnswerUntimed {
+        // As under the notification shade or in split screen, where the activity stays resumed
+        windowFocused = false
+        compose.waitForIdle()
+        windowFocused = true
+        compose.waitForIdle()
     }
 
     @Test
@@ -312,8 +328,9 @@ class IndexFlashcardsScreenTest {
     // button at least 40dp across and clear of the cards, the prompt and each other, each label on one line, and none moving
     // as the next card is dealt
     private fun assertPadFits(reach: Int, fontScale: Float = 1f) {
-        val (preset, first) = oneIndex(if (reach > 5) -reach else 0)
-        show(preset, first, deals = listOf(first.copy(player = cards("10s 6h"))), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(fontScale))
+        // Stand on hard 16 vs 10 at the far end of the pad, or at 0 for the pad's least reach
+        val first = sixteenVsKing.copy(index = sixteenVsTen.copy(threshold = if (reach > 5) -reach else 0))
+        show(oneIndex(first.index), first, deals = listOf(first.copy(player = cards("10s 6h"))), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(fontScale))
 
         val numbers = -reach..reach
         val buttons = numbers.map { button(it).assertIsDisplayed().getBoundsInRoot() }
@@ -344,7 +361,7 @@ class IndexFlashcardsScreenTest {
         val index = PlayIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 15), Upcard.ACE, DeviationPlay.SURRENDER), -10)
         val first = Flashcard(index, cards("9c 6d"), card("Ah"))
         show(
-            IndexPreset("one", "One", Game.BLACKJACK, basedOn = null, entries = listOf(IndexEntry(index))),
+            oneIndex(index),
             first,
             deals = listOf(first.copy(player = cards("10s 5h"))),
             Modifier.size(360.dp, 640.dp),
@@ -353,7 +370,7 @@ class IndexFlashcardsScreenTest {
 
         button(10).performClick()
 
-        val bar = barText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10")
+        val bar = flashcardBarText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10")
         compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
 

@@ -44,6 +44,7 @@ fun CircleButton(
     label: String = name.uppercase(),
     enabled: Boolean = true,
     ringColor: Color? = null,
+    // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen, or REDOUBLE, needs less
     maxFontSize: TextUnit = 13.sp,
 ) {
     val color = MaterialTheme.colorScheme.primary
@@ -69,7 +70,6 @@ fun CircleButton(
             // 7dp short, as DOUBLE does at its largest. The smallest circles have no room to spare for that.
             modifier = Modifier.widthIn(max = CircleButtonSize - 14.dp),
             fontWeight = FontWeight.Bold,
-            // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen, or REDOUBLE, needs less
             autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = maxFontSize),
             maxLines = 1,
         )

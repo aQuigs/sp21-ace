@@ -2,13 +2,12 @@ package com.aquigs.sp21ace.ui.flashcards
 
 import androidx.compose.runtime.Immutable
 import com.aquigs.sp21ace.domain.indices.Flashcard
-import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
 import com.aquigs.sp21ace.domain.indices.FlashcardRun
 import com.aquigs.sp21ace.domain.indices.IndexPresets
 
-/** What the card-counting screens show: the flashcard run, the index presets and every flashcard answer. */
+/** What the card-counting screens show: the flashcard run and the index presets. */
 @Immutable
-data class IndexFlashcardsState(val run: FlashcardRun, val presets: IndexPresets, val history: List<FlashcardAnswer>)
+data class IndexFlashcardsState(val run: FlashcardRun, val presets: IndexPresets)
 
 /** What the card-counting screens ask for, which the composition root carries out with the stores. */
 interface IndexFlashcardsActions {
