@@ -31,6 +31,26 @@ data class IndexPreset(
     /** Whether [index] is [basedOn]'s own number and one the sources debate. */
     fun isDebated(index: PlayIndex): Boolean = basedOn?.find(index.deviation)?.let { it.debated && it.index == index } == true
 
+    /** Whether an index on [deviation] is listed, which makes adding another for it impossible. */
+    fun has(deviation: Deviation): Boolean = entries.any { it.index.deviation == deviation }
+
+    /** Adds [index], switched on, at the end. Its deviation mustn't be listed yet. */
+    fun add(index: PlayIndex): IndexPreset = copy(entries = entries + IndexEntry(index))
+
+    /** Puts [index] in place of the listed index on its deviation, where that is listed and switched on or off as that is. */
+    fun edit(index: PlayIndex): IndexPreset = change(index.deviation) { it.copy(index = index) }
+
+    fun switch(deviation: Deviation, enabled: Boolean): IndexPreset = change(deviation) { it.copy(enabled = enabled) }
+
+    fun remove(deviation: Deviation): IndexPreset = copy(entries = entries.filterNot { it.index.deviation == deviation }).also {
+        require(it.entries.size < entries.size) { "$name has no index on $deviation" }
+    }
+
+    private fun change(deviation: Deviation, change: (IndexEntry) -> IndexEntry): IndexPreset {
+        require(has(deviation)) { "$name has no index on $deviation" }
+        return copy(entries = entries.map { if (it.index.deviation == deviation) change(it) else it })
+    }
+
     companion object {
         /** A preset of every index in [set], all enabled, with the rounding its numbers assume and the default deck estimate. */
         fun from(set: BuiltInIndexSet, id: String, name: String = set.title): IndexPreset =

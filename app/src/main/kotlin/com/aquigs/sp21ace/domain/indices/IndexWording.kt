@@ -13,10 +13,13 @@ val Deviation.title: String
         Deviation.Insurance -> "Insurance"
     }
 
+/** "Hit", "Stand", "Double", "Split" or "Surrender". */
+val DeviationPlay.title: String get() = name.lowercase().replaceFirstChar(Char::uppercase)
+
 /** The play an index names: "Hit", "Stand", "Double", "Split", "Surrender" or "Insurance". */
 val Deviation.playName: String
     get() = when (this) {
-        is Deviation.OnHand -> play.name.lowercase().replaceFirstChar(Char::uppercase)
+        is Deviation.OnHand -> play.title
         Deviation.Insurance -> "Insurance"
     }
 

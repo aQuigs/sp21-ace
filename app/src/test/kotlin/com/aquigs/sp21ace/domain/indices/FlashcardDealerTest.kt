@@ -1,8 +1,11 @@
 package com.aquigs.sp21ace.domain.indices
 
+import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.Rank
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.isPair
+import com.aquigs.sp21ace.domain.cards.plusCard
 import com.aquigs.sp21ace.domain.cards.total
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.upcard
@@ -12,6 +15,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
 import kotlin.random.Random
 
 class FlashcardDealerTest {
@@ -25,7 +29,7 @@ class FlashcardDealerTest {
 
     // Enough deals that a draw of 1 in 4 or 1 in 40 has turned up
     private fun deals(dealer: FlashcardDealer, count: Int = 4000, random: Random = Random(1)): List<Flashcard> =
-        generateSequence(dealer.deal(null, random)) { dealer.deal(it, random) }.take(count).toList()
+        generateSequence(dealer.deal(null, random = random)) { dealer.deal(it, random = random) }.take(count).toList()
 
     @Test
     fun everyCardShowsItsIndexsHandAndUpcardInTwoCardsAndInsuranceTheDealersAceAlone() {
@@ -102,5 +106,105 @@ class FlashcardDealerTest {
         assertEquals(-10..10, preset(IndexEntry(index(3)), IndexEntry(insurance(-10))).flashcardAnswers)
         // A number switched off doesn't widen the pad
         assertEquals(-5..5, preset(IndexEntry(index(3)), IndexEntry(insurance(-10), enabled = false)).flashcardAnswers)
+    }
+
+    private fun answers(index: PlayIndex, correct: Int, incorrect: Int) =
+        List(correct + incorrect) { FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, index, if (it < correct) index.threshold else index.threshold + 1, null, 2) }
+
+    @Test
+    fun prioritizeWorseShowsAnIndexInInverseProportionToItsAccuracyAsTheTrainerWeighsHands() {
+        val never = FakeIndices.STAND
+        val mostly = FakeIndices.SPLIT
+        val unanswered = FakeIndices.DOUBLE
+        // Answers to the same hands with another number or direction are other facts, so they don't count
+        val history = answers(never, correct = 0, incorrect = 3) + answers(mostly, correct = 3, incorrect = 1) +
+            answers(unanswered.copy(threshold = 1), correct = 0, incorrect = 5) +
+            answers(unanswered.copy(direction = IndexDirection.AT_OR_BELOW), correct = 0, incorrect = 5)
+        val dealer = FlashcardDealer(preset(IndexEntry(never), IndexEntry(mostly), IndexEntry(unanswered)), FlashcardOptions(CardsShown.PRIORITIZE_WORSE))
+        val random = Random(3)
+
+        // Never right weighs 1 / 5%, right 3 times in 4 weighs 1 / 75%, and unanswered 1 / 50%
+        val weights = mapOf(never to 20.0, mostly to 4.0 / 3, unanswered to 2.0)
+        val shown = List(40_000) { dealer.deal(null, history, random)!!.index }.groupingBy { it }.eachCount()
+        for ((index, weight) in weights) {
+            assertEquals("$index", weight / weights.values.sum(), shown.getValue(index) / 40_000.0, 0.01)
+        }
+    }
+
+    @Test
+    fun prioritizeWorseStillNeverShowsTheSameIndexTwiceInARow() {
+        val dealer = FlashcardDealer(preset(IndexEntry(FakeIndices.STAND), IndexEntry(FakeIndices.SPLIT)), FlashcardOptions(CardsShown.PRIORITIZE_WORSE))
+        val history = answers(FakeIndices.STAND, correct = 0, incorrect = 10)
+        val random = Random(4)
+
+        val cards = generateSequence(dealer.deal(null, history, random)) { dealer.deal(it, history, random) }.take(200).toList()
+        for ((previous, next) in cards.zipWithNext()) {
+            assertNotEquals(previous.index, next.index)
+        }
+    }
+
+    // Every deviation the model allows, each with every play its hand kind offers against every upcard, and insurance
+    private val everyDeviation: List<Deviation> = HandKind.entries.flatMap { kind ->
+        kind.values.flatMap { value -> kind.plays.flatMap { play -> Upcard.entries.map { Deviation.OnHand(IndexHand(kind, value), it, play) } } }
+    } + Deviation.Insurance
+
+    private fun List<Card>.prefixesFromTwoCards() = (2..size).map { take(it).total() }
+
+    @Test
+    fun withHandsOf3OrMoreCardsOnAStandOrHitOnATotalIs3Or4CardsAboutHalfTheTimeAndEveryOtherHandTwo() {
+        val random = Random(5)
+
+        for (deviation in everyDeviation) {
+            val dealer = FlashcardDealer(preset(IndexEntry(PlayIndex(deviation, 0))), FlashcardOptions(multiCardHands = true))
+            val cards = deals(dealer, count = 100, random = random)
+            val sizes = cards.map { it.player.size }
+
+            val hand = (deviation as? Deviation.OnHand)?.hand
+            val drawsOn = deviation is Deviation.OnHand && deviation.play in setOf(DeviationPlay.STAND, DeviationPlay.HIT) && hand!!.kind != HandKind.PAIR
+            val canBeMore = drawsOn && MULTI_CARD_HANDS[HandTotal(hand!!.value, soft = hand.kind == HandKind.SOFT)] != null
+            when {
+                hand == null -> assertEquals("$deviation", setOf(0), sizes.toSet())
+                canBeMore -> {
+                    assertTrue("$deviation", sizes.all { it in 2..4 })
+                    assertEquals("$deviation", 50.0, sizes.count { it > 2 }.toDouble(), 20.0)
+                }
+                else -> assertEquals("$deviation", setOf(2), sizes.toSet())
+            }
+
+            for (card in cards.filter { it.player.size > 2 }) {
+                val total = card.player.total()
+                assertEquals("$card", HandTotal(hand!!.value, soft = hand.kind == HandKind.SOFT), total)
+                // Never a blackjack, a bust or a 21 on the way
+                assertTrue("$card", card.player.prefixesFromTwoCards().all { it.value < 21 })
+                assertEquals("$card", deviation.upcard, card.upcard.upcard)
+            }
+        }
+    }
+
+    @Test
+    fun everyTotalButHard5ComesIn3Or4CardsAndEachSizeOfHandHasItsShare() {
+        val totals = listOf(HandKind.HARD, HandKind.SOFT).flatMap { kind -> kind.values.map { HandTotal(it, soft = kind == HandKind.SOFT) } }
+
+        assertEquals(totals - HandTotal(5, soft = false), totals.filter { it in MULTI_CARD_HANDS })
+        for ((total, bySize) in MULTI_CARD_HANDS) {
+            for (hands in bySize) {
+                assertEquals("$total", 1, hands.map { it.size }.distinct().size)
+                assertTrue("$total", hands.all { it.size in 3..4 && it.fold(HandTotal(0, soft = false), HandTotal::plusCard) == total })
+            }
+        }
+        // Hard 19 as 3 cards and as 4, so a hand of each size comes up as often as the other
+        val hard19 = MULTI_CARD_HANDS.getValue(HandTotal(19, soft = false))
+        assertEquals(listOf(3, 4), hard19.map { it.first().size }.sorted())
+        assertTrue(listOf(10, 7, 2) in hard19.flatten())
+        assertFalse(listOf(1, 10, 8) in hard19.flatten())
+    }
+
+    @Test
+    fun withHandsOf3OrMoreCardsOffEveryHandIsTwoCards() {
+        val stands = everyDeviation.filter { it is Deviation.OnHand && it.play == DeviationPlay.STAND }.distinctBy { (it as Deviation.OnHand).hand }
+        for (deviation in stands) {
+            val cards = deals(FlashcardDealer(preset(IndexEntry(PlayIndex(deviation, 0)))), count = 50)
+            assertTrue("$deviation", cards.all { it.player.size == 2 })
+        }
     }
 }

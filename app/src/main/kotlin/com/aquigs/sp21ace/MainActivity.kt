@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.aquigs.sp21ace.data.FlashcardHistoryStore
+import com.aquigs.sp21ace.data.FlashcardOptionsStore
 import com.aquigs.sp21ace.data.HandCustomizationStore
 import com.aquigs.sp21ace.data.IndexPresetsStore
 import com.aquigs.sp21ace.data.PlayHistoryStore
@@ -36,8 +37,11 @@ import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.playedHandsSince
 import com.aquigs.sp21ace.domain.indices.AnswerTimer
 import com.aquigs.sp21ace.domain.indices.Flashcard
+import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
 import com.aquigs.sp21ace.domain.indices.FlashcardDealer
+import com.aquigs.sp21ace.domain.indices.FlashcardOptions
 import com.aquigs.sp21ace.domain.indices.FlashcardRun
+import com.aquigs.sp21ace.domain.indices.IndexPresets
 import com.aquigs.sp21ace.domain.indices.answer
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
@@ -64,9 +68,12 @@ class MainActivity : ComponentActivity() {
         val handsStore = HandCustomizationStore(this)
         val tableStore = TableStore(this)
         val presetsStore = IndexPresetsStore(this)
+        val flashcardOptionsStore = FlashcardOptionsStore(this)
         val flashcardHistoryStore = FlashcardHistoryStore.forApp(this)
 
-        setContent { Sp21AceApp(store, historyStore, playHistoryStore, handsStore, settingsStore, tableStore, presetsStore, flashcardHistoryStore) }
+        setContent {
+            Sp21AceApp(store, historyStore, playHistoryStore, handsStore, settingsStore, tableStore, presetsStore, flashcardOptionsStore, flashcardHistoryStore)
+        }
     }
 }
 
@@ -83,9 +90,12 @@ internal fun Sp21AceApp(
     settingsStore: SettingsStore,
     tableStore: TableStore,
     presetsStore: IndexPresetsStore,
+    flashcardOptionsStore: FlashcardOptionsStore,
     flashcardHistoryStore: FlashcardHistoryStore,
     deal: (picker: HandPicker, history: List<PracticeAnswer>) -> TrainerHand = { picker, history -> picker.pick(history) },
-    dealFlashcard: (dealer: FlashcardDealer, previous: Flashcard?) -> Flashcard? = { dealer, previous -> dealer.deal(previous) },
+    dealFlashcard: (dealer: FlashcardDealer, previous: Flashcard?, history: List<FlashcardAnswer>) -> Flashcard? = { dealer, previous, history ->
+        dealer.deal(previous, history)
+    },
     sounds: AnswerSounds? = null,
     random: Random = Random.Default,
     clock: () -> Long = SystemClock::elapsedRealtime,
@@ -103,11 +113,20 @@ internal fun Sp21AceApp(
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
     var table by rememberSaveable { mutableStateOf(Table(tableStore.loadChips(), Shoe.shuffled(random))) }
 
-    val presets = remember { presetsStore.load() }
-    val flashcardDealer = remember(presets.active) { FlashcardDealer(presets.active) }
+    var presets by remember { mutableStateOf(presetsStore.load()) }
+    var flashcardOptions by remember { mutableStateOf(flashcardOptionsStore.load()) }
+    val flashcardDealer = remember(presets.active, flashcardOptions) { FlashcardDealer(presets.active, flashcardOptions) }
+    // Weighed by the store's history, which a collected one can trail, and the answer just given, which the store doesn't hold yet
+    fun nextFlashcard(previous: Flashcard?, answered: List<FlashcardAnswer> = emptyList()) =
+        dealFlashcard(flashcardDealer, previous, flashcardHistoryStore.history.value.orEmpty() + answered)
     // Not saved, so a card restored in a recreated activity, which showed before, is never timed from partway through
     val answerTimer = remember { AnswerTimer(clock) }
-    var flashcardRun by rememberSaveable { mutableStateOf(FlashcardRun(dealFlashcard(flashcardDealer, null)).also { answerTimer.dealt(it.card) }) }
+    var flashcardRun by rememberSaveable { mutableStateOf(FlashcardRun(nextFlashcard(null)).also { answerTimer.dealt(it.card) }) }
+
+    fun savePresets(next: IndexPresets) {
+        presets = next
+        presetsStore.save(next)
+    }
 
     // Every card dealt starts its time afresh
     fun showRun(next: FlashcardRun) {
@@ -116,10 +135,10 @@ internal fun Sp21AceApp(
     }
 
     // A change of preset deals afresh in place of a card whose index it no longer drills, rather than grading a stale number
-    LaunchedEffect(flashcardDealer) { showRun(flashcardRun.dealtFrom(flashcardDealer) { dealFlashcard(flashcardDealer, it) }) }
+    LaunchedEffect(flashcardDealer) { showRun(flashcardRun.dealtFrom(flashcardDealer) { nextFlashcard(it) }) }
     val flashcardActions = object : IndexFlashcardsActions {
         override fun answer(asked: Flashcard, number: Int) {
-            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now()) { dealFlashcard(flashcardDealer, asked) }
+            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now()) { nextFlashcard(asked, listOf(it)) }
                 ?.let { (next, answer) ->
                     showRun(next)
                     flashcardHistoryStore.append(answer)
@@ -130,6 +149,13 @@ internal fun Sp21AceApp(
         override fun shown(card: Flashcard) = answerTimer.shown(card)
 
         override fun interrupted() = answerTimer.interrupted()
+
+        override fun changePresets(presets: IndexPresets) = savePresets(presets)
+
+        override fun changeOptions(options: FlashcardOptions) {
+            flashcardOptions = options
+            flashcardOptionsStore.save(options)
+        }
     }
 
     fun seat(next: Table) {
@@ -158,7 +184,7 @@ internal fun Sp21AceApp(
             settings = settings,
             history = history.orEmpty(),
             playHistory = playHistory.orEmpty(),
-            flashcards = IndexFlashcardsState(flashcardRun, presets),
+            flashcards = IndexFlashcardsState(flashcardRun, presets, flashcardOptions),
             flashcardActions = flashcardActions,
             onAnswer = { asked, move ->
                 // The store's history, since the collected one can trail a quick second answer

@@ -2,6 +2,15 @@ package com.aquigs.sp21ace.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -52,6 +61,9 @@ private val IconSpace = 24.dp
 // A list item's own start padding and the gap after its leading content, which the intro copies to line up with the rows
 private val ListItemInset = 16.dp
 
+// Where a row's title starts
+private val TitleInset = ListItemInset + IconSpace + ListItemInset
+
 /** A page of settings, opened over another page, whose rows scroll under its app bar. */
 @Composable
 fun SettingsPage(title: String, onBack: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -87,7 +99,7 @@ fun SettingsIntro(text: String, modifier: Modifier = Modifier) {
 /** A heading over a group of settings, lined up with the rows' titles. */
 @Composable
 fun SettingsHeader(text: String, modifier: Modifier = Modifier) {
-    SectionHeading(text, modifier.padding(start = ListItemInset + IconSpace + ListItemInset, top = 16.dp, end = ListItemInset, bottom = 4.dp))
+    SectionHeading(text, modifier.padding(start = TitleInset, top = 16.dp, end = ListItemInset, bottom = 4.dp))
 }
 
 /** A setting with several values: its title over the value chosen, opening a [ChoicePage] of the values. */
@@ -151,13 +163,114 @@ fun SettingsGroup(title: String, summary: String, @DrawableRes icon: Int, modifi
     if (expanded) content()
 }
 
+/**
+ * A yes or no setting with more to it on a page of its own, such as an index to drill or not and edit. The row opens the page,
+ * named [clickLabel] to a screen reader, and only the switch, named by the row's title, toggles.
+ */
+@Composable
+fun EditableSwitchRow(
+    title: String,
+    summary: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    clickLabel: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SettingItem(
+        title,
+        modifier.clickable(onClickLabel = clickLabel, onClick = onClick),
+        supporting = summary,
+        trailing = {
+            // A divider sets the switch apart from the row it sits on, as Android's own settings do
+            Row(horizontalArrangement = Arrangement.spacedBy(ListItemInset), verticalAlignment = Alignment.CenterVertically) {
+                VerticalDivider(Modifier.height(32.dp))
+                Switch(checked = checked, onCheckedChange = onCheckedChange, modifier = Modifier.semantics { contentDescription = title })
+            }
+        },
+    )
+}
+
+/**
+ * One of a page's values to choose from, as on a [ChoicePage], that also has [actions] of its own in a menu, each a label and
+ * what it does, or null for none just now. Choosing the value goes back.
+ */
+@Composable
+fun MenuChoiceRow(
+    title: String,
+    summary: String,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    actions: List<Pair<String, (() -> Unit)?>>,
+    modifier: Modifier = Modifier,
+) {
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+
+    SettingItem(
+        title,
+        modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
+        supporting = summary,
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = selected, onClick = null)
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options_for, title))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        actions.forEach { (label, action) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    menuOpen = false
+                                    action?.invoke()
+                                },
+                                enabled = action != null,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+    )
+}
+
+/**
+ * A setting's values as chips under a [SettingsHeader] saying [name], lined up with the rows' titles, none selected while
+ * [selected] is null. A screen reader hears each chip with the setting's name, since two settings can share a value, such as a
+ * total of 10 and an upcard of 10.
+ */
+@Composable
+fun <T> ChipChoices(name: String, choices: List<Pair<T, String>>, selected: T?, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
+    // Wraps rather than running off a narrow screen
+    FlowRow(
+        modifier = modifier.padding(start = TitleInset, end = ListItemInset).selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        choices.forEach { (value, label) ->
+            FilterChip(
+                selected = value == selected,
+                onClick = { onSelect(value) },
+                label = { Text(label) },
+                modifier = Modifier.semantics { contentDescription = "$name, $label" },
+            )
+        }
+    }
+}
+
+/** A value shown but not changed here, such as the hand of an index being edited. */
+@Composable
+fun InfoRow(title: String, summary: String, modifier: Modifier = Modifier) {
+    SettingItem(title, modifier.semantics(mergeDescendants = true) {}, supporting = summary)
+}
+
 /** A setting that does something rather than holding a value, such as clearing a history. As in Blackjack Ace, its title takes the accent colour. */
 @Composable
 fun ActionRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     SettingItem(title, modifier.clickable(role = Role.Button, onClick = onClick), color = MaterialTheme.colorScheme.secondary)
 }
 
-/** A setting's values on a page of their own, named after the setting. As in Blackjack Ace, choosing a value goes back. */
+/** A setting's values on a page of their own, named after the setting, under an [intro] if given. As in Blackjack Ace, choosing a value goes back. */
 @Composable
 fun <T> ChoicePage(
     title: String,
@@ -166,8 +279,10 @@ fun <T> ChoicePage(
     onSelect: (T) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    intro: String? = null,
 ) {
     SettingsPage(title = title, onBack = onBack, modifier = modifier) {
+        intro?.let { SettingsIntro(it) }
         Column(modifier = Modifier.selectableGroup()) {
             choices.forEach { (value, label) ->
                 val isSelected = value == selected

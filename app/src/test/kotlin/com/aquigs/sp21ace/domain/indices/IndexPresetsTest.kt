@@ -130,6 +130,46 @@ class IndexPresetsTest {
     }
 
     @Test
+    fun anIndexIsAddedAtTheEndSwitchedOnButNeverTwiceForOneDeviation() {
+        val added = preset("p", FakeIndices.STAND).add(FakeIndices.HIT)
+
+        assertEquals(listOf(IndexEntry(FakeIndices.STAND), IndexEntry(FakeIndices.HIT)), added.entries)
+        assertTrue(added.has(FakeIndices.HIT.deviation))
+        assertFalse(added.has(FakeIndices.SPLIT.deviation))
+        assertThrows(IllegalArgumentException::class.java) { added.add(FakeIndices.HIT.copy(threshold = 0, direction = IndexDirection.AT_OR_ABOVE)) }
+    }
+
+    @Test
+    fun anEditChangesTheNumberAndDirectionInPlaceKeepingItsSwitch() {
+        val mine = preset("p", FakeIndices.STAND, FakeIndices.SPLIT, FakeIndices.HIT).switch(FakeIndices.SPLIT.deviation, enabled = false)
+        val edited = FakeIndices.SPLIT.copy(threshold = 4, direction = IndexDirection.AT_OR_BELOW)
+
+        assertEquals(
+            listOf(IndexEntry(FakeIndices.STAND), IndexEntry(edited, enabled = false), IndexEntry(FakeIndices.HIT)),
+            mine.edit(edited).entries,
+        )
+        assertThrows(IllegalArgumentException::class.java) { mine.edit(FakeIndices.DOUBLE) }
+    }
+
+    @Test
+    fun aSwitchTurnsOnlyThatIndexOffAndOnAgain() {
+        val mine = preset("p", FakeIndices.STAND, FakeIndices.SPLIT)
+
+        assertEquals(listOf(FakeIndices.SPLIT), mine.switch(FakeIndices.STAND.deviation, enabled = false).enabledIndices)
+        assertEquals(mine, mine.switch(FakeIndices.STAND.deviation, enabled = false).switch(FakeIndices.STAND.deviation, enabled = true))
+        assertThrows(IllegalArgumentException::class.java) { mine.switch(FakeIndices.HIT.deviation, enabled = false) }
+    }
+
+    @Test
+    fun aDeletedIndexLeavesTheRestInOrder() {
+        val mine = preset("p", FakeIndices.STAND, FakeIndices.SPLIT, FakeIndices.HIT)
+
+        assertEquals(listOf(FakeIndices.STAND, FakeIndices.HIT), mine.remove(FakeIndices.SPLIT.deviation).enabledIndices)
+        assertEquals(emptyList<IndexEntry>(), preset("p", FakeIndices.STAND).remove(FakeIndices.STAND.deviation).entries)
+        assertThrows(IllegalArgumentException::class.java) { mine.remove(FakeIndices.DOUBLE.deviation) }
+    }
+
+    @Test
     fun enabledIndicesKeepListOrderAndSkipTheSwitchedOff() {
         val mixed = IndexPreset("m", "Mixed", Game.BLACKJACK, basedOn = null, entries = FakeIndices.ALL.mapIndexed { i, index -> IndexEntry(index, enabled = i % 2 == 0) })
 

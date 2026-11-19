@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -60,8 +61,9 @@ private val MinButton = 40.dp
 private val MaxButton = 56.dp
 
 /**
- * A flashcard of an index: the cards, the play it asks about, and a pad of true counts to answer with. Leaving the page or the
- * app, the window losing focus, or the drawer [covered] over it, interrupts the card showing, so its answer records no time.
+ * A flashcard of an index: the cards, the play it asks about, and a pad of true counts to answer with, or with no index switched
+ * on, a way to the Indices page. Leaving the page or the app, the window losing focus, or the drawer [covered] over it, interrupts
+ * the card showing, so its answer records no time.
  */
 @Composable
 fun IndexFlashcardsScreen(
@@ -70,6 +72,7 @@ fun IndexFlashcardsScreen(
     covered: Boolean,
     actions: IndexFlashcardsActions,
     onOpenDrawer: () -> Unit,
+    onOpenIndices: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val card = state.run.card
@@ -89,12 +92,18 @@ fun IndexFlashcardsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (card == null) {
-                Text(
-                    text = stringResource(R.string.no_indices_switched_on),
+                Column(
                     modifier = Modifier.weight(1f).wrapContentHeight(),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = stringResource(R.string.no_indices_switched_on),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Button(onClick = onOpenIndices) { Text(stringResource(R.string.choose_indices)) }
+                }
             } else {
                 Hands(card, settings.handTotals, Modifier.weight(1f))
                 Prompt(card.index.deviation.playName, card.index.direction)
