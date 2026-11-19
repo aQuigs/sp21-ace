@@ -30,6 +30,7 @@ fun SettingsScreen(
     onOpenButtonLocation: () -> Unit,
     onClearHistory: () -> Unit,
     onClearPlayHistory: () -> Unit,
+    onClearFlashcardHistory: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -53,6 +54,10 @@ fun SettingsScreen(
         ActionRow(title = stringResource(R.string.clear_practice_history), onClick = { confirmingClear = History.PRACTICE })
         HorizontalDivider()
 
+        SettingsHeader(stringResource(R.string.card_counting))
+        ActionRow(title = stringResource(R.string.clear_flashcard_history), onClick = { confirmingClear = History.FLASHCARDS })
+        HorizontalDivider()
+
         SettingsHeader(stringResource(R.string.play))
         SwitchRow(
             title = stringResource(R.string.warn_on_incorrect_move),
@@ -74,6 +79,7 @@ fun SettingsScreen(
                 confirmingClear = null
                 when (history) {
                     History.PRACTICE -> onClearHistory()
+                    History.FLASHCARDS -> onClearFlashcardHistory()
                     History.PLAY -> onClearPlayHistory()
                 }
             },
@@ -84,6 +90,7 @@ fun SettingsScreen(
 
 private enum class History(@StringRes val message: Int) {
     PRACTICE(R.string.clear_history_message),
+    FLASHCARDS(R.string.clear_flashcard_history_message),
     PLAY(R.string.clear_play_history_message),
 }
 

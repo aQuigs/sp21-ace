@@ -111,6 +111,8 @@ class IndexFlashcardsScreenTest {
         override fun changePresets(presets: IndexPresets) = Unit
 
         override fun changeOptions(options: FlashcardOptions) = Unit
+
+        override fun clearHistory() = Unit
     }
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)

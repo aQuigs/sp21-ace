@@ -108,6 +108,7 @@ internal fun Sp21AceApp(
     val answerSounds = sounds ?: rememberAnswerSounds(settings.soundEffects)
     val history by historyStore.history.collectAsState()
     val playHistory by playHistoryStore.history.collectAsState()
+    val flashcardAnswers by flashcardHistoryStore.history.collectAsState()
     // Each deal reads the rules, the customization and the history, so a change applies from the next hand while the one on the table stays
     val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
@@ -158,6 +159,8 @@ internal fun Sp21AceApp(
             flashcardOptions = options
             flashcardOptionsStore.save(options)
         }
+
+        override fun clearHistory() = flashcardHistoryStore.clear()
     }
 
     fun seat(next: Table) {
@@ -186,7 +189,7 @@ internal fun Sp21AceApp(
             settings = settings,
             history = history.orEmpty(),
             playHistory = playHistory.orEmpty(),
-            flashcards = IndexFlashcardsState(flashcardRun, presets, flashcardOptions),
+            flashcards = IndexFlashcardsState(flashcardRun, presets, flashcardOptions, flashcardAnswers.orEmpty()),
             flashcardActions = flashcardActions,
             onAnswer = { asked, move ->
                 // The store's history, since the collected one can trail a quick second answer

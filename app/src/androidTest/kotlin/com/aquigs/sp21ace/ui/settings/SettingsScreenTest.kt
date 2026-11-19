@@ -35,6 +35,7 @@ class SettingsScreenTest {
     private var settings by mutableStateOf(Settings())
     private var clears = 0
     private var playClears = 0
+    private var flashcardClears = 0
 
     private fun string(id: Int) = compose.activity.getString(id)
 
@@ -48,6 +49,7 @@ class SettingsScreenTest {
                     onOpenButtonLocation = onOpenButtonLocation,
                     onClearHistory = { clears++ },
                     onClearPlayHistory = { playClears++ },
+                    onClearFlashcardHistory = { flashcardClears++ },
                     onBack = {},
                 )
             }
@@ -174,7 +176,30 @@ class SettingsScreenTest {
         compose.onNodeWithText(string(R.string.clear)).performClick()
 
         compose.onNodeWithText(string(R.string.clear_play_history_message)).assertDoesNotExist()
-        assertEquals(listOf(0, 1), listOf(clears, playClears))
+        assertEquals(listOf(0, 1, 0), listOf(clears, playClears, flashcardClears))
+    }
+
+    @Test
+    fun clearingTheFlashcardHistorySitsUnderCardCountingBetweenPracticeAndPlayAsksFirstAndClearsOnlyIt() {
+        showSettings()
+        val row = compose.onNodeWithText(string(R.string.clear_flashcard_history)).performScrollTo()
+        val bounds = row.getBoundsInRoot()
+        assertTrue(compose.onNodeWithText(string(R.string.card_counting)).getBoundsInRoot().bottom <= bounds.top)
+        assertTrue(compose.onNodeWithText(string(R.string.clear_practice_history)).getBoundsInRoot().bottom <= bounds.top)
+        assertTrue(bounds.bottom <= compose.onNodeWithText(string(R.string.play)).getBoundsInRoot().top)
+
+        row.performClick()
+        compose.onNodeWithText(string(R.string.clear_flashcard_history_message)).assertIsDisplayed()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.cancel)).performClick()
+        assertEquals(0, flashcardClears)
+
+        row.performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.clear)).performClick()
+
+        compose.onNodeWithText(string(R.string.clear_flashcard_history_message)).assertDoesNotExist()
+        assertEquals(listOf(0, 0, 1), listOf(clears, playClears, flashcardClears))
     }
 
     @Test
@@ -184,6 +209,6 @@ class SettingsScreenTest {
         compose.onNodeWithText(string(R.string.clear)).performClick()
 
         compose.onNodeWithText(string(R.string.clear_history_message)).assertDoesNotExist()
-        assertEquals(listOf(1, 0), listOf(clears, playClears))
+        assertEquals(listOf(1, 0, 0), listOf(clears, playClears, flashcardClears))
     }
 }
