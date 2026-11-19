@@ -216,7 +216,7 @@
     <string name="multi_card_flashcards_off">Every hand shows 2 cards</string>
     <string name="add_index">Add index</string>
     <string name="no_indices_in_preset">This preset has no indices yet.</string>
-    <string name="custom_index">%1$s · Custom</string>
+    <string name="custom_index">%1$s\u00A0·\u00A0Custom</string>
     <string name="edit_index">Edit index</string>
     <string name="edit_index_label">Edit</string>
     <string name="index_hand">Hand</string>

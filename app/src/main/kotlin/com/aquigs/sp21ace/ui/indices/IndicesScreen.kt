@@ -100,7 +100,8 @@ private fun IndexGroup(
     SettingsHeader(title)
     entries.forEach { entry ->
         val index = entry.index
-        val words = index.inPlainWords + if (preset.isDebated(index)) " $DEBATED_MARK" else ""
+        // Non-breaking, so a large font never leaves the mark or the tag on a line of its own
+        val words = index.inPlainWords + if (preset.isDebated(index)) "\u00A0$DEBATED_MARK" else ""
 
         EditableSwitchRow(
             title = index.deviation.title,
