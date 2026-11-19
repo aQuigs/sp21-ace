@@ -42,6 +42,9 @@ private val CARDS_BY_CODE: Map<String, Card> = deckOf(Rank.entries).associateBy 
 /** The card [code] names, such as "7h", or "10h" for a 10-spot. */
 fun card(code: String): Card = requireNotNull(CARDS_BY_CODE[code]) { "Unknown card: $code" }
 
+/** The card [code] names, which must be one a Spanish deck holds, so never a 10-spot. */
+fun spanishCard(code: String): Card = card(code).also { require(it.rank in SPANISH_RANKS) { "A Spanish deck has no $code" } }
+
 /** The cards [codes] names, space-separated, such as "As 6d". */
 fun cards(codes: String): List<Card> = codes.split(" ").map(::card)
 

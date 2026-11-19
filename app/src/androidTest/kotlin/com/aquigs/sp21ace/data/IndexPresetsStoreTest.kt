@@ -26,23 +26,15 @@ class IndexPresetsStoreTest {
         assertEquals(IndexPresets.seeded(), IndexPresetsStore(context, name).load())
     }
 
+    // IndexPresetsCodeTest covers every change on the JVM, so one away from the seeded presets shows the store keeps the code
     @Test
-    fun loadsEveryChangeAsSaved() {
-        val added = IndexPresets.seeded().add("Mine", from = null)
-        val changes = listOf(
-            added,
-            added.rename(added.activeId, "Renamed"),
-            added.duplicate(BuiltInIndexSet.BJ_SHOE_S17.name, "Twin"),
-            added.delete(BuiltInIndexSet.BJ_SHOE_H17.name),
-            added.update(added.activeId) { it.copy(deckEstimate = DeckEstimate.ROUND, rounding = CountRounding.TRUNCATE) },
-            IndexPresets.seeded().activate(BuiltInIndexSet.BJ_SHOE_S17.name),
-        )
+    fun loadsThePresetsAsSaved() {
+        val added = IndexPresets.seeded().add("Mine", from = null).delete(BuiltInIndexSet.BJ_SHOE_H17.name)
+        val presets = added.update(added.activeId) { it.copy(deckEstimate = DeckEstimate.ROUND, rounding = CountRounding.TRUNCATE) }
 
-        for (presets in changes) {
-            IndexPresetsStore(context, name).save(presets)
+        IndexPresetsStore(context, name).save(presets)
 
-            assertEquals(presets, IndexPresetsStore(context, name).load())
-        }
+        assertEquals(presets, IndexPresetsStore(context, name).load())
     }
 
     @Test

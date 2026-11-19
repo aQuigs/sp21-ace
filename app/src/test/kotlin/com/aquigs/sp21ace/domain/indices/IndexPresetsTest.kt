@@ -31,14 +31,6 @@ class IndexPresetsTest {
     }
 
     @Test
-    fun aPresetFromABuiltInSetTakesTheRoundingItsNumbersAssume() {
-        for (set in BuiltInIndexSet.entries) {
-            assertEquals(set.rounding, IndexPreset.from(set, "p").rounding)
-        }
-        assertEquals(CountRounding.FLOOR, BuiltInIndexSet.BJ_SHOE_H17.rounding)
-    }
-
-    @Test
     fun addsAPresetAtTheEndWithDefaultConventionsAndMakesItActive() {
         val empty = three.add("Mine", from = null, id = "new")
         assertEquals(listOf("a", "b", "c", "new"), empty.presets.map { it.id })

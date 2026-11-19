@@ -1,7 +1,6 @@
 package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.strategy.DEBATED_MARK
-import com.aquigs.sp21ace.domain.strategy.Upcard
 
 /** A published index, [debated] where the sources disagree and the app ships the recommended number. */
 data class BuiltInIndex(val index: PlayIndex, val debated: Boolean = false)
@@ -24,12 +23,10 @@ enum class BuiltInIndexSet(val game: Game, val title: String, val rounding: Coun
 
 private val WHITESPACE = Regex("\\s+")
 private const val HEADER = "play hand upcard direction index"
-private const val NO_HAND = "-"
-private val DIRECTIONS = mapOf("higher" to IndexDirection.AT_OR_ABOVE, "lower" to IndexDirection.AT_OR_BELOW)
 
 /**
  * Reads a set as IndexSetData.kt prints it: a header, then a row each of play, hand ([IndexHand.label], or - for insurance),
- * upcard, direction ("higher" or "lower") and index, a † after the index marking it debated.
+ * upcard, [IndexDirection] and index, a † after the index marking it debated.
  */
 internal fun parseIndexSet(rows: String): List<BuiltInIndex> {
     val lines = rows.lines().map(String::trim).filter(String::isNotEmpty)
@@ -39,16 +36,11 @@ internal fun parseIndexSet(rows: String): List<BuiltInIndex> {
         val fields = line.split(WHITESPACE)
         require(fields.size == 5) { "Expected 5 fields in \"$line\"" }
         val (play, hand, upcard, direction, index) = fields
-        val deviation = if (play == "INSURANCE") {
-            require(hand == NO_HAND && upcard == Upcard.ACE.label) { "Insurance has no hand and a dealer ace: \"$line\"" }
-            Deviation.Insurance
-        } else {
-            Deviation.OnHand(IndexHand.parse(hand), Upcard.fromLabel(upcard), DeviationPlay.valueOf(play))
-        }
+        val deviation = Deviation.parse(play, hand, upcard)
         val threshold = requireNotNull(index.removeSuffix(DEBATED_MARK).toIntOrNull()) { "Unknown index in \"$line\"" }
 
         BuiltInIndex(
-            PlayIndex(deviation, threshold, requireNotNull(DIRECTIONS[direction]) { "Unknown direction in \"$line\"" }),
+            PlayIndex(deviation, threshold, IndexDirection.valueOf(direction)),
             debated = index.endsWith(DEBATED_MARK),
         )
     }.also { indices -> require(indices.distinctBy { it.index.deviation }.size == indices.size) { "A set lists a deviation twice" } }

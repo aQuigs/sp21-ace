@@ -1,12 +1,10 @@
 package com.aquigs.sp21ace.domain.indices
 
-/** "Hard 16", "Soft 18", "Pair of 8s", "Pair of aces", worded as the trainer's [com.aquigs.sp21ace.domain.strategy.handClass]. */
-val IndexHand.title: String
-    get() = when (kind) {
-        HandKind.HARD -> "Hard $value"
-        HandKind.SOFT -> "Soft $value"
-        HandKind.PAIR -> if (value == 1) "Pair of aces" else "Pair of ${value}s"
-    }
+import com.aquigs.sp21ace.domain.strategy.pairClass
+import com.aquigs.sp21ace.domain.strategy.totalClass
+
+/** "Hard 16", "Soft 18", "Pair of 8s", "Pair of aces", worded as the trainer words its hands. */
+val IndexHand.title: String get() = if (kind == HandKind.PAIR) pairClass(pairCard) else totalClass(total)
 
 /** "Hard 16 vs 10", or "Insurance". */
 val Deviation.title: String

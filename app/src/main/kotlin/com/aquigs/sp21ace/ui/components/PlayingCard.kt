@@ -46,6 +46,9 @@ private const val ASPECT_RATIO = 2.5f / 3.5f
 // How much of the card underneath stays uncovered: enough to read its corner index
 private const val OVERLAP_STEP = 0.2f
 
+// The gap left between a corner index and the edge of the strip, as a fraction of the card's width
+private const val INDEX_GAP = 0.025f
+
 private val MAX_CARD_HEIGHT = 256.dp
 
 private val CardShape = RoundedCornerShape(percent = 5)
@@ -208,15 +211,24 @@ private fun DrawScope.drawFace(card: Card, measurer: TextMeasurer, figure: Paint
     val ink = if (card.suit == Suit.HEARTS || card.suit == Suit.DIAMONDS) Red else Ink
 
     // Sizes follow the card rather than the font scale, because a card's print is part of its picture
-    fun measure(text: String, widthFraction: Float, weight: FontWeight = FontWeight.Normal, scaleX: Float = 1f) = measurer.measure(
+    fun measure(text: String, widthFraction: Float, weight: FontWeight = FontWeight.Normal, scaleX: Float? = null) = measurer.measure(
         text,
-        TextStyle(color = ink, fontSize = (size.width * widthFraction).toSp(), fontWeight = weight, textGeometricTransform = TextGeometricTransform(scaleX)),
+        TextStyle(
+            color = ink,
+            fontSize = (size.width * widthFraction).toSp(),
+            fontWeight = weight,
+            textGeometricTransform = scaleX?.let { TextGeometricTransform(it) },
+        ),
     )
 
-    // A 10 narrowed as printed decks narrow it, so its index stays in the strip a card lying over it leaves showing
-    val rankIndex = measure(card.rank.label, 0.17f, FontWeight.Medium, scaleX = if (card.rank.label.length > 1) 0.8f else 1f)
-    val suitIndex = measure(card.suit.glyph, 0.12f)
     val indexCentre = size.width * 0.1f
+    // An index too wide to end inside the strip a card lying over this one leaves showing, as a 10's is, is narrowed to fit,
+    // as printed decks narrow theirs
+    val indexRoom = 2 * (size.width * (OVERLAP_STEP - INDEX_GAP) - indexCentre)
+    val rankIndex = measure(card.rank.label, 0.17f, FontWeight.Medium).let { full ->
+        if (full.size.width <= indexRoom) full else measure(card.rank.label, 0.17f, FontWeight.Medium, scaleX = indexRoom / full.size.width)
+    }
+    val suitIndex = measure(card.suit.glyph, 0.12f)
     for (turn in listOf(0f, 180f)) {
         rotate(turn) {
             drawCentred(rankIndex, Offset(indexCentre, size.width * 0.02f + rankIndex.size.height / 2f))

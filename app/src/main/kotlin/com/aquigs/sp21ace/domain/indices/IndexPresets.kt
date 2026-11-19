@@ -38,8 +38,7 @@ data class IndexPreset(
     }
 }
 
-/** A fresh preset id, unique among every preset ever made. */
-fun newPresetId(): String = UUID.randomUUID().toString()
+private fun newPresetId(): String = UUID.randomUUID().toString()
 
 /**
  * Every preset, in the order listed, and the one the flashcards drill. Never empty, and every change keeps it so. Each change
@@ -60,11 +59,11 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
     fun activate(id: String): IndexPresets = copy(activeId = id)
 
     /**
-     * Adds a preset of every index in [from], as [IndexPreset.from] makes it, or an empty one for [game] with the default
-     * conventions, at the end, and makes it active to edit.
+     * Adds a preset of every index in [from], as [IndexPreset.from] makes it, or an empty one with the default conventions, at the
+     * end, and makes it active to edit.
      */
-    fun add(name: String, from: BuiltInIndexSet?, game: Game = from?.game ?: Game.BLACKJACK, id: String = newPresetId()): IndexPresets {
-        val preset = from?.let { IndexPreset.from(it, id, name) } ?: IndexPreset(id, name, game, basedOn = null, entries = emptyList())
+    fun add(name: String, from: BuiltInIndexSet?, id: String = newPresetId()): IndexPresets {
+        val preset = from?.let { IndexPreset.from(it, id, name) } ?: IndexPreset(id, name, Game.BLACKJACK, basedOn = null, entries = emptyList())
         return IndexPresets(presets + preset, preset.id)
     }
 
@@ -74,7 +73,7 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
     fun duplicate(id: String, name: String, newId: String = newPresetId()): IndexPresets {
         val at = indexOf(id)
         val copy = presets[at].copy(id = newId, name = name)
-        return IndexPresets(presets.take(at + 1) + copy + presets.drop(at + 1), newId)
+        return IndexPresets(presets.toMutableList().apply { add(at + 1, copy) }, newId)
     }
 
     /** Deletes preset [id], unless it's the last. Deleting the active one activates the preset that takes its place in the list. */
@@ -82,7 +81,7 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
         require(canDelete) { "The last preset can't be deleted" }
 
         val at = indexOf(id)
-        val left = presets.filterIndexed { i, _ -> i != at }
+        val left = presets.filterNot { it.id == id }
         return IndexPresets(left, if (id == activeId) left[at.coerceAtMost(left.lastIndex)].id else activeId)
     }
 

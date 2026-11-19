@@ -5,13 +5,13 @@ import com.aquigs.sp21ace.domain.strategy.Upcard
 /** Made-up numbers no source prints, far past any real index, for tests of what holds whatever the numbers. */
 object FakeIndices {
     const val SET = """
-        play       hand   upcard  direction  index
-        STAND      18     2       higher     +99
-        SPLIT      A-A    3       higher     -99†
-        DOUBLE     A-9    10      higher     0
-        SURRENDER  5      9       higher     +98
-        HIT        19     4       lower      -97
-        INSURANCE  -      A       higher     -98
+        play       hand   upcard  direction    index
+        STAND      18     2       AT_OR_ABOVE  +99
+        SPLIT      A-A    3       AT_OR_ABOVE  -99†
+        DOUBLE     A-9    10      AT_OR_ABOVE  0
+        SURRENDER  5      9       AT_OR_ABOVE  +98
+        HIT        19     4       AT_OR_BELOW  -97
+        INSURANCE  -      A       AT_OR_ABOVE  -98
     """
 
     val STAND = PlayIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 18), Upcard.TWO, DeviationPlay.STAND), 99)

@@ -1,9 +1,7 @@
 package com.aquigs.sp21ace.data
 
-import com.aquigs.sp21ace.domain.cards.Card
-import com.aquigs.sp21ace.domain.cards.Rank
-import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.code
+import com.aquigs.sp21ace.domain.cards.spanishCard
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -45,6 +43,4 @@ internal object PracticeLine {
     } catch (e: RuntimeException) {
         null
     }
-
-    private fun spanishCard(code: String): Card = card(code).also { require(it.rank != Rank.TEN) { "A Spanish deck has no 10-spot: $code" } }
 }

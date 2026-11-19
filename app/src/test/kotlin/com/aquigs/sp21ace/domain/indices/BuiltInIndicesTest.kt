@@ -1,6 +1,6 @@
 package com.aquigs.sp21ace.domain.indices
 
-import com.aquigs.sp21ace.domain.strategy.Upcard
+import com.aquigs.sp21ace.domain.strategy.Fixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,6 +12,7 @@ class BuiltInIndicesTest {
     fun everySetMatchesItsFixture() {
         val mismatches = BuiltInIndexSet.entries.flatMap { set ->
             val expected = fixture(set).associateBy { it.index.deviation }
+            assertTrue("$set's fixture has no indices", expected.isNotEmpty())
             val actual = set.indices.associateBy { it.index.deviation }
 
             (expected.keys + actual.keys).filter { expected[it] != actual[it] }
@@ -21,44 +22,29 @@ class BuiltInIndicesTest {
         assertEquals("Numbers that differ from their fixtures", emptyList<String>(), mismatches)
     }
 
-    @Test
-    fun everySetHasNumbers() {
-        for (set in BuiltInIndexSet.entries) {
-            assertTrue("$set has no indices", set.indices.isNotEmpty())
-        }
-    }
-
     // Every row of a set's fixture. A row the sources dispute, status conflict, ships debated.
     private fun fixture(set: BuiltInIndexSet): List<BuiltInIndex> {
-        val name = set.name.lowercase().replace('_', '-') + ".tsv"
-        val text = requireNotNull(javaClass.getResource("/indices/$name")) { "Missing fixture $name" }.readText()
-        val lines = text.lines().filter(String::isNotBlank)
-        require(lines.first() == COLUMNS.joinToString("\t")) { "$name: expected the columns $COLUMNS" }
+        val lines = Fixtures.tsv("indices", set)
+        require(lines.first() == COLUMNS) { "$set: expected the columns $COLUMNS" }
 
-        val rows = lines.drop(1).map { line ->
+        val rows = lines.drop(1).map { fields ->
             // A row with no note ends at its sources, since trailing whitespace is trimmed on commit
-            val fields = line.split('\t').also { require(it.size in COLUMNS.size - 1..COLUMNS.size) { "$name: expected ${COLUMNS.size} fields in \"$line\"" } }
+            require(fields.size in COLUMNS.size - 1..COLUMNS.size) { "$set: expected ${COLUMNS.size} fields in $fields" }
             val row = COLUMNS.zip(fields).toMap()
-            require(row["rule_set"] == set.name && row["rounding"] == set.rounding.name) { "$name: another set's row \"$line\"" }
-            require(row.getValue("sources").isNotBlank()) { "$name: no source cited in \"$line\"" }
+            require(row["rule_set"] == set.name && row["rounding"] == set.rounding.name) { "$set: another set's row $fields" }
+            require(row.getValue("sources").isNotBlank()) { "$set: no source cited in $fields" }
 
-            val play = row.getValue("play")
-            val deviation = if (play == "INSURANCE") {
-                require(row["hand"] == "-" && row["upcard"] == "A") { "$name: insurance has no hand and a dealer ace in \"$line\"" }
-                Deviation.Insurance
-            } else {
-                Deviation.OnHand(IndexHand.parse(row.getValue("hand")), Upcard.fromLabel(row.getValue("upcard")), DeviationPlay.valueOf(play))
-            }
+            val deviation = Deviation.parse(row.getValue("play"), row.getValue("hand"), row.getValue("upcard"))
             val debated = when (row["status"]) {
                 "conflict" -> true
                 "agree", "single-source" -> false
-                else -> error("$name: status must be agree, conflict or single-source in \"$line\"")
+                else -> error("$set: status must be agree, conflict or single-source in $fields")
             }
 
             BuiltInIndex(PlayIndex(deviation, row.getValue("index").toInt(), IndexDirection.valueOf(row.getValue("direction"))), debated)
         }
 
-        return rows.also { require(it.distinctBy { row -> row.index.deviation }.size == it.size) { "$name lists a deviation twice" } }
+        return rows.also { require(it.distinctBy { row -> row.index.deviation }.size == it.size) { "$set lists a deviation twice" } }
     }
 
     private companion object {

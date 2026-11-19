@@ -3,7 +3,6 @@ package com.aquigs.sp21ace.domain.indices
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.serializedAndBack
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -42,8 +41,6 @@ class PlayIndexTest {
         for (index in FakeIndices.ALL) {
             assertEquals(index, index.serializedAndBack())
         }
-
-        assertSame(Deviation.Insurance, (FakeIndices.INSURANCE.serializedAndBack() as PlayIndex).deviation)
     }
 
     @Test

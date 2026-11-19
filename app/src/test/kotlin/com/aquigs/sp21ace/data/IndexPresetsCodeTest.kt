@@ -43,16 +43,10 @@ class IndexPresetsCodeTest {
     }
 
     @Test
-    fun aTokenWithoutItsDirectionReadsAsAtOrAbove() {
-        assertEquals(FakeIndices.STAND, IndexCode.parse("STAND:18:2:99"))
-        assertEquals(FakeIndices.INSURANCE, IndexCode.parse("INSURANCE:-98"))
-    }
-
-    @Test
     fun readsNoIndexFromAGarbledToken() {
         val garbled = listOf(
-            "", "STAND", "STAND:18:2", "STAND:18:2:x", "FOLD:18:2:1", "STAND:20:J:1", "STAND:18:2:1:SIDEWAYS", "STAND:18:2:1:AT_OR_ABOVE:x",
-            "INSURANCE", "INSURANCE:16:A:1", "INSURANCE:1:AT_OR_ABOVE:x",
+            "", "STAND", "STAND:18:2", "STAND:18:2:99", "STAND:18:2:x:AT_OR_ABOVE", "FOLD:18:2:1", "STAND:20:J:1", "STAND:18:2:1:SIDEWAYS", "STAND:18:2:1:AT_OR_ABOVE:x",
+            "INSURANCE", "INSURANCE:-98", "INSURANCE:16:A:1:AT_OR_ABOVE", "INSURANCE:-:A:1:AT_OR_ABOVE", "INSURANCE:1:AT_OR_ABOVE:x",
         )
 
         for (code in garbled) {

@@ -1,15 +1,18 @@
 package com.aquigs.sp21ace.domain.indices
 
+import com.aquigs.sp21ace.domain.cards.HandTotal
+import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.Upcard
+import com.aquigs.sp21ace.domain.strategy.pairRow
+import com.aquigs.sp21ace.domain.strategy.row
 import java.io.Serializable
 
 /** The game an index is for. Spanish 21 joins with its own indices. */
-enum class Game(val title: String) { BLACKJACK("Blackjack") }
+enum class Game { BLACKJACK }
 
 /**
- * The [values] each kind of hand can have: a hard or soft total two cards make without a pair, since two cards make a hard 4
- * only as 2-2, a hard 20 only as two tens and a soft 12 only as A-A, or a pair's card value, an ace 1 as
- * [com.aquigs.sp21ace.domain.cards.Rank.value] counts it. So every index can be dealt as two cards.
+ * The totals two cards make without a pair, so every index can be dealt as two cards: hard 4, hard 20 and soft 12 are only ever
+ * pairs. A pair's value is its card's, an ace 1.
  */
 enum class HandKind(val values: IntRange) {
     HARD(5..19),
@@ -23,13 +26,15 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
         require(value in kind.values) { "No $kind hand of $value" }
     }
 
+    /** The strategy chart row basic strategy plays the hand from. */
+    val row: ChartRow get() = if (kind == HandKind.PAIR) pairRow(pairCard) else total.row
+
     /** The hand as the strategy charts key their rows: "16" for hard 16, "A-7" for soft 18, "8-8" and "A-A" for pairs. */
-    val label: String
-        get() = when (kind) {
-            HandKind.HARD -> "$value"
-            HandKind.SOFT -> "A-${value - 11}"
-            HandKind.PAIR -> cardLabel(value).let { "$it-$it" }
-        }
+    val label: String get() = row.hand
+
+    internal val total: HandTotal get() = HandTotal(value, soft = kind == HandKind.SOFT)
+
+    internal val pairCard: Upcard get() = if (value == 1) Upcard.ACE else Upcard.fromLabel("$value")
 
     companion object {
         /** The hand [label] names, as [IndexHand.label] writes it. */
@@ -44,18 +49,29 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
             }.also { require(it.label == label) { "Unknown hand: $label" } }
         }
 
-        private fun cardLabel(value: Int) = if (value == 1) "A" else "$value"
-
         private fun cardValue(label: String) = if (label == "A") 1 else requireNotNull(label.toIntOrNull()) { "Unknown card: $label" }
     }
 }
 
-/** The play an index names, which a negative index is often a hit: the play to switch to as the count falls. */
+/** HIT is for indices that leave a stand or double as the count falls, as published charts print "hit at −1 or lower". */
 enum class DeviationPlay { HIT, STAND, DOUBLE, SPLIT, SURRENDER }
 
 /** The question an index answers: when to make a play basic strategy doesn't, a hand's play against an upcard, or insurance. */
 sealed interface Deviation : Serializable {
     val upcard: Upcard
+
+    companion object {
+        internal const val INSURANCE = "INSURANCE"
+        private const val NO_HAND = "-"
+
+        /** The deviation named by its play, hand label and upcard label, with insurance as "INSURANCE", "-" and "A". */
+        internal fun parse(play: String, hand: String, upcard: String): Deviation = if (play == INSURANCE) {
+            require(hand == NO_HAND && upcard == Upcard.ACE.label) { "Insurance has no hand and a dealer ace: $hand vs $upcard" }
+            Insurance
+        } else {
+            OnHand(IndexHand.parse(hand), Upcard.fromLabel(upcard), DeviationPlay.valueOf(play))
+        }
+    }
 
     data class OnHand(val hand: IndexHand, override val upcard: Upcard, val play: DeviationPlay) : Deviation {
         init {
@@ -66,9 +82,6 @@ sealed interface Deviation : Serializable {
     /** Insurance is offered only against a dealer ace, and asks for no hand. */
     data object Insurance : Deviation {
         override val upcard: Upcard get() = Upcard.ACE
-
-        // Restored state comes back as this one object rather than a copy
-        private fun readResolve(): Any = Insurance
     }
 }
 
