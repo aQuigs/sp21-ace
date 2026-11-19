@@ -84,6 +84,25 @@ class PlayingCardTest {
         }
     }
 
+    // A 10 sits between the 9 and the court cards, so it gets their checks too: pips where a 9 has none, and an index that ends
+    // before the strip a card lying over it leaves, 0.2 of its width
+    @Test
+    fun everyTenDrawsItsTwoMiddlePipsAndAnIndexInTheStripACoveringCardLeaves() {
+        var card by mutableStateOf(Card(Rank.TEN, Suit.SPADES))
+        compose.setContent { PlayingCard(card, Modifier.height(280.dp).testTag(TAG)) }
+
+        for (suit in Suit.entries) {
+            card = Card(Rank.TEN, suit)
+            val pixels = compose.onNodeWithTag(TAG).captureToImage().toPixelMap()
+
+            assertTrue("$card has no top middle pip", pixels.region(0.47f..0.53f, 0.28f..0.32f).any { !it.isWhite() })
+            assertTrue("$card has no bottom middle pip", pixels.region(0.47f..0.53f, 0.68f..0.72f).any { !it.isWhite() })
+            assertTrue("$card has a centre pip", pixels.region(0.4f..0.6f, 0.45f..0.55f).all { it.isWhite() })
+            assertTrue("$card has no index", pixels.region(0f..0.18f, 0f..0.12f).any { !it.isWhite() })
+            assertTrue("$card draws its index past the strip", pixels.region(0.18f..0.2f, 0.01f..0.12f).all { it.isWhite() })
+        }
+    }
+
     private companion object {
         const val TAG = "card"
     }

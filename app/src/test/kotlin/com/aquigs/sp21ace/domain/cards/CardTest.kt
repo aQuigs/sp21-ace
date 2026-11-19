@@ -9,12 +9,12 @@ import org.junit.Test
 class CardTest {
     @Test
     fun everyCardReadsBackFromItsCodeAndNothingElseReadsAsACard() {
-        for (each in spanishShoe(decks = 1)) {
+        for (each in Rank.entries.flatMap { rank -> Suit.entries.map { Card(rank, it) } }) {
             assertEquals(each, card(each.code))
         }
 
-        // A 10-spot, which a Spanish deck doesn't have, an unknown suit, and no rank
-        for (code in listOf("10h", "Ax", "s", "")) {
+        // A 1, an unknown suit, and no rank
+        for (code in listOf("1h", "Ax", "s", "")) {
             assertThrows(code, IllegalArgumentException::class.java) { card(code) }
         }
     }
@@ -24,8 +24,9 @@ class CardTest {
         val shoe = spanishShoe(decks = 6)
 
         assertEquals(288, shoe.size)
-        assertEquals(Rank.entries.associateWith { 24 }, shoe.groupingBy { it.rank }.eachCount())
-        assertEquals(setOf(Rank.JACK, Rank.QUEEN, Rank.KING), Rank.entries.filter { it.value == 10 }.toSet())
+        assertEquals(SPANISH_RANKS.associateWith { 24 }, shoe.groupingBy { it.rank }.eachCount())
+        assertEquals(setOf(Rank.JACK, Rank.QUEEN, Rank.KING), SPANISH_RANKS.filter { it.value == 10 }.toSet())
+        assertFalse(shoe.any { it.rank == Rank.TEN })
     }
 
     @Test
