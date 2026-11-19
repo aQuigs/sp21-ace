@@ -21,8 +21,10 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -43,6 +45,9 @@ import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.accuracy.AccuracyScreen
 import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
 import com.aquigs.sp21ace.ui.components.SectionHeading
+import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsActions
+import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsScreen
+import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsState
 import com.aquigs.sp21ace.ui.hands.CustomizeHandsScreen
 import com.aquigs.sp21ace.ui.hands.HandsDealtScreen
 import com.aquigs.sp21ace.ui.play.PlayScreen
@@ -58,6 +63,7 @@ import kotlinx.coroutines.launch
 /** Root screens carry the menu. Every other destination opens over one as a sub-page with a back arrow. */
 enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     StrategyTrainer(R.string.strategy_trainer, isRoot = true),
+    IndexFlashcards(R.string.index_flashcards, isRoot = true),
     Play(R.string.play_spanish_21, isRoot = true),
     StrategyChart(R.string.strategy_chart, isRoot = false),
     TableRules(R.string.table_rules, isRoot = false),
@@ -81,6 +87,8 @@ private val BASIC_STRATEGY_ITEMS = listOf(
     Destination.Accuracy to R.drawable.ic_accuracy,
 )
 
+private val CARD_COUNTING_ITEMS = listOf(Destination.IndexFlashcards to R.drawable.ic_home)
+
 // Blackjack Ace's Play section also lists its own Table Rules and Strategy Chart, but here the table plays by the trainer's.
 private val PLAY_ITEMS = listOf(Destination.Play to R.drawable.ic_home, Destination.PlayStatistics to R.drawable.ic_accuracy)
 
@@ -96,6 +104,8 @@ fun AppShell(
     settings: Settings,
     history: List<PracticeAnswer>,
     playHistory: List<PlayedHand>,
+    flashcards: IndexFlashcardsState,
+    flashcardActions: IndexFlashcardsActions,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onTableUpdate: ((Table) -> Table?) -> Unit,
     onDeal: () -> Unit,
@@ -111,6 +121,8 @@ fun AppShell(
     val destination = backStack.last()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    // Opening, open or closing, so a card it covers for any time is untimed
+    val drawerShowing by remember { derivedStateOf { drawerState.currentValue == DrawerValue.Open || drawerState.targetValue == DrawerValue.Open } }
 
     // A page already open is returned to rather than stacked again, as a double tap would
     fun open(page: Destination) {
@@ -157,6 +169,13 @@ fun AppShell(
                 onAnswer = onAnswer,
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenChart = { open(Destination.StrategyChart) },
+            )
+            Destination.IndexFlashcards -> IndexFlashcardsScreen(
+                state = flashcards,
+                settings = settings,
+                covered = drawerShowing,
+                actions = flashcardActions,
+                onOpenDrawer = { scope.launch { drawerState.open() } },
             )
             Destination.Play -> PlayScreen(
                 table = table,
@@ -212,6 +231,13 @@ private fun Drawer(selected: Destination, onSelect: (Destination) -> Unit) {
             )
 
             BASIC_STRATEGY_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
+
+            DrawerDivider()
+            SectionHeading(
+                text = stringResource(R.string.card_counting),
+                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(start = 16.dp, top = 10.dp, bottom = 18.dp),
+            )
+            CARD_COUNTING_ITEMS.forEach { (destination, icon) -> DrawerItem(destination, icon, selected, onSelect) }
 
             DrawerDivider()
             SectionHeading(

@@ -187,4 +187,12 @@
     <string name="no_action_required">No Action Required</string>
     <string name="clear_play_history">Clear play history</string>
     <string name="clear_play_history_message">Are you sure you want to clear your play history? This resets everything on the Statistics screen.</string>
+
+    <string name="card_counting">Card Counting</string>
+    <string name="index_flashcards">Index Flashcards</string>
+    <string name="flashcard_prompt_spoken">%1$s at what true count %2$s?</string>
+    <string name="you_answered">You answered %1$s</string>
+    <string name="count_plus">plus %1$d</string>
+    <string name="count_minus">minus %1$d</string>
+    <string name="no_indices_switched_on">No indices are switched on in this preset.</string>
 </resources>

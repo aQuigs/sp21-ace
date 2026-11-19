@@ -8,32 +8,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
@@ -45,18 +30,13 @@ import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.dealerTotal
 import com.aquigs.sp21ace.domain.trainer.playerTotal
 import com.aquigs.sp21ace.ui.components.DealerHand
-import com.aquigs.sp21ace.ui.components.Dissolve
 import com.aquigs.sp21ace.ui.components.DissolvingHand
 import com.aquigs.sp21ace.ui.components.EdgeControls
 import com.aquigs.sp21ace.ui.components.EdgeRow
+import com.aquigs.sp21ace.ui.components.FeedbackBar
+import com.aquigs.sp21ace.ui.components.FeedbackText
 import com.aquigs.sp21ace.ui.components.HandArea
 import com.aquigs.sp21ace.ui.components.MoveButton
-import com.aquigs.sp21ace.ui.components.appBarColors
-import com.aquigs.sp21ace.ui.components.autoSizeDownTo
-import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
-
-// Blackjack Ace's verdict changes in about a quarter of a second, quicker than its cards dissolve
-private const val FEEDBACK_MILLIS = 250
 
 /**
  * The cards, with the answer buttons down one edge and, as [settings] choose, the hand totals, the chart tile and the streak
@@ -76,7 +56,7 @@ fun StrategyTrainerScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { FeedbackBar(state.lastGrade, onOpenDrawer) },
+        topBar = { GradeBar(state.lastGrade, onOpenDrawer) },
         bottomBar = { PreviousHandPanel(state.lastGrade) },
     ) { padding ->
         val meter: @Composable RowScope.() -> Unit = {
@@ -123,77 +103,26 @@ fun StrategyTrainerScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FeedbackBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
-    val colors = Sp21AceTheme.colors
-    // The app bar fades to a new colour on its own, about as quickly as Blackjack Ace's
-    val container = when (lastGrade?.isCorrect) {
-        null -> colors.appBar
-        true -> colors.correct
-        false -> colors.wrong
+private fun GradeBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {
+    FeedbackBar(
+        verdict = lastGrade,
+        title = stringResource(R.string.strategy_trainer),
+        isCorrect = { it.isCorrect },
+        spoken = lastGrade?.let { "${it.hand.matchup}. ${it.inPlainWords()}" },
+        onOpenDrawer = onOpenDrawer,
+    ) { grade ->
+        FeedbackText(
+            buildAnnotatedString {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(grade.hand.matchup) }
+                append(" | ")
+                append(grade.inPlainWords())
+            },
+        )
     }
-
-    // Right and wrong otherwise differ only in colour and mark, which a screen reader can't announce
-    val spoken = lastGrade?.let {
-        "${stringResource(if (it.isCorrect) R.string.right_answer else R.string.wrong_answer)}. ${it.hand.matchup}. ${it.inPlainWords()}"
-    }
-
-    TopAppBar(
-        title = {
-            Dissolve(
-                lastGrade,
-                // Each verdict dissolves in on its own, so a screen reader hears every one from the node the dissolve keeps
-                Modifier.semantics(mergeDescendants = true) {
-                    if (spoken == null) {
-                        heading()
-                    } else {
-                        liveRegion = LiveRegionMode.Polite
-                        contentDescription = spoken
-                    }
-                },
-                durationMillis = FEEDBACK_MILLIS,
-            ) { grade ->
-                if (grade == null) Text(stringResource(R.string.strategy_trainer)) else FeedbackText(grade)
-            }
-        },
-        navigationIcon = {
-            Dissolve(lastGrade?.isCorrect, durationMillis = FEEDBACK_MILLIS) { correct ->
-                // The title speaks the verdict, so the mark stays silent
-                if (correct != null) {
-                    Icon(
-                        painterResource(if (correct) R.drawable.ic_check_circle else R.drawable.ic_cancel),
-                        contentDescription = null,
-                        modifier = Modifier.padding(start = 4.dp, end = 8.dp).size(52.dp),
-                    )
-                }
-            }
-        },
-        actions = {
-            IconButton(onClick = onOpenDrawer) {
-                Icon(painterResource(R.drawable.ic_menu), contentDescription = stringResource(R.string.open_menu))
-            }
-        },
-        colors = appBarColors(container),
-    )
 }
 
 private fun Grade.inPlainWords() = play.inPlainWords(correctMove, cards = hand.player.size, afterDoubling = hand.doubled)
-
-@Composable
-private fun FeedbackText(grade: Grade) {
-    Text(
-        text = buildAnnotatedString {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(grade.hand.matchup) }
-            append(" | ")
-            append(grade.inPlainWords())
-        },
-        // The longest squares need three lines, and an em line height keeps them inside the bar as autoSize shrinks the text
-        autoSize = autoSizeDownTo(minSize = 10.dp, maxFontSize = 16.sp),
-        maxLines = 3,
-        style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 1.2.em),
-    )
-}
 
 private val BUTTONS = listOf(Move.HIT, Move.STAND, Move.DOUBLE, Move.SPLIT, Move.SURRENDER)
 

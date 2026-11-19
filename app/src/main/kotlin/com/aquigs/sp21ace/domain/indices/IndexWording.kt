@@ -34,5 +34,8 @@ val IndexDirection.inPlainWords: String
         IndexDirection.AT_OR_BELOW -> "or lower"
     }
 
+/** "at 0 or higher", or "at −1 or lower": when to make the play. */
+val PlayIndex.atCount: String get() = "at ${signedCount(threshold)} ${direction.inPlainWords}"
+
 /** "Stand at 0 or higher", "Hit at −1 or lower", "Insurance at +3 or higher". */
-val PlayIndex.inPlainWords: String get() = "${deviation.playName} at ${signedCount(threshold)} ${direction.inPlainWords}"
+val PlayIndex.inPlainWords: String get() = "${deviation.playName} $atCount"

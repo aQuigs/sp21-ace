@@ -5,6 +5,7 @@ import android.app.UiModeManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.LocalActivity
@@ -12,13 +13,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.aquigs.sp21ace.data.FlashcardHistoryStore
 import com.aquigs.sp21ace.data.HandCustomizationStore
+import com.aquigs.sp21ace.data.IndexPresetsStore
 import com.aquigs.sp21ace.data.PlayHistoryStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
@@ -30,10 +34,17 @@ import com.aquigs.sp21ace.domain.game.Shoe
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.playedHandsSince
+import com.aquigs.sp21ace.domain.indices.AnswerTimer
+import com.aquigs.sp21ace.domain.indices.Flashcard
+import com.aquigs.sp21ace.domain.indices.FlashcardDealer
+import com.aquigs.sp21ace.domain.indices.FlashcardRun
+import com.aquigs.sp21ace.domain.indices.answer
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.AppShell
+import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsActions
+import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsState
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import com.aquigs.sp21ace.ui.theme.isDark
 import com.aquigs.sp21ace.ui.trainer.AnswerSounds
@@ -52,12 +63,17 @@ class MainActivity : ComponentActivity() {
         val playHistoryStore = PlayHistoryStore.forApp(this)
         val handsStore = HandCustomizationStore(this)
         val tableStore = TableStore(this)
+        val presetsStore = IndexPresetsStore(this)
+        val flashcardHistoryStore = FlashcardHistoryStore.forApp(this)
 
-        setContent { Sp21AceApp(store, historyStore, playHistoryStore, handsStore, settingsStore, tableStore) }
+        setContent { Sp21AceApp(store, historyStore, playHistoryStore, handsStore, settingsStore, tableStore, presetsStore, flashcardHistoryStore) }
     }
 }
 
-/** The composition root. Tests pass their own stores, [deal], [sounds] and the [random] that shuffles the table's shoe. */
+/**
+ * The composition root. Tests pass their own stores, [deal] and [dealFlashcard], [sounds], the [random] that shuffles the table's
+ * shoe, and the [clock] that times flashcard answers.
+ */
 @Composable
 internal fun Sp21AceApp(
     store: TableRulesStore,
@@ -66,9 +82,13 @@ internal fun Sp21AceApp(
     handsStore: HandCustomizationStore,
     settingsStore: SettingsStore,
     tableStore: TableStore,
+    presetsStore: IndexPresetsStore,
+    flashcardHistoryStore: FlashcardHistoryStore,
     deal: (picker: HandPicker, history: List<PracticeAnswer>) -> TrainerHand = { picker, history -> picker.pick(history) },
+    dealFlashcard: (dealer: FlashcardDealer, previous: Flashcard?) -> Flashcard? = { dealer, previous -> dealer.deal(previous) },
     sounds: AnswerSounds? = null,
     random: Random = Random.Default,
+    clock: () -> Long = SystemClock::elapsedRealtime,
 ) {
     val activity = LocalActivity.current
     // Saved as they change, so a recreated activity loads them again rather than keeping a copy of its own
@@ -82,6 +102,37 @@ internal fun Sp21AceApp(
     val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
     var table by rememberSaveable { mutableStateOf(Table(tableStore.loadChips(), Shoe.shuffled(random))) }
+
+    val presets = remember { presetsStore.load() }
+    val flashcardHistory by flashcardHistoryStore.history.collectAsState()
+    val flashcardDealer = remember(presets.active) { FlashcardDealer(presets.active) }
+    // Not saved, so a card restored in a recreated activity, which showed before, is never timed from partway through
+    val answerTimer = remember { AnswerTimer(clock) }
+    var flashcardRun by rememberSaveable { mutableStateOf(FlashcardRun(dealFlashcard(flashcardDealer, null)).also { answerTimer.dealt(it.card) }) }
+
+    // A change of preset deals afresh in place of a card whose index it no longer drills, rather than grading a stale number
+    LaunchedEffect(flashcardDealer) {
+        val current = flashcardRun.dealtFrom(flashcardDealer) { dealFlashcard(flashcardDealer, it) }
+        if (current != flashcardRun) {
+            answerTimer.dealt(current.card)
+            flashcardRun = current
+        }
+    }
+    val flashcardActions = object : IndexFlashcardsActions {
+        override fun answer(asked: Flashcard, number: Int) {
+            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now()) { dealFlashcard(flashcardDealer, asked) }
+                ?.let { (next, answer) ->
+                    flashcardRun = next
+                    answerTimer.dealt(next.card)
+                    flashcardHistoryStore.append(answer)
+                    if (settings.soundEffects) answerSounds?.play(answer.isCorrect)
+                }
+        }
+
+        override fun shown(card: Flashcard) = answerTimer.shown(card)
+
+        override fun interrupted() = answerTimer.interrupted()
+    }
 
     fun seat(next: Table) {
         if (next.chips != table.chips) tableStore.saveChips(next.chips)
@@ -109,6 +160,8 @@ internal fun Sp21AceApp(
             settings = settings,
             history = history.orEmpty(),
             playHistory = playHistory.orEmpty(),
+            flashcards = IndexFlashcardsState(flashcardRun, presets, flashcardHistory.orEmpty()),
+            flashcardActions = flashcardActions,
             onAnswer = { asked, move ->
                 // The store's history, since the collected one can trail a quick second answer
                 trainer.record(asked, move, rules.ruleSet, historyStore.history.value.orEmpty(), Instant.now()) { deal(picker, it) }?.let { (next, answer) ->
