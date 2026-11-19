@@ -20,6 +20,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -262,6 +264,18 @@ class IndexFlashcardsScreenTest {
         compose.onNodeWithText(string(R.string.choose_indices)).assertIsDisplayed().performClick()
 
         assertEquals(1, indicesOpened)
+    }
+
+    @Test
+    fun withNoCardTheBarShowsTheTitleInPlaceOfTheLastVerdict() {
+        val fake = show()
+        button(2).performClick()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", string(R.string.you_answered, "+2"))).assertIsDisplayed()
+
+        fake.run = fake.run.copy(card = null)
+
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", string(R.string.you_answered, "+2"))).assertDoesNotExist()
+        compose.onNode(hasText(string(R.string.index_flashcards)) and isHeading()).assertIsDisplayed()
     }
 
     @Test

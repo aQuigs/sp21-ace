@@ -85,7 +85,8 @@ fun IndexFlashcardsScreen(
     LaunchedEffect(hidden) { if (hidden) currentActions.interrupted() }
     LaunchedEffect(card, hidden) { if (card != null && !hidden) currentActions.shown(card) }
 
-    Scaffold(modifier = modifier, topBar = { FlashcardBar(state.run.lastGrade, onOpenDrawer) }) { padding ->
+    // With no card, the last verdict, perhaps on an index no longer drilled, gives way to the screen's title
+    Scaffold(modifier = modifier, topBar = { FlashcardBar(state.run.lastGrade.takeIf { card != null }, onOpenDrawer) }) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),

@@ -4,7 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -20,7 +19,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.indices.Deviation
@@ -83,8 +81,7 @@ class IndexEditorScreensTest {
 
     private fun choose(vararg chips: SemanticsNodeInteraction) = chips.forEach { it.performScrollTo().performClick() }
 
-    private fun slideTo(number: Int) =
-        compose.onNodeWithContentDescription(string(R.string.true_count)).performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(number.toFloat()) }
+    private fun count(label: String) = chip(R.string.true_count, label)
 
     private fun addButton(): SemanticsNodeInteraction = compose.onNode(hasText(string(R.string.add_index)) and hasClickAction()).performScrollTo()
 
@@ -93,8 +90,8 @@ class IndexEditorScreensTest {
         showAdd()
 
         choose(kind("Hard total"), total("13"), upcard("2"), play("Hit"), direction("or lower"))
-        slideTo(-1)
-        compose.onNodeWithText("Hit at −1 or lower").assertIsDisplayed()
+        choose(count("−1"))
+        compose.onNodeWithText("Hit at −1 or lower").performScrollTo().assertIsDisplayed()
         addButton().performClick()
 
         val hit = PlayIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 13), Upcard.TWO, DeviationPlay.HIT), -1, IndexDirection.AT_OR_BELOW)
@@ -173,11 +170,22 @@ class IndexEditorScreensTest {
         choose(kind(string(R.string.insurance)))
         compose.onNodeWithText(string(R.string.dealers_upcard)).assertDoesNotExist()
         compose.onNodeWithText(string(R.string.index_play)).assertDoesNotExist()
-        slideTo(3)
-        compose.onNodeWithText("Insurance at +3 or higher").assertIsDisplayed()
+        choose(count("+3"))
+        compose.onNodeWithText("Insurance at +3 or higher").performScrollTo().assertIsDisplayed()
         addButton().performClick()
 
         assertEquals(listOf(IndexEntry(PlayIndex(Deviation.Insurance, 3))), presets.active.entries)
+    }
+
+    @Test
+    fun theNumbersRunFromMinus10ToPlus10LabeledAsThePadLabelsThem() {
+        showAdd()
+
+        for (label in listOf("−10", "−1", "0", "+1", "+10")) count(label).assertExists()
+        count("−11").assertDoesNotExist()
+        count("+11").assertDoesNotExist()
+        count("0").assertIsSelected()
+        compose.onNodeWithText("0 or higher").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -197,11 +205,11 @@ class IndexEditorScreensTest {
         showEdit()
 
         compose.onNode(hasText("Hard 16 vs 10") and hasText("Stand")).assertIsDisplayed()
-        compose.onNodeWithText("Stand at 0 or higher").assertIsDisplayed()
+        compose.onNodeWithText("Stand at 0 or higher").performScrollTo().assertIsDisplayed()
         direction("or higher").assertIsSelected()
         choose(direction("or lower"))
-        slideTo(-2)
-        compose.onNodeWithText("Stand at −2 or lower").assertIsDisplayed()
+        choose(count("−2"))
+        compose.onNodeWithText("Stand at −2 or lower").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(string(R.string.save)).performScrollTo().performClick()
 
         val entry = presets.active.entries.first { it.index.deviation == sixteenVsTen.deviation }
@@ -214,7 +222,7 @@ class IndexEditorScreensTest {
         showEdit()
 
         choose(direction("or lower"))
-        slideTo(4)
+        choose(count("+4"))
         compose.onNodeWithContentDescription(string(R.string.back)).performClick()
 
         assertEquals(listOf(0, 1), listOf(changes, backs))

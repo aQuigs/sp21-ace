@@ -37,8 +37,8 @@ import com.aquigs.sp21ace.ui.components.ChipChoices
 import com.aquigs.sp21ace.ui.components.ConfirmDialog
 import com.aquigs.sp21ace.ui.components.InfoRow
 import com.aquigs.sp21ace.ui.components.SettingsHeader
+import com.aquigs.sp21ace.ui.components.SettingsNote
 import com.aquigs.sp21ace.ui.components.SettingsPage
-import com.aquigs.sp21ace.ui.components.SliderRow
 
 // Blackjack Ace's order for upcards, the ace last
 private val UPCARDS = Upcard.entries.filter { it != Upcard.ACE } + Upcard.ACE
@@ -81,11 +81,10 @@ fun AddIndexScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, onBa
         )
 
         if (listed != null) {
-            Text(
+            SettingsNote(
                 text = stringResource(R.string.index_already_listed, listed.deviation.question),
-                modifier = Modifier.padding(horizontal = 16.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                modifier = Modifier.padding(top = 8.dp).semantics { liveRegion = LiveRegionMode.Polite },
                 color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
             )
         }
         Button(
@@ -157,19 +156,20 @@ fun EditIndexScreen(
     }
 }
 
-/** The direction and the number, under a label that reads as the index will, such as "Stand at +3 or higher", once [play] is known. */
+/**
+ * The direction, and the number as chips labeled as the flashcards' pad labels them, since a slider's 21 stops are too close
+ * together to hit an exact one. Over the numbers, a line reads as the index will, such as "Stand at +3 or higher", once [play]
+ * is known.
+ */
 @Composable
 private fun NumberFields(play: String?, direction: IndexDirection, threshold: Int, onDirection: (IndexDirection) -> Unit, onThreshold: (Int) -> Unit) {
     val number = "${signedCount(threshold)} ${direction.inPlainWords}"
+    val name = stringResource(R.string.true_count)
 
     Chips(stringResource(R.string.direction), IndexDirection.entries.map { it to it.inPlainWords }, direction, onDirection)
-    SliderRow(
-        title = stringResource(R.string.true_count),
-        label = play?.let { "$it at $number" } ?: number,
-        value = threshold,
-        range = INDEX_NUMBERS,
-        onValueChange = onThreshold,
-    )
+    SettingsHeader(name)
+    SettingsNote(play?.let { "$it at $number" } ?: number)
+    ChipChoices(name, INDEX_NUMBERS.map { it to signedCount(it) }, threshold, onThreshold)
 }
 
 /** A field of the form: its heading over its values. */

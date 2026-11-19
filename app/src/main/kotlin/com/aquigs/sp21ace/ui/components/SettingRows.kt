@@ -261,6 +261,17 @@ fun <T> ChipChoices(name: String, choices: List<Pair<T, String>>, selected: T?, 
     }
 }
 
+/** A line of a form's own, such as what it will make or why it can't, lined up with the rows' titles. */
+@Composable
+fun SettingsNote(text: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
+    Text(
+        text = text,
+        modifier = modifier.padding(start = TitleInset, top = 4.dp, end = ListItemInset, bottom = 8.dp),
+        color = color,
+        style = MaterialTheme.typography.bodyLarge,
+    )
+}
+
 /** A value shown but not changed here, such as the hand of an index being edited. */
 @Composable
 fun InfoRow(title: String, summary: String, modifier: Modifier = Modifier) {

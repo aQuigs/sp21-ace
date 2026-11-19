@@ -23,7 +23,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.espresso.Espresso
@@ -577,7 +576,8 @@ class AppShellTest {
         openFromDrawer(R.string.indices)
         compose.onNode(hasText("Hard 16 vs 10") and hasText("Stand at 0 or higher")).performScrollTo().performClick()
         appBarTitle(R.string.edit_index).assertIsDisplayed()
-        compose.onNodeWithContentDescription(string(R.string.true_count)).performSemanticsAction(SemanticsActions.SetProgress) { it(3f) }
+        compose.onNodeWithContentDescription("${string(R.string.true_count)}, +3").performScrollTo().performClick()
+        compose.onNodeWithText("Stand at +3 or higher").assertExists()
 
         Espresso.pressBack()
 
