@@ -123,17 +123,22 @@ private fun FlashcardBar(lastGrade: FlashcardGrade?, onOpenDrawer: () -> Unit) {
             buildAnnotatedString {
                 // Insurance names itself as the play, so it isn't named twice
                 if (index.deviation is Deviation.OnHand) {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(index.deviation.title) }
-                    append(" | ${index.inPlainWords}")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(index.deviation.title.unbroken()) }
+                    append("$SEPARATOR${index.inPlainWords.unbroken()}")
                 } else {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(index.deviation.playName) }
-                    append(" ${index.atCount}")
+                    append("\u00A0${index.atCount.unbroken()}")
                 }
-                wrong?.let { append(" | $it") }
+                wrong?.let { append("$SEPARATOR${it.unbroken()}") }
             },
         )
     }
 }
+
+// The bar breaks its lines only after a part's bar, so a part such as "at −1 or higher" never ends one line and starts the next
+private const val SEPARATOR = "\u00A0| "
+
+private fun String.unbroken() = replace(' ', '\u00A0')
 
 /** The dealer's hand over the player's, or for insurance the dealer's alone, with the player's space left empty so the cards don't move. */
 @Composable

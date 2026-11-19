@@ -104,6 +104,9 @@ class AppShellTest {
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
 
+    // The flashcard bar's text, which breaks lines only after the bar between its parts
+    private fun barText(vararg parts: String) = parts.joinToString("\u00A0| ") { it.replace(' ', '\u00A0') }
+
     // A closed drawer stays composed just off screen, so being displayed is what tells open from closed
     private fun drawerItem(title: Int) = compose.onNode(hasText(string(title)) and isSelectable())
 
@@ -197,7 +200,7 @@ class AppShellTest {
         now += 2_000
 
         compose.onNodeWithContentDescription("0").performClick()
-        compose.onNodeWithText("Hard 16 vs 10 | Stand at 0 or higher").assertIsDisplayed()
+        compose.onNodeWithText(barText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
         now += 900
         compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
 

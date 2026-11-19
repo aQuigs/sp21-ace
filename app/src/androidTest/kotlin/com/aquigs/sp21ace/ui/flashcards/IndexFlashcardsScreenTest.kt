@@ -33,6 +33,7 @@ import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.indices.AnswerTimer
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
 import com.aquigs.sp21ace.domain.indices.Deviation
+import com.aquigs.sp21ace.domain.indices.DeviationPlay
 import com.aquigs.sp21ace.domain.indices.Flashcard
 import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
 import com.aquigs.sp21ace.domain.indices.FlashcardDealer
@@ -47,6 +48,7 @@ import com.aquigs.sp21ace.domain.indices.PlayIndex
 import com.aquigs.sp21ace.domain.indices.answer
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Upcard
+import com.aquigs.sp21ace.ui.assertFits
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
@@ -100,6 +102,9 @@ class IndexFlashcardsScreenTest {
     }
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
+
+    // The flashcard bar's text, which breaks lines only after the bar between its parts
+    private fun barText(vararg parts: String) = parts.joinToString("\u00A0| ") { it.replace(' ', '\u00A0') }
 
     private fun button(number: Int) = compose.onNodeWithContentDescription(
         when {
@@ -165,7 +170,7 @@ class IndexFlashcardsScreenTest {
         button(0).performClick()
 
         compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher").assertIsDisplayed()
-        compose.onNodeWithText("Hard 16 vs 10 | Stand at 0 or higher").assertIsDisplayed()
+        compose.onNodeWithText(barText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
         compose.onNodeWithText("INSURANCE at ? or higher").assertIsDisplayed()
     }
 
@@ -176,7 +181,7 @@ class IndexFlashcardsScreenTest {
         button(2).performClick()
 
         compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs 10. Stand at 0 or higher. You answered +2").assertIsDisplayed()
-        compose.onNodeWithText("Hard 16 vs 10 | Stand at 0 or higher | You answered +2").assertIsDisplayed()
+        compose.onNodeWithText(barText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2")).assertIsDisplayed()
     }
 
     @Test
@@ -190,7 +195,7 @@ class IndexFlashcardsScreenTest {
         button(-3).performClick()
 
         compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Insurance at +3 or higher. You answered −3").assertIsDisplayed()
-        compose.onNodeWithText("Insurance at +3 or higher | You answered −3").assertIsDisplayed()
+        compose.onNodeWithText(barText("Insurance at +3 or higher", "You answered −3")).assertIsDisplayed()
     }
 
     @Test
@@ -218,7 +223,7 @@ class IndexFlashcardsScreenTest {
         compose.mainClock.autoAdvance = true
 
         assertEquals(listOf(0), fake.answers.map { it.answer })
-        compose.onNodeWithText("Hard 16 vs 10 | Stand at 0 or higher").assertIsDisplayed()
+        compose.onNodeWithText(barText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
     }
 
     @Test
@@ -331,6 +336,25 @@ class IndexFlashcardsScreenTest {
 
         button(0).performClick()
         assertEquals(buttons, numbers.map { button(it).getBoundsInRoot() })
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeTheLongestBarFitsWithEachPartOnOneLine() {
+        // Surrender, the longest play, on a 15 against an ace at −10, answered +10
+        val index = PlayIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 15), Upcard.ACE, DeviationPlay.SURRENDER), -10)
+        val first = Flashcard(index, cards("9c 6d"), card("Ah"))
+        show(
+            IndexPreset("one", "One", Game.BLACKJACK, basedOn = null, entries = listOf(IndexEntry(index))),
+            first,
+            deals = listOf(first.copy(player = cards("10s 5h"))),
+            Modifier.size(360.dp, 640.dp),
+            DeviceConfigurationOverride.FontScale(2f),
+        )
+
+        button(10).performClick()
+
+        val bar = barText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10")
+        compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
 
     @Test
