@@ -11,7 +11,7 @@ enum class DeckEstimate {
     /** The nearest whole deck: 0 to 25 cards gone is a full shoe, 26 to 77 one deck dealt. */
     ROUND,
 
-    /** Casino Vérité's 95th percentile: a deck counts as dealt once 50 of its 52 cards are gone. */
+    /** Casino Vérité's 95th percentile: 0 to 49 cards gone is a full shoe, 50 to 99 one deck dealt. */
     PERCENTILE_95,
     ;
 

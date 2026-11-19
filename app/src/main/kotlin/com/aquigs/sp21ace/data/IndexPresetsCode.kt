@@ -19,7 +19,7 @@ import java.net.URLEncoder
  * index=STAND:16:10:0:AT_OR_ABOVE on=true
  * ```
  * The name is URL-encoded, so it holds no space. A preset started empty has no `basedOn`. A convention missing, or one this
- * version doesn't know, reads as its default.
+ * version doesn't know, reads as its default, and a built-in set it doesn't know as none.
  */
 internal object IndexPresetsCode {
     private const val ACTIVE = "active"
@@ -76,7 +76,8 @@ internal object IndexPresetsCode {
             game = Game.valueOf(fields[GAME]),
             deckEstimate = DeckEstimate.entries.firstOrNull { it.name == fields.ifSaved(DECK_ESTIMATE) } ?: DeckEstimate.DEFAULT,
             rounding = CountRounding.entries.firstOrNull { it.name == fields.ifSaved(ROUNDING) } ?: CountRounding.DEFAULT,
-            basedOn = fields.ifSaved(BASED_ON)?.let(BuiltInIndexSet::valueOf),
+            // A set this version doesn't know leaves the user's own indices, so the preset reads as started empty rather than lost
+            basedOn = BuiltInIndexSet.entries.firstOrNull { it.name == fields.ifSaved(BASED_ON) },
             entries = block.drop(1).mapNotNull(::readEntry).distinctBy { it.index.deviation },
         )
     } catch (e: RuntimeException) {

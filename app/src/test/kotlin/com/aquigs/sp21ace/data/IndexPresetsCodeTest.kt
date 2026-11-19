@@ -30,7 +30,7 @@ class IndexPresetsCodeTest {
         // Saved presets and history lines must keep loading, so a change here has to read the old codes too
         assertEquals(
             listOf(
-                "STAND:20:2:99:AT_OR_ABOVE",
+                "STAND:18:2:99:AT_OR_ABOVE",
                 "SPLIT:A-A:3:-99:AT_OR_ABOVE",
                 "DOUBLE:A-9:10:0:AT_OR_ABOVE",
                 "SURRENDER:5:9:98:AT_OR_ABOVE",
@@ -44,14 +44,14 @@ class IndexPresetsCodeTest {
 
     @Test
     fun aTokenWithoutItsDirectionReadsAsAtOrAbove() {
-        assertEquals(FakeIndices.STAND, IndexCode.parse("STAND:20:2:99"))
+        assertEquals(FakeIndices.STAND, IndexCode.parse("STAND:18:2:99"))
         assertEquals(FakeIndices.INSURANCE, IndexCode.parse("INSURANCE:-98"))
     }
 
     @Test
     fun readsNoIndexFromAGarbledToken() {
         val garbled = listOf(
-            "", "STAND", "STAND:20:2", "STAND:20:2:x", "FOLD:20:2:1", "STAND:20:J:1", "STAND:20:2:1:SIDEWAYS", "STAND:20:2:1:AT_OR_ABOVE:x",
+            "", "STAND", "STAND:18:2", "STAND:18:2:x", "FOLD:18:2:1", "STAND:20:J:1", "STAND:18:2:1:SIDEWAYS", "STAND:18:2:1:AT_OR_ABOVE:x",
             "INSURANCE", "INSURANCE:16:A:1", "INSURANCE:1:AT_OR_ABOVE:x",
         )
 
@@ -68,7 +68,7 @@ class IndexPresetsCodeTest {
             listOf(
                 "active=mine",
                 "preset=mine game=BLACKJACK deckEstimate=PERCENTILE_95 rounding=TRUNCATE name=Mine",
-                "index=STAND:20:2:99:AT_OR_ABOVE on=true",
+                "index=STAND:18:2:99:AT_OR_ABOVE on=true",
                 "index=SPLIT:A-A:3:-99:AT_OR_ABOVE on=false",
             ).joinToString("\n"),
             IndexPresetsCode.print(one),
@@ -98,11 +98,18 @@ class IndexPresetsCodeTest {
         val withoutMine = presets.delete("mine").activate(presets.presets.first().id)
         val withoutStand = presets.update("mine") { it.copy(entries = it.entries.drop(1)) }
 
-        // A game, a built-in set and a play a later version might save, and a cut-short entry
+        // A game and a play a later version might save, and a cut-short entry
         assertEquals(withoutMine, IndexPresetsCode.parse(code.replace("preset=mine game=BLACKJACK", "preset=mine game=SPANISH_21")))
-        assertEquals(withoutMine, IndexPresetsCode.parse(code.replace("rounding=TRUNCATE name=", "rounding=TRUNCATE basedOn=BJ_DOUBLE_DECK name=")))
-        assertEquals(withoutStand, IndexPresetsCode.parse(code.replace("index=STAND:20:2:99:AT_OR_ABOVE on=true", "index=FOLD:20:2:99:AT_OR_ABOVE on=true")))
-        assertEquals(withoutStand, IndexPresetsCode.parse(code.replace("index=STAND:20:2:99:AT_OR_ABOVE on=true", "index=STAND:20:2:99:AT_OR_ABOVE on=")))
+        assertEquals(withoutStand, IndexPresetsCode.parse(code.replace("index=STAND:18:2:99:AT_OR_ABOVE on=true", "index=FOLD:18:2:99:AT_OR_ABOVE on=true")))
+        assertEquals(withoutStand, IndexPresetsCode.parse(code.replace("index=STAND:18:2:99:AT_OR_ABOVE on=true", "index=STAND:18:2:99:AT_OR_ABOVE on=")))
+    }
+
+    @Test
+    fun aBuiltInSetItDoesNotKnowReadsAsNoneAndKeepsThePresetsIndices() {
+        val code = IndexPresetsCode.print(presets)
+        val unknownSet = presets.update(BuiltInIndexSet.BJ_SHOE_S17.name) { it.copy(basedOn = null) }
+
+        assertEquals(unknownSet, IndexPresetsCode.parse(code.replace("basedOn=BJ_SHOE_S17", "basedOn=BJ_DOUBLE_DECK")))
     }
 
     @Test
@@ -116,7 +123,7 @@ class IndexPresetsCodeTest {
 
     @Test
     fun readsNothingFromTextWithNoPresetInIt() {
-        for (code in listOf("", "active=mine", "hello", "active=mine\nindex=STAND:20:2:99 on=true", "active=x\npreset=x game=CHESS name=X")) {
+        for (code in listOf("", "active=mine", "hello", "active=mine\nindex=STAND:18:2:99 on=true", "active=x\npreset=x game=CHESS name=X")) {
             assertNull(code, IndexPresetsCode.parse(code))
         }
     }

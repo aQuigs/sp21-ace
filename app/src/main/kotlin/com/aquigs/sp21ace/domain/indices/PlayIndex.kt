@@ -7,11 +7,12 @@ import java.io.Serializable
 enum class Game(val title: String) { BLACKJACK("Blackjack") }
 
 /**
- * The [values] each kind of hand can have: a hard or soft total no pair has to make, since a hard 4 is only 2-2 and a soft 12
- * only A-A, or a pair's card value, an ace 1 as [com.aquigs.sp21ace.domain.cards.Rank.value] counts it.
+ * The [values] each kind of hand can have: a hard or soft total two cards make without a pair, since two cards make a hard 4
+ * only as 2-2, a hard 20 only as two tens and a soft 12 only as A-A, or a pair's card value, an ace 1 as
+ * [com.aquigs.sp21ace.domain.cards.Rank.value] counts it. So every index can be dealt as two cards.
  */
 enum class HandKind(val values: IntRange) {
-    HARD(5..20),
+    HARD(5..19),
     SOFT(13..20),
     PAIR(1..10),
 }

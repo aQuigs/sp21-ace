@@ -24,10 +24,18 @@ class IndexPresetsTest {
             assertEquals(set.title, preset.name)
             assertEquals(set.game, preset.game)
             assertEquals(set.indices.map { IndexEntry(it.index, enabled = true) }, preset.entries)
-            assertEquals(DeckEstimate.TRUNCATE, preset.deckEstimate)
-            assertEquals(CountRounding.FLOOR, preset.rounding)
+            assertEquals(DeckEstimate.DEFAULT, preset.deckEstimate)
+            assertEquals(set.rounding, preset.rounding)
         }
         assertEquals(BuiltInIndexSet.BJ_SHOE_H17, seeded.active.basedOn)
+    }
+
+    @Test
+    fun aPresetFromABuiltInSetTakesTheRoundingItsNumbersAssume() {
+        for (set in BuiltInIndexSet.entries) {
+            assertEquals(set.rounding, IndexPreset.from(set, "p").rounding)
+        }
+        assertEquals(CountRounding.FLOOR, BuiltInIndexSet.BJ_SHOE_H17.rounding)
     }
 
     @Test

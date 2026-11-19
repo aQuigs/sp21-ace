@@ -25,8 +25,8 @@ internal val INDEX_SETS: Map<BuiltInIndexSet, String> = mapOf(
         STAND      12     6       higher     -3
         STAND      13     3       higher     -2
         SURRENDER  14     10      higher     +3
-        SURRENDER  15     9       higher     +2
         SURRENDER  15     10      higher     0
+        SURRENDER  15     9       higher     +2
         SURRENDER  15     A       higher     -1
     """,
     BuiltInIndexSet.BJ_SHOE_S17 to """
@@ -50,8 +50,8 @@ internal val INDEX_SETS: Map<BuiltInIndexSet, String> = mapOf(
         STAND      12     6       higher     -1
         STAND      13     3       higher     -2
         SURRENDER  14     10      higher     +3
-        SURRENDER  15     9       higher     +2
         SURRENDER  15     10      higher     0
+        SURRENDER  15     9       higher     +2
         SURRENDER  15     A       higher     +1†
     """,
 )

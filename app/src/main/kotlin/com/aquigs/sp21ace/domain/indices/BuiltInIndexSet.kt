@@ -15,7 +15,7 @@ enum class BuiltInIndexSet(val game: Game, val title: String, val rounding: Coun
     BJ_SHOE_S17(Game.BLACKJACK, "Shoe, S17", CountRounding.FLOOR),
     ;
 
-    /** In the order the sources list them: the Illustrious 18, then the Fab 4. */
+    /** In the order Wizard of Odds lists them: the Illustrious 18, then the Fab 4. */
     val indices: List<BuiltInIndex> by lazy { parseIndexSet(INDEX_SETS.getValue(this)) }
 
     /** The set's number for [deviation], or null when it has none. */

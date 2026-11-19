@@ -18,6 +18,6 @@ BJ_SHOE_S17	FLOOR	12	5	STAND	AT_OR_ABOVE	-2	single-source	WOO=-2;BJI=-2;BJM=-2;C
 BJ_SHOE_S17	FLOOR	12	6	STAND	AT_OR_ABOVE	-1	single-source	WOO=-1;BJI=-1;BJM=-1;CND='hit at -1 or lower';BJT=-1;BJS(ref)=-1	BA (Blackjack Attack) lineage only. BJAPP lists no index here.
 BJ_SHOE_S17	FLOOR	13	3	STAND	AT_OR_ABOVE	-2	single-source	WOO=-2;BJI=-2;BJM=-2;CND='hit at -2 or lower';BJINS=-2;BJT=-2;BJS(ref)=-2	BA (Blackjack Attack) lineage only. BJAPP lists no index here.
 BJ_SHOE_S17	FLOOR	14	10	SURRENDER	AT_OR_ABOVE	3	single-source	WOO=+3;BJI=+3;CND=+3;BJT=+3;BJS(ref)=+3;CG=+4	BA (Blackjack Attack) lineage only. BJAPP leaves 14 v 10 blank, and CG's +4 is an unexplained shift that is not counted.
-BJ_SHOE_S17	FLOOR	15	9	SURRENDER	AT_OR_ABOVE	2	agree	WOO=+2;BJI=+2;CND=+2;BJT=+2;BJAPP=2+;BJS(ref)=+2;CG=+3
 BJ_SHOE_S17	FLOOR	15	10	SURRENDER	AT_OR_ABOVE	0	agree	WOO=0;BJI=0;CND=0;BJT=0;BJAPP='0-';BJS(ref)=0;CG=0	Basic strategy already surrenders. Surrender at TC >= 0, otherwise hit.
+BJ_SHOE_S17	FLOOR	15	9	SURRENDER	AT_OR_ABOVE	2	agree	WOO=+2;BJI=+2;CND=+2;BJT=+2;BJAPP=2+;BJS(ref)=+2;CG=+3
 BJ_SHOE_S17	FLOOR	15	A	SURRENDER	AT_OR_ABOVE	1	conflict	WOO=+1;BJI=+1;CND=+1;BJT=+1;BJS(ref)=+1;BJAPP=2+;CG=+2	Recommend +1 (Wizard of Odds). BJAPP is the only independent derivation and alone says +2.

@@ -32,9 +32,9 @@ data class IndexPreset(
     fun isDebated(index: PlayIndex): Boolean = basedOn?.find(index.deviation)?.let { it.debated && it.index == index } == true
 
     companion object {
-        /** A preset of every index in [set], all enabled, with the default conventions. */
+        /** A preset of every index in [set], all enabled, with the rounding its numbers assume and the default deck estimate. */
         fun from(set: BuiltInIndexSet, id: String, name: String = set.title): IndexPreset =
-            IndexPreset(id, name, set.game, basedOn = set, entries = set.indices.map { IndexEntry(it.index) })
+            IndexPreset(id, name, set.game, rounding = set.rounding, basedOn = set, entries = set.indices.map { IndexEntry(it.index) })
     }
 }
 
@@ -60,8 +60,8 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
     fun activate(id: String): IndexPresets = copy(activeId = id)
 
     /**
-     * Adds a preset of every index in [from], or an empty one for [game] with no [from], with the default conventions, at the
-     * end, and makes it active to edit.
+     * Adds a preset of every index in [from], as [IndexPreset.from] makes it, or an empty one for [game] with the default
+     * conventions, at the end, and makes it active to edit.
      */
     fun add(name: String, from: BuiltInIndexSet?, game: Game = from?.game ?: Game.BLACKJACK, id: String = newPresetId()): IndexPresets {
         val preset = from?.let { IndexPreset.from(it, id, name) } ?: IndexPreset(id, name, game, basedOn = null, entries = emptyList())
@@ -97,10 +97,7 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
     private fun indexOf(id: String): Int = presets.indexOfFirst { it.id == id }.also { require(it >= 0) { "No preset $id" } }
 
     companion object {
-        /**
-         * The presets of a first launch: one per built-in set, named after it and with its name as id, with the default
-         * conventions, and shoe H17 active.
-         */
+        /** The presets of a first launch: one per built-in set as [IndexPreset.from] makes it, with its name as id, and shoe H17 active. */
         fun seeded(): IndexPresets =
             IndexPresets(BuiltInIndexSet.entries.map { IndexPreset.from(it, id = it.name) }, activeId = BuiltInIndexSet.BJ_SHOE_H17.name)
     }

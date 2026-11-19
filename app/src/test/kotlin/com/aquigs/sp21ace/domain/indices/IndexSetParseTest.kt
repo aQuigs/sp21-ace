@@ -17,14 +17,14 @@ class IndexSetParseTest {
     fun rejectsAMissingHeaderAMalformedRowOrADeviationTwice() {
         val header = "play hand upcard direction index\n"
         val bad = listOf(
-            "STAND 20 2 higher +99",
-            header + "STAND 20 2 +99",
-            header + "STAND 20 2 higher high",
-            header + "STAND 20 2 above +1",
-            header + "FOLD 20 2 higher +1",
+            "STAND 18 2 higher +99",
+            header + "STAND 18 2 +99",
+            header + "STAND 18 2 higher high",
+            header + "STAND 18 2 above +1",
+            header + "FOLD 18 2 higher +1",
             header + "INSURANCE 16 A higher +1",
             header + "INSURANCE - 10 higher +1",
-            header + "STAND 20 2 higher +1\nSTAND 20 2 lower +2",
+            header + "STAND 18 2 higher +1\nSTAND 18 2 lower +2",
         )
 
         for (rows in bad) {
