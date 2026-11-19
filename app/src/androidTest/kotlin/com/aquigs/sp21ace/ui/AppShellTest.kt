@@ -48,6 +48,7 @@ import com.aquigs.sp21ace.domain.dealing.type
 import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
 import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.Flashcard
@@ -584,6 +585,22 @@ class AppShellTest {
         appBarTitle(R.string.indices).assertIsDisplayed()
         assertEquals(IndexPresets.seeded(), presetsStore.load())
         compose.onNode(hasText("Hard 16 vs 10") and hasText("Stand at 0 or higher")).assertExists()
+    }
+
+    @Test
+    fun aDoubleTapOnAPresetGoesBackOnlyAsFarAsIndices() {
+        openFromDrawer(R.string.indices)
+        compose.onNodeWithText(string(R.string.preset)).performClick()
+        val pickS17 = compose.onNode(hasText("Shoe, S17") and isSelectable()).fetchSemanticsNode().config[SemanticsActions.OnClick].action
+
+        // Both taps land before the page under them is drawn
+        compose.runOnUiThread {
+            pickS17?.invoke()
+            pickS17?.invoke()
+        }
+
+        appBarTitle(R.string.indices).assertIsDisplayed()
+        assertEquals(BuiltInIndexSet.BJ_SHOE_S17.name, presetsStore.load().activeId)
     }
 
     @Test

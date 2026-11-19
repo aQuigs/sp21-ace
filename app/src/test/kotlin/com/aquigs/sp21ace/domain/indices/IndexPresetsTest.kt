@@ -61,6 +61,35 @@ class IndexPresetsTest {
     }
 
     @Test
+    fun aNameIsTakenWhateverItsCaseOrSpacesButAPresetKeepsItsOwn() {
+        assertTrue(three.isNameTaken("Preset a"))
+        assertTrue(three.isNameTaken("  PRESET A "))
+        assertFalse(three.isNameTaken("Preset a2"))
+        assertFalse(three.isNameTaken("preset A", except = "a"))
+        assertTrue(three.isNameTaken("preset A", except = "b"))
+    }
+
+    @Test
+    fun noPresetIsAddedRenamedOrDuplicatedToANameAlreadyTaken() {
+        assertThrows(IllegalArgumentException::class.java) { three.add("preset b", from = null) }
+        assertThrows(IllegalArgumentException::class.java) { three.rename("c", "Preset A") }
+        assertThrows(IllegalArgumentException::class.java) { three.duplicate("a", "Preset b") }
+
+        assertEquals("PRESET C", three.rename("c", "PRESET C").presets[2].name)
+    }
+
+    @Test
+    fun aFreeNameIsTheNameItselfOrTheFirstNumberedOneNoPresetHas() {
+        assertEquals("Mine", three.freeName("Mine"))
+
+        val copies = three.duplicate("a", three.freeName("Preset a copy"), newId = "copy")
+        assertEquals("Preset a copy", copies.active.name)
+        val again = copies.duplicate("a", copies.freeName("Preset a copy"), newId = "copy 2")
+        assertEquals("Preset a copy 2", again.active.name)
+        assertEquals("preset A copy 3", again.freeName("preset A copy"))
+    }
+
+    @Test
     fun deletingTheActivePresetActivatesTheOneTakingItsPlace() {
         assertEquals(IndexPresets(listOf(three.presets[0], three.presets[2]), "c"), three.delete("b"))
         assertEquals("b", three.activate("c").delete("c").activeId)

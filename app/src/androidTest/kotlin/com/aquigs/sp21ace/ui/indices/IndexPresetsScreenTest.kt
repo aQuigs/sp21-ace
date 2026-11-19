@@ -156,6 +156,40 @@ class IndexPresetsScreenTest {
     }
 
     @Test
+    fun aNameAnotherPresetHasCannotBeGivenThoughAPresetKeepsItsOwn() {
+        show()
+
+        compose.onNodeWithText(string(R.string.new_preset)).performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        nameField().performTextReplacement(" shoe, s17 ")
+        compose.onNodeWithText(string(R.string.preset_name_taken)).assertIsDisplayed()
+        button(R.string.create).assertIsNotEnabled()
+        nameField().performTextReplacement("Shoe, S17 mine")
+        compose.onNodeWithText(string(R.string.preset_name_taken)).assertDoesNotExist()
+        button(R.string.cancel).performClick()
+
+        openMenu("Shoe, S17", R.string.rename)
+        nameField().performTextReplacement("Shoe, h17")
+        button(R.string.save).assertIsNotEnabled()
+        nameField().performTextReplacement("SHOE, S17")
+        button(R.string.save).assertIsEnabled().performClick()
+
+        assertEquals(seeded.rename(s17, "SHOE, S17"), presets)
+    }
+
+    @Test
+    fun aSecondCopyIsNumberedAndALongNameIsCopiedWhole() {
+        presets = seeded.rename(s17, "🂡".repeat(20))
+        show()
+
+        openMenu("Shoe, H17", R.string.duplicate)
+        openMenu("Shoe, H17", R.string.duplicate)
+        openMenu("🂡".repeat(20), R.string.duplicate)
+
+        assertEquals(listOf("Shoe, H17", "Shoe, H17 copy 2", "Shoe, H17 copy", "🂡".repeat(20), "🂡".repeat(20) + " copy"), presets.presets.map { it.name })
+    }
+
+    @Test
     fun deletingAsksFirstAndTheLastPresetCannotBeDeleted() {
         show()
         val message = string(R.string.delete_preset_message, "Shoe, H17")

@@ -252,6 +252,7 @@
     <string name="rename_preset">Rename preset</string>
     <string name="duplicate">Duplicate</string>
     <string name="preset_copy_name">%1$s copy</string>
+    <string name="preset_name_taken">Another preset has this name</string>
     <string name="more_options_for">More options for %1$s</string>
     <string name="delete_preset_title">Delete preset?</string>
     <string name="delete_preset_message">%1$s and its indices are deleted. Your flashcard history keeps its answers.</string>

@@ -45,7 +45,8 @@ import com.aquigs.sp21ace.ui.components.SettingsPage
 import com.aquigs.sp21ace.ui.components.rememberArmed
 import java.io.Serializable
 
-// Long enough for any name worth typing, short enough to fit the Preset row
+// Long enough for any name worth typing, short enough to fit the Preset row. A copy's name may run past it, since cutting it
+// short could split a character in two.
 private const val MAX_NAME_LENGTH = 40
 
 private sealed interface PresetDialog : Serializable {
@@ -68,7 +69,7 @@ fun IndexPresetsScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, 
         SettingsIntro(stringResource(R.string.index_presets_intro))
         Column(modifier = Modifier.selectableGroup()) {
             presets.presets.forEach { preset ->
-                val copyName = stringResource(R.string.preset_copy_name, preset.name).take(MAX_NAME_LENGTH)
+                val copyName = presets.freeName(stringResource(R.string.preset_copy_name, preset.name))
 
                 MenuChoiceRow(
                     title = preset.name,
@@ -95,6 +96,7 @@ fun IndexPresetsScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, 
     when (val shown = dialog) {
         null -> {}
         PresetDialog.New -> NewPresetDialog(
+            isTaken = { presets.isNameTaken(it) },
             onCreate = { name, start ->
                 dialog = null
                 onChange(presets.add(name, start))
@@ -105,6 +107,7 @@ fun IndexPresetsScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, 
             NameDialog(
                 title = stringResource(R.string.rename_preset),
                 initial = it.name,
+                isTaken = { name -> presets.isNameTaken(name, except = shown.id) },
                 confirmLabel = stringResource(R.string.save),
                 onConfirm = { name ->
                     dialog = null
@@ -140,12 +143,13 @@ private fun presetSummary(preset: IndexPreset): String = stringResource(
 
 /** A name, and what the preset starts from: one of the built-in sets, or nothing. */
 @Composable
-private fun NewPresetDialog(onCreate: (name: String, start: BuiltInIndexSet?) -> Unit, onDismiss: () -> Unit) {
+private fun NewPresetDialog(isTaken: (String) -> Boolean, onCreate: (name: String, start: BuiltInIndexSet?) -> Unit, onDismiss: () -> Unit) {
     var start by rememberSaveable { mutableStateOf<BuiltInIndexSet?>(BuiltInIndexSet.entries.first()) }
 
     NameDialog(
         title = stringResource(R.string.new_preset),
         initial = "",
+        isTaken = isTaken,
         confirmLabel = stringResource(R.string.create),
         onConfirm = { onCreate(it, start) },
         onDismiss = onDismiss,
@@ -174,13 +178,14 @@ private fun NewPresetDialog(onCreate: (name: String, start: BuiltInIndexSet?) ->
 }
 
 /**
- * Asks for a preset's name, starting from [initial] selected, so typing replaces it. A blank name can't be confirmed. Like
- * [ConfirmDialog], it waits out a double tap before any way out.
+ * Asks for a preset's name, starting from [initial] selected, so typing replaces it. A blank name, or one [isTaken] says another
+ * preset has, can't be confirmed. Like [ConfirmDialog], it waits out a double tap before any way out.
  */
 @Composable
 private fun NameDialog(
     title: String,
     initial: String,
+    isTaken: (String) -> Boolean,
     confirmLabel: String,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -189,13 +194,14 @@ private fun NameDialog(
     val armed by rememberArmed(Unit)
     var name by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
     val focus = remember { FocusRequester() }
+    val taken = name.text.isNotBlank() && isTaken(name.text)
 
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     AlertDialog(
         onDismissRequest = { if (armed) onDismiss() },
         confirmButton = {
-            TextButton(onClick = { if (armed) onConfirm(name.text.trim()) }, enabled = name.text.isNotBlank()) { Text(confirmLabel) }
+            TextButton(onClick = { if (armed) onConfirm(name.text.trim()) }, enabled = name.text.isNotBlank() && !taken) { Text(confirmLabel) }
         },
         dismissButton = { TextButton(onClick = { if (armed) onDismiss() }) { Text(stringResource(R.string.cancel)) } },
         title = { Text(title) },
@@ -206,6 +212,12 @@ private fun NameDialog(
                     onValueChange = { if (it.text.length <= MAX_NAME_LENGTH) name = it },
                     modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     label = { Text(stringResource(R.string.preset_name)) },
+                    supportingText = if (taken) {
+                        { Text(stringResource(R.string.preset_name_taken)) }
+                    } else {
+                        null
+                    },
+                    isError = taken,
                     singleLine = true,
                 )
                 below()

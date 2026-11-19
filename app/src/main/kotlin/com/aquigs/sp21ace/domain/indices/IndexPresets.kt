@@ -79,22 +79,41 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
     fun activate(id: String): IndexPresets = copy(activeId = id)
 
     /**
+     * Whether a preset other than [except] already has [name], trimmed and ignoring case, so no two presets read alike in a list or
+     * a delete confirm.
+     */
+    fun isNameTaken(name: String, except: String? = null): Boolean =
+        presets.any { it.id != except && it.name.trim().equals(name.trim(), ignoreCase = true) }
+
+    /** [name] if no preset has it, otherwise the first of "[name] 2", "[name] 3" and on that none has. */
+    fun freeName(name: String): String = generateSequence(2) { it + 1 }.map { "$name $it" }.let { numbered ->
+        (sequenceOf(name) + numbered).first { !isNameTaken(it) }
+    }
+
+    /**
      * Adds a preset of every index in [from], as [IndexPreset.from] makes it, or an empty one with the default conventions, at the
      * end, and makes it active to edit.
      */
     fun add(name: String, from: BuiltInIndexSet?, id: String = newPresetId()): IndexPresets {
+        requireFree(name)
         val preset = from?.let { IndexPreset.from(it, id, name) } ?: IndexPreset(id, name, Game.BLACKJACK, basedOn = null, entries = emptyList())
         return IndexPresets(presets + preset, preset.id)
     }
 
-    fun rename(id: String, name: String): IndexPresets = update(id) { it.copy(name = name) }
+    fun rename(id: String, name: String): IndexPresets {
+        requireFree(name, except = id)
+        return update(id) { it.copy(name = name) }
+    }
 
     /** Copies preset [id], conventions and all, as [name] just after it, and makes the copy active to edit. */
     fun duplicate(id: String, name: String, newId: String = newPresetId()): IndexPresets {
+        requireFree(name)
         val at = indexOf(id)
         val copy = presets[at].copy(id = newId, name = name)
         return IndexPresets(presets.toMutableList().apply { add(at + 1, copy) }, newId)
     }
+
+    private fun requireFree(name: String, except: String? = null) = require(!isNameTaken(name, except)) { "A preset is already named $name" }
 
     /** Deletes preset [id], unless it's the last. Deleting the active one activates the preset that takes its place in the list. */
     fun delete(id: String): IndexPresets {

@@ -27,11 +27,12 @@ data class FlashcardGrade(val card: Flashcard, val answer: Int) : Serializable {
  */
 data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = null) : Serializable {
     /**
-     * The run with a card from [dealer] in place of one whose index it no longer deals, such as after a preset swap or an edit, so
-     * a card is never graded against a stale number. A card it still deals stays.
+     * The run with a card from [dealer] in place of one it could not deal, such as after a preset swap or an edit, so a card is
+     * never graded against a stale number, or a hand of 3 or more cards left up once they're switched off. A card it could deal
+     * stays.
      */
     fun dealtFrom(dealer: FlashcardDealer, deal: (previous: Flashcard?) -> Flashcard? = dealer::deal): FlashcardRun =
-        if (card != null && card.index in dealer.indices) this else copy(card = deal(card))
+        if (card != null && dealer.couldDeal(card)) this else copy(card = deal(card))
 }
 
 /**

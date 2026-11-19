@@ -76,6 +76,15 @@ class FlashcardRunTest {
     }
 
     @Test
+    fun aHandOf3OrMoreCardsIsRedealtOnceTheyAreSwitchedOff() {
+        val threeCards = FlashcardRun(Flashcard(sixteenVsTen, cards("2c 4d Jh"), card("Kh")))
+        val withThreeCards = FlashcardDealer(preset(sixteenVsTen), FlashcardOptions(multiCardHands = true))
+
+        assertSame(threeCards, threeCards.dealtFrom(withThreeCards) { error("A card these options deal stays") })
+        repeat(20) { assertEquals(2, threeCards.dealtFrom(FlashcardDealer(preset(sixteenVsTen))).card?.player?.size) }
+    }
+
+    @Test
     fun aRunSurvivesTheActivitysSavedState() {
         val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, -2))
 

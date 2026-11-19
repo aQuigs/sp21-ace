@@ -53,6 +53,18 @@ These rest on *Blackjack Attack* and its reprints only, with no independent sour
 - **Dealer stands on soft 17:** 12 vs 5 stand at −2, 12 vs 6 stand at −1, 13 vs 3 stand at −2, 14 vs 10 surrender at +3.
 - **Dealer hits soft 17:** 13 vs 2 stand at −1, 12 vs 5 stand at −2, 12 vs 6 stand at −3, 13 vs 3 stand at −2, 14 vs 10 surrender at +3, 15 vs A surrender at −1. Cacarulo's S17 13 vs 2 can't carry over, since with a 2 up the dealer can hold soft 17.
 
+## Hands of 3 or more cards
+
+With hands of 3 or more cards on, a flashcard shows only a hand a basic strategy player could hold: every hand on the way to it is one `plainlyHits` allows, a hit whatever the rules. `PlainHitsTest` pins every square of that allow-list. Each square is a hit, or a double or surrender that falls back to a hit once past two cards, in both of [Wizard of Odds' 4-8 deck charts](https://wizardofodds.com/games/blackjack/strategy/4-decks/) ("4-8 Decks, Dealer Stands on Soft 17" and "4-8 Decks, Dealer Hits on Soft 17"). The page's text version for S17 reads:
+
+- "Always hit hard 11 or less."
+- "Stand on hard 12 against a dealer 4-6, otherwise hit."
+- "Stand on hard 13-16 against a dealer 2-6, otherwise hit."
+- "Always hit soft 17 or less."
+- "Stand on soft 18 except hit against a dealer 9, 10, or A."
+
+Its H17 changes ("Surrender 15, a pair of 8s, and 17 vs. dealer A", "Double 11 vs. dealer A", "Double soft 18 vs. dealer 2", "Double soft 19 vs. dealer 6") touch no square the list allows. Anything else the charts double, split or surrender against some upcard is left out of the first two cards: a hard 9 to 11, any soft hand, any pair, and a hard 15 or 16. So a hard 5 or 6 and a soft 13 to 15 always show two cards.
+
 ## Known gaps
 
 - **No table for a truncated or rounded true count.** A truncated count rounds toward zero, so −1.5 counts as −1. Stanford Wong's *Professional Blackjack* uses it in its 1994 and later editions, but its tables aren't readable online, and no table for a rounded count was found anywhere. Floored and truncated counts agree on positive indices, but not on zero and negative ones.
