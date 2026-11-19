@@ -1,0 +1,92 @@
+package com.aquigs.sp21ace.domain.indices
+
+import java.util.UUID
+
+/**
+ * A named list of indices for one [game], to drill and swap between. [basedOn] is the built-in set it started from, or null for
+ * one started empty, and tells the indices the user changed or added from the published ones. No deviation is listed twice.
+ */
+data class IndexPreset(val id: String, val name: String, val game: Game, val basedOn: BuiltInIndexSet?, val entries: List<IndexEntry>) {
+    init {
+        require(name.isNotBlank()) { "A preset needs a name" }
+        require(basedOn == null || basedOn.game == game) { "$name is for $game but based on $basedOn" }
+        require(entries.distinctBy { it.index.deviation }.size == entries.size) { "$name lists a deviation twice" }
+    }
+
+    /** The indices a run drills, in list order. */
+    val enabledIndices: List<PlayIndex> get() = entries.filter { it.enabled }.map { it.index }
+
+    /** Whether [index] is the user's own: a number [basedOn] doesn't print for its deviation, or a deviation it doesn't have. */
+    fun isCustom(index: PlayIndex): Boolean = basedOn?.find(index.deviation)?.index != index
+
+    /** Whether [index] is [basedOn]'s own number and one the sources debate. */
+    fun isDebated(index: PlayIndex): Boolean = basedOn?.find(index.deviation)?.let { it.debated && it.index == index } == true
+
+    companion object {
+        /** A preset of every index in [set], all enabled. */
+        fun from(set: BuiltInIndexSet, id: String, name: String = set.title): IndexPreset =
+            IndexPreset(id, name, set.game, set, set.indices.map { IndexEntry(it.index) })
+    }
+}
+
+/** A fresh preset id, unique among every preset ever made. */
+fun newPresetId(): String = UUID.randomUUID().toString()
+
+/**
+ * Every preset, in the order listed, and the one the flashcards drill. Never empty, and every change keeps it so. Each change
+ * returns the presets it leaves, so the caller saves the result.
+ */
+data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
+    init {
+        require(presets.isNotEmpty()) { "There is always a preset" }
+        require(presets.distinctBy { it.id }.size == presets.size) { "Two presets share an id" }
+        require(presets.any { it.id == activeId }) { "No preset $activeId" }
+    }
+
+    val active: IndexPreset get() = presets.first { it.id == activeId }
+
+    /** The last preset can't be deleted. */
+    val canDelete: Boolean get() = presets.size > 1
+
+    fun activate(id: String): IndexPresets = copy(activeId = id)
+
+    /** Adds a preset of every index in [from], or an empty one for [game] with no [from], at the end, and makes it active to edit. */
+    fun add(name: String, from: BuiltInIndexSet?, game: Game = from?.game ?: Game.BLACKJACK, id: String = newPresetId()): IndexPresets {
+        val preset = from?.let { IndexPreset.from(it, id, name) } ?: IndexPreset(id, name, game, basedOn = null, entries = emptyList())
+        return IndexPresets(presets + preset, preset.id)
+    }
+
+    fun rename(id: String, name: String): IndexPresets = update(id) { it.copy(name = name) }
+
+    /** Copies preset [id] as [name] just after it, and makes the copy active to edit. */
+    fun duplicate(id: String, name: String, newId: String = newPresetId()): IndexPresets {
+        val at = indexOf(id)
+        val copy = presets[at].copy(id = newId, name = name)
+        return IndexPresets(presets.take(at + 1) + copy + presets.drop(at + 1), newId)
+    }
+
+    /** Deletes preset [id], unless it's the last. Deleting the active one activates the preset that takes its place in the list. */
+    fun delete(id: String): IndexPresets {
+        require(canDelete) { "The last preset can't be deleted" }
+
+        val at = indexOf(id)
+        val left = presets.filterIndexed { i, _ -> i != at }
+        return IndexPresets(left, if (id == activeId) left[at.coerceAtMost(left.lastIndex)].id else activeId)
+    }
+
+    /** Replaces preset [id] with what [change] makes of it, which keeps its id. */
+    fun update(id: String, change: (IndexPreset) -> IndexPreset): IndexPresets {
+        val at = indexOf(id)
+        val changed = change(presets[at])
+        require(changed.id == id) { "A preset keeps its id" }
+        return copy(presets = presets.toMutableList().apply { set(at, changed) })
+    }
+
+    private fun indexOf(id: String): Int = presets.indexOfFirst { it.id == id }.also { require(it >= 0) { "No preset $id" } }
+
+    companion object {
+        /** The presets of a first launch: one per built-in set, named after it and with its name as id, and shoe H17 active. */
+        fun seeded(): IndexPresets =
+            IndexPresets(BuiltInIndexSet.entries.map { IndexPreset.from(it, id = it.name) }, activeId = BuiltInIndexSet.SHOE_H17.name)
+    }
+}
