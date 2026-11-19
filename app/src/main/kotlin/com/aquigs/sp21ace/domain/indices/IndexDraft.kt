@@ -11,6 +11,9 @@ enum class IndexKind(val hand: HandKind?) {
     INSURANCE(null),
 }
 
+/** The plays a kind offers, none for insurance, which is its own play. */
+private val IndexKind.plays: List<DeviationPlay> get() = hand?.plays.orEmpty()
+
 /**
  * An index being filled in, each field of its deviation null until chosen. Serializable, so a form half filled in survives the
  * activity's recreation.
@@ -24,7 +27,7 @@ data class IndexDraft(
     val threshold: Int = 0,
 ) : Serializable {
     init {
-        require(value == null || kind.hand?.values?.contains(value) == true) { "No $kind hand of $value" }
+        require(value == null || value in values) { "No $kind hand of $value" }
         require(play == null || play in plays) { "No $play index on a $kind hand" }
         require(threshold in INDEX_NUMBERS) { "An index of $threshold" }
     }
@@ -32,11 +35,10 @@ data class IndexDraft(
     /** The values [kind] offers, none for insurance. */
     val values: IntRange get() = kind.hand?.values ?: IntRange.EMPTY
 
-    /** The plays [kind] offers, none for insurance, which is its own play. */
-    val plays: List<DeviationPlay> get() = kind.hand?.plays.orEmpty()
+    val plays: List<DeviationPlay> get() = kind.plays
 
     /** Another kind, which clears the value, since 8 means another hand to each kind, and a play the kind doesn't offer. */
-    fun withKind(kind: IndexKind): IndexDraft = if (kind == this.kind) this else copy(kind = kind, value = null, play = play?.takeIf { it in kind.hand?.plays.orEmpty() })
+    fun withKind(kind: IndexKind): IndexDraft = if (kind == this.kind) this else copy(kind = kind, value = null, play = play?.takeIf { it in kind.plays })
 
     /** The deviation once every field it needs is chosen. */
     val deviation: Deviation?

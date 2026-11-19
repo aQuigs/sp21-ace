@@ -37,5 +37,10 @@ val IndexDirection.inPlainWords: String
         IndexDirection.AT_OR_BELOW -> "or lower"
     }
 
+/** "0 or higher", or "−1 or lower". */
+fun numberInPlainWords(threshold: Int, direction: IndexDirection): String = "${signedCount(threshold)} ${direction.inPlainWords}"
+
 /** "Stand at 0 or higher", "Hit at −1 or lower", "Insurance at +3 or higher". */
-val PlayIndex.inPlainWords: String get() = "${deviation.playName} at ${signedCount(threshold)} ${direction.inPlainWords}"
+fun indexInPlainWords(playName: String, threshold: Int, direction: IndexDirection): String = "$playName at ${numberInPlainWords(threshold, direction)}"
+
+val PlayIndex.inPlainWords: String get() = indexInPlainWords(deviation.playName, threshold, direction)

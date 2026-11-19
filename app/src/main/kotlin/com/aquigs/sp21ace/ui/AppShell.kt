@@ -158,6 +158,7 @@ fun AppShell(
     fun backFrom(page: Destination) {
         if (backStack.size > 1 && backStack.last() == page) backStack = backStack.dropLast(1)
     }
+    val back = { backFrom(destination) }
 
     // Back closes the drawer, then retraces the sub-pages. A root screen has nothing behind it, so there Back opens the
     // drawer instead of leaving the app. targetValue, not isOpen, so a Back pressed mid-animation reverses it.
@@ -214,19 +215,19 @@ fun AppShell(
             // Over the table, the rules the round was dealt under, which a change mid-round leaves in play
             Destination.StrategyChart -> StrategyChartScreen(
                 table.round?.ruleSet?.takeIf { backStack.first() == Destination.Play } ?: rules.ruleSet,
-                onBack = { backFrom(destination) },
+                onBack = back,
             )
-            Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = { backFrom(destination) })
-            Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = { backFrom(destination) })
+            Destination.TableRules -> TableRulesScreen(rules, onRulesChange, onOpenSoft17 = { open(Destination.Soft17) }, onBack = back)
+            Destination.Soft17 -> Soft17Screen(rules, onRulesChange, onBack = back)
             Destination.CustomizeHands -> CustomizeHandsScreen(
                 customization,
                 history,
                 onCustomizationChange,
                 onOpenHandsDealt = { open(Destination.HandsDealt) },
-                onBack = { backFrom(destination) },
+                onBack = back,
             )
-            Destination.HandsDealt -> HandsDealtScreen(customization, onCustomizationChange, onBack = { backFrom(destination) })
-            Destination.Accuracy -> AccuracyScreen(history, rules.ruleSet, onBack = { backFrom(destination) })
+            Destination.HandsDealt -> HandsDealtScreen(customization, onCustomizationChange, onBack = back)
+            Destination.Accuracy -> AccuracyScreen(history, rules.ruleSet, onBack = back)
             Destination.Indices -> IndicesScreen(
                 presets = flashcards.presets,
                 options = flashcards.options,
@@ -241,15 +242,15 @@ fun AppShell(
                     editingIndex = it
                     open(Destination.EditIndex)
                 },
-                onBack = { backFrom(destination) },
+                onBack = back,
             )
-            Destination.IndexPresets -> IndexPresetsScreen(flashcards.presets, flashcardActions::changePresets, onBack = { backFrom(destination) })
-            Destination.DeckEstimate -> DeckEstimateScreen(flashcards.presets, flashcardActions::changePresets, onBack = { backFrom(destination) })
-            Destination.CountRounding -> CountRoundingScreen(flashcards.presets, flashcardActions::changePresets, onBack = { backFrom(destination) })
-            Destination.CardsShown -> CardsShownScreen(flashcards.options, flashcardActions::changeOptions, onBack = { backFrom(destination) })
-            Destination.AddIndex -> AddIndexScreen(flashcards.presets, flashcardActions::changePresets, onBack = { backFrom(destination) })
-            Destination.EditIndex -> editingIndex?.let { EditIndexScreen(flashcards.presets, it, flashcardActions::changePresets, onBack = { backFrom(destination) }) }
-            Destination.PlayStatistics -> PlayStatisticsScreen(playHistory, onBack = { backFrom(destination) })
+            Destination.IndexPresets -> IndexPresetsScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
+            Destination.DeckEstimate -> DeckEstimateScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
+            Destination.CountRounding -> CountRoundingScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
+            Destination.CardsShown -> CardsShownScreen(flashcards.options, flashcardActions::changeOptions, onBack = back)
+            Destination.AddIndex -> AddIndexScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
+            Destination.EditIndex -> editingIndex?.let { EditIndexScreen(flashcards.presets, it, flashcardActions::changePresets, onBack = back) }
+            Destination.PlayStatistics -> PlayStatisticsScreen(playHistory, onBack = back)
             Destination.Settings -> SettingsScreen(
                 settings,
                 onSettingsChange,
@@ -257,10 +258,10 @@ fun AppShell(
                 onOpenButtonLocation = { open(Destination.ButtonLocation) },
                 onClearHistory = onClearHistory,
                 onClearPlayHistory = onClearPlayHistory,
-                onBack = { backFrom(destination) },
+                onBack = back,
             )
-            Destination.ColorTheme -> ColorThemeScreen(settings, onSettingsChange, onBack = { backFrom(destination) })
-            Destination.ButtonLocation -> ButtonLocationScreen(settings, onSettingsChange, onBack = { backFrom(destination) })
+            Destination.ColorTheme -> ColorThemeScreen(settings, onSettingsChange, onBack = back)
+            Destination.ButtonLocation -> ButtonLocationScreen(settings, onSettingsChange, onBack = back)
         }
     }
 }

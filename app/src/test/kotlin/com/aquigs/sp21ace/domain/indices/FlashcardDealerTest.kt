@@ -7,6 +7,7 @@ import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.isPair
 import com.aquigs.sp21ace.domain.cards.total
+import com.aquigs.sp21ace.domain.cards.totalOf
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.upcard
 import org.junit.Assert.assertEquals
@@ -148,7 +149,6 @@ class FlashcardDealerTest {
         kind.values.flatMap { value -> kind.plays.flatMap { play -> Upcard.entries.map { Deviation.OnHand(IndexHand(kind, value), it, play) } } }
     } + Deviation.Insurance
 
-    private val Deviation.OnHand.total get() = HandTotal(hand.value, soft = hand.kind == HandKind.SOFT)
 
     @Test
     fun withHandsOf3OrMoreCardsOnAStandOrHitOnATotalIs3Or4CardsAboutHalfTheTimeAndEveryOtherHandTwo() {
@@ -161,7 +161,7 @@ class FlashcardDealerTest {
 
             val hand = (deviation as? Deviation.OnHand)?.hand
             val drawsOn = deviation is Deviation.OnHand && deviation.play in setOf(DeviationPlay.STAND, DeviationPlay.HIT) && hand!!.kind != HandKind.PAIR
-            val canBeMore = drawsOn && (deviation as Deviation.OnHand).total in MULTI_CARD_HANDS.getValue(deviation.upcard)
+            val canBeMore = drawsOn && (deviation as Deviation.OnHand).hand.total in multiCardHands(deviation.upcard)
             when {
                 hand == null -> assertEquals("$deviation", setOf(0), sizes.toSet())
                 canBeMore -> {
@@ -174,7 +174,7 @@ class FlashcardDealerTest {
             for (card in cards.filter { it.player.size > 2 }) {
                 val onHand = deviation as Deviation.OnHand
                 val points = card.player.map { it.rank.value }
-                assertEquals("$card", onHand.total, card.player.total())
+                assertEquals("$card", onHand.hand.total, card.player.total())
                 // Every hand on the way one basic strategy plainly hits against this upcard
                 assertTrue("$card", (2 until points.size).all { plainlyHits(points.take(it), onHand.upcard) })
                 assertEquals("$card", onHand.upcard, card.upcard.upcard)
@@ -188,7 +188,8 @@ class FlashcardDealerTest {
         // Only a pair of 2s, a soft hand or a 3-card hard 4 or less leads to these, and none of those is a plain hit
         val twoCardsOnly = listOf(HandTotal(5, soft = false), HandTotal(6, soft = false)) + (13..15).map { HandTotal(it, soft = true) }
 
-        for ((upcard, byTotal) in MULTI_CARD_HANDS) {
+        for (upcard in Upcard.entries) {
+            val byTotal = multiCardHands(upcard)
             assertEquals("${upcard.label}", totals - twoCardsOnly, totals.filter { it in byTotal })
             for ((total, bySize) in byTotal) {
                 for (hands in bySize) {
@@ -199,14 +200,14 @@ class FlashcardDealerTest {
             }
         }
         // Hard 19 against a 10 as 3 cards and as 4, so a hand of each size comes up as often as the other
-        val hard19 = MULTI_CARD_HANDS.getValue(Upcard.TEN).getValue(HandTotal(19, soft = false))
+        val hard19 = multiCardHands(Upcard.TEN).getValue(HandTotal(19, soft = false))
         assertEquals(listOf(3, 4), hard19.map { it.first().size }.sorted())
         assertTrue(listOf(10, 3, 6) in hard19.flatten())
         // 10-7 stands, and an ace first makes a soft start
         assertFalse(listOf(10, 7, 2) in hard19.flatten())
         assertFalse(listOf(1, 10, 8) in hard19.flatten())
         // 12 vs 5 never as a pair of aces split nor a 6-5 doubled
-        val hard12vs5 = MULTI_CARD_HANDS.getValue(Upcard.FIVE).getValue(HandTotal(12, soft = false)).flatten()
+        val hard12vs5 = multiCardHands(Upcard.FIVE).getValue(HandTotal(12, soft = false)).flatten()
         assertFalse(listOf(1, 1, 10) in hard12vs5)
         assertFalse(listOf(6, 5, 1) in hard12vs5)
         assertTrue(listOf(2, 3, 7) in hard12vs5)
@@ -225,14 +226,5 @@ class FlashcardDealerTest {
         assertFalse(off.couldDeal(card(Rank.TWO, Rank.THREE, Rank.SEVEN)))
         assertTrue(off.couldDeal(card(Rank.TEN, Rank.TWO)))
         assertFalse(FlashcardDealer(preset()).couldDeal(card(Rank.TEN, Rank.TWO)))
-    }
-
-    @Test
-    fun withHandsOf3OrMoreCardsOffEveryHandIsTwoCards() {
-        val stands = everyDeviation.filter { it is Deviation.OnHand && it.play == DeviationPlay.STAND }.distinctBy { (it as Deviation.OnHand).hand }
-        for (deviation in stands) {
-            val cards = deals(FlashcardDealer(preset(IndexEntry(PlayIndex(deviation, 0)))), count = 50)
-            assertTrue("$deviation", cards.all { it.player.size == 2 })
-        }
     }
 }

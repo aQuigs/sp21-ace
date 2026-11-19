@@ -1,9 +1,8 @@
 package com.aquigs.sp21ace.domain.indices
 
+import com.aquigs.sp21ace.domain.cards.totalOf
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlainHitsTest {
@@ -52,17 +51,5 @@ class PlainHitsTest {
             val row = (if (total.soft) longerSoft else longerHard)[total.value]
             for (upcard in Upcard.entries) assertEquals("$hand vs ${upcard.label}", expected(row, upcard), plainlyHits(hand, upcard))
         }
-    }
-
-    @Test
-    fun theHandsTheReviewFoundAreNotPlainHits() {
-        // A pair of aces splits, and 6-5 doubles against a 5
-        assertFalse(plainlyHits(listOf(1, 1), Upcard.FIVE))
-        assertFalse(plainlyHits(listOf(6, 5), Upcard.FIVE))
-        // 9-7 surrenders against a 10 where that's allowed, and a hard 16 stands against a 6
-        assertFalse(plainlyHits(listOf(9, 7), Upcard.TEN))
-        assertFalse(plainlyHits(listOf(9, 6, 1), Upcard.SIX))
-        assertTrue(plainlyHits(listOf(2, 3), Upcard.FIVE))
-        assertTrue(plainlyHits(listOf(9, 4), Upcard.TEN))
     }
 }

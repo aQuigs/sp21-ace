@@ -116,9 +116,9 @@ internal fun Sp21AceApp(
     var presets by remember { mutableStateOf(presetsStore.load()) }
     var flashcardOptions by remember { mutableStateOf(flashcardOptionsStore.load()) }
     val flashcardDealer = remember(presets.active, flashcardOptions) { FlashcardDealer(presets.active, flashcardOptions) }
-    // Weighed by the store's history, which a collected one can trail, and the answer just given, which the store doesn't hold yet
-    fun nextFlashcard(previous: Flashcard?, answered: List<FlashcardAnswer> = emptyList()) =
-        dealFlashcard(flashcardDealer, previous, flashcardHistoryStore.history.value.orEmpty() + answered)
+    // The store's own value, which a collected one can trail
+    fun flashcardHistory() = flashcardHistoryStore.history.value.orEmpty()
+    fun nextFlashcard(previous: Flashcard?) = dealFlashcard(flashcardDealer, previous, flashcardHistory())
     // Not saved, so a card restored in a recreated activity, which showed before, is never timed from partway through
     val answerTimer = remember { AnswerTimer(clock) }
     var flashcardRun by rememberSaveable { mutableStateOf(FlashcardRun(nextFlashcard(null)).also { answerTimer.dealt(it.card) }) }
@@ -138,7 +138,9 @@ internal fun Sp21AceApp(
     LaunchedEffect(flashcardDealer) { showRun(flashcardRun.dealtFrom(flashcardDealer) { nextFlashcard(it) }) }
     val flashcardActions = object : IndexFlashcardsActions {
         override fun answer(asked: Flashcard, number: Int) {
-            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now()) { nextFlashcard(asked, listOf(it)) }
+            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now(), flashcardHistory()) { previous, history ->
+                dealFlashcard(flashcardDealer, previous, history)
+            }
                 ?.let { (next, answer) ->
                     showRun(next)
                     flashcardHistoryStore.append(answer)

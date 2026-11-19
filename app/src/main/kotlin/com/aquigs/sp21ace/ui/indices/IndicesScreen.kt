@@ -16,7 +16,6 @@ import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.DeviationPlay
 import com.aquigs.sp21ace.domain.indices.FlashcardOptions
 import com.aquigs.sp21ace.domain.indices.IndexEntry
-import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexPresets
 import com.aquigs.sp21ace.domain.indices.inPlainWords
 import com.aquigs.sp21ace.domain.indices.title
@@ -83,8 +82,8 @@ fun IndicesScreen(
         }
 
         val byPlay = preset.entries.groupBy { (it.index.deviation as? Deviation.OnHand)?.play }
-        PLAY_GROUPS.forEach { play -> byPlay[play]?.let { IndexGroup(play.title, it, preset, presets, onPresetsChange, onEditIndex) } }
-        byPlay[null]?.let { IndexGroup(stringResource(R.string.insurance), it, preset, presets, onPresetsChange, onEditIndex) }
+        PLAY_GROUPS.forEach { play -> byPlay[play]?.let { IndexGroup(play.title, it, presets, onPresetsChange, onEditIndex) } }
+        byPlay[null]?.let { IndexGroup(stringResource(R.string.insurance), it, presets, onPresetsChange, onEditIndex) }
     }
 }
 
@@ -92,11 +91,12 @@ fun IndicesScreen(
 private fun IndexGroup(
     title: String,
     entries: List<IndexEntry>,
-    preset: IndexPreset,
     presets: IndexPresets,
     onPresetsChange: (IndexPresets) -> Unit,
     onEditIndex: (Deviation) -> Unit,
 ) {
+    val preset = presets.active
+
     SettingsHeader(title)
     entries.forEach { entry ->
         val index = entry.index
@@ -107,7 +107,7 @@ private fun IndexGroup(
             title = index.deviation.title,
             summary = if (preset.isCustom(index)) stringResource(R.string.custom_index, words) else words,
             checked = entry.enabled,
-            onCheckedChange = { on -> onPresetsChange(presets.update(preset.id) { it.switch(index.deviation, on) }) },
+            onCheckedChange = { on -> onPresetsChange(presets.updateActive { it.switch(index.deviation, on) }) },
             clickLabel = stringResource(R.string.edit_index_label),
             onClick = { onEditIndex(index.deviation) },
         )
@@ -120,7 +120,7 @@ fun DeckEstimateScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, 
         title = stringResource(R.string.deck_estimate),
         choices = DeckEstimate.entries.map { it to stringResource(it.title) },
         selected = presets.active.deckEstimate,
-        onSelect = { estimate -> onChange(presets.update(presets.activeId) { it.copy(deckEstimate = estimate) }) },
+        onSelect = { estimate -> onChange(presets.updateActive { it.copy(deckEstimate = estimate) }) },
         onBack = onBack,
         modifier = modifier,
         intro = stringResource(R.string.deck_estimate_intro),
@@ -133,7 +133,7 @@ fun CountRoundingScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit,
         title = stringResource(R.string.true_count_rounding),
         choices = CountRounding.entries.map { it to stringResource(it.title) },
         selected = presets.active.rounding,
-        onSelect = { rounding -> onChange(presets.update(presets.activeId) { it.copy(rounding = rounding) }) },
+        onSelect = { rounding -> onChange(presets.updateActive { it.copy(rounding = rounding) }) },
         onBack = onBack,
         modifier = modifier,
         intro = stringResource(R.string.true_count_rounding_intro),

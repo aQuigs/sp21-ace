@@ -28,6 +28,8 @@ import com.aquigs.sp21ace.domain.indices.IndexKind
 import com.aquigs.sp21ace.domain.indices.IndexPresets
 import com.aquigs.sp21ace.domain.indices.PlayIndex
 import com.aquigs.sp21ace.domain.indices.inPlainWords
+import com.aquigs.sp21ace.domain.indices.indexInPlainWords
+import com.aquigs.sp21ace.domain.indices.numberInPlainWords
 import com.aquigs.sp21ace.domain.indices.playName
 import com.aquigs.sp21ace.domain.indices.signedCount
 import com.aquigs.sp21ace.domain.indices.title
@@ -52,6 +54,7 @@ fun AddIndexScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, onBa
     var draft by rememberSaveable { mutableStateOf(IndexDraft()) }
     val index = draft.index
     val listed = index?.takeIf { presets.active.has(it.deviation) }
+    val toAdd = index?.takeIf { listed == null }
 
     SettingsPage(title = stringResource(R.string.add_index), onBack = onBack, modifier = modifier) {
         Chips(
@@ -64,7 +67,7 @@ fun AddIndexScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, onBa
         if (draft.kind != IndexKind.INSURANCE) {
             Chips(
                 name = stringResource(if (draft.kind == IndexKind.PAIR) R.string.pair_of else R.string.total),
-                choices = draft.values.map { it to if (draft.kind == IndexKind.PAIR && it == 1) Upcard.ACE.label else "$it" },
+                choices = draft.values.map { it to if (draft.kind == IndexKind.PAIR) Upcard.ofPoints(it).label else "$it" },
                 selected = draft.value,
                 onSelect = { draft = draft.copy(value = it) },
             )
@@ -89,13 +92,13 @@ fun AddIndexScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, onBa
         }
         Button(
             onClick = {
-                if (index != null && listed == null) {
-                    onChange(presets.update(presets.activeId) { it.add(index) })
+                toAdd?.let { added ->
+                    onChange(presets.updateActive { it.add(added) })
                     onBack()
                 }
             },
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            enabled = index != null && listed == null,
+            enabled = toAdd != null,
         ) {
             Text(stringResource(R.string.add_index))
         }
@@ -114,7 +117,7 @@ fun EditIndexScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val entry = presets.active.entries.firstOrNull { it.index.deviation == deviation }
+    val entry = presets.active.find(deviation)
     if (entry == null) {
         // Gone from under the page, as a restore after a preset swap elsewhere would leave it
         LaunchedEffect(Unit) { onBack() }
@@ -130,7 +133,7 @@ fun EditIndexScreen(
         NumberFields(deviation.playName, direction, threshold, onDirection = { direction = it }, onThreshold = { threshold = it })
         Button(
             onClick = {
-                onChange(presets.update(presets.activeId) { it.edit(PlayIndex(deviation, threshold, direction)) })
+                onChange(presets.updateActive { it.edit(PlayIndex(deviation, threshold, direction)) })
                 onBack()
             },
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -148,7 +151,7 @@ fun EditIndexScreen(
             confirmLabel = stringResource(R.string.delete),
             onConfirm = {
                 confirmingDelete = false
-                onChange(presets.update(presets.activeId) { it.remove(deviation) })
+                onChange(presets.updateActive { it.remove(deviation) })
                 onBack()
             },
             onDismiss = { confirmingDelete = false },
@@ -163,12 +166,12 @@ fun EditIndexScreen(
  */
 @Composable
 private fun NumberFields(play: String?, direction: IndexDirection, threshold: Int, onDirection: (IndexDirection) -> Unit, onThreshold: (Int) -> Unit) {
-    val number = "${signedCount(threshold)} ${direction.inPlainWords}"
+    val number = numberInPlainWords(threshold, direction)
     val name = stringResource(R.string.true_count)
 
     Chips(stringResource(R.string.direction), IndexDirection.entries.map { it to it.inPlainWords }, direction, onDirection)
     SettingsHeader(name)
-    SettingsNote(play?.let { "$it at $number" } ?: number)
+    SettingsNote(play?.let { indexInPlainWords(it, threshold, direction) } ?: number)
     ChipChoices(name, INDEX_NUMBERS.map { it to signedCount(it) }, threshold, onThreshold)
 }
 

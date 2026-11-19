@@ -179,7 +179,7 @@ private fun NewPresetDialog(isTaken: (String) -> Boolean, onCreate: (name: Strin
 
 /**
  * Asks for a preset's name, starting from [initial] selected, so typing replaces it. A blank name, or one [isTaken] says another
- * preset has, can't be confirmed. Like [ConfirmDialog], it waits out a double tap before any way out.
+ * preset has, can't be confirmed.
  */
 @Composable
 private fun NameDialog(
@@ -191,39 +191,36 @@ private fun NameDialog(
     onDismiss: () -> Unit,
     below: @Composable () -> Unit = {},
 ) {
-    val armed by rememberArmed(Unit)
     var name by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
     val focus = remember { FocusRequester() }
     val taken = name.text.isNotBlank() && isTaken(name.text)
 
     LaunchedEffect(Unit) { focus.requestFocus() }
 
-    AlertDialog(
-        onDismissRequest = { if (armed) onDismiss() },
-        confirmButton = {
-            TextButton(onClick = { if (armed) onConfirm(name.text.trim()) }, enabled = name.text.isNotBlank() && !taken) { Text(confirmLabel) }
-        },
-        dismissButton = { TextButton(onClick = { if (armed) onDismiss() }) { Text(stringResource(R.string.cancel)) } },
-        title = { Text(title) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { if (it.text.length <= MAX_NAME_LENGTH) name = it },
-                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                    label = { Text(stringResource(R.string.preset_name)) },
-                    supportingText = if (taken) {
-                        { Text(stringResource(R.string.preset_name_taken)) }
-                    } else {
-                        null
-                    },
-                    isError = taken,
-                    singleLine = true,
-                )
-                below()
-            }
-        },
-    )
+    ConfirmDialog(
+        title = title,
+        confirmLabel = confirmLabel,
+        onConfirm = { onConfirm(name.text) },
+        onDismiss = onDismiss,
+        confirmEnabled = name.text.isNotBlank() && !taken,
+    ) {
+        Column {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { if (it.text.length <= MAX_NAME_LENGTH) name = it },
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                label = { Text(stringResource(R.string.preset_name)) },
+                supportingText = if (taken) {
+                    { Text(stringResource(R.string.preset_name_taken)) }
+                } else {
+                    null
+                },
+                isError = taken,
+                singleLine = true,
+            )
+            below()
+        }
+    }
 }
 
 private val Game.title: Int

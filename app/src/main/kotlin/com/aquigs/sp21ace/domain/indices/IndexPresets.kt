@@ -32,7 +32,9 @@ data class IndexPreset(
     fun isDebated(index: PlayIndex): Boolean = basedOn?.find(index.deviation)?.let { it.debated && it.index == index } == true
 
     /** Whether an index on [deviation] is listed, which makes adding another for it impossible. */
-    fun has(deviation: Deviation): Boolean = entries.any { it.index.deviation == deviation }
+    fun find(deviation: Deviation): IndexEntry? = entries.firstOrNull { it.index.deviation == deviation }
+
+    fun has(deviation: Deviation): Boolean = find(deviation) != null
 
     /** Adds [index], switched on, at the end. Its deviation mustn't be listed yet. */
     fun add(index: PlayIndex): IndexPreset = copy(entries = entries + IndexEntry(index))
@@ -42,14 +44,17 @@ data class IndexPreset(
 
     fun switch(deviation: Deviation, enabled: Boolean): IndexPreset = change(deviation) { it.copy(enabled = enabled) }
 
-    fun remove(deviation: Deviation): IndexPreset = copy(entries = entries.filterNot { it.index.deviation == deviation }).also {
-        require(it.entries.size < entries.size) { "$name has no index on $deviation" }
+    fun remove(deviation: Deviation): IndexPreset {
+        requireListed(deviation)
+        return copy(entries = entries.filterNot { it.index.deviation == deviation })
     }
 
     private fun change(deviation: Deviation, change: (IndexEntry) -> IndexEntry): IndexPreset {
-        require(has(deviation)) { "$name has no index on $deviation" }
+        requireListed(deviation)
         return copy(entries = entries.map { if (it.index.deviation == deviation) change(it) else it })
     }
+
+    private fun requireListed(deviation: Deviation) = require(has(deviation)) { "$name has no index on $deviation" }
 
     companion object {
         /** A preset of every index in [set], all enabled, with the rounding its numbers assume and the default deck estimate. */
@@ -86,34 +91,33 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
         presets.any { it.id != except && it.name.trim().equals(name.trim(), ignoreCase = true) }
 
     /** [name] if no preset has it, otherwise the first of "[name] 2", "[name] 3" and on that none has. */
-    fun freeName(name: String): String = generateSequence(2) { it + 1 }.map { "$name $it" }.let { numbered ->
-        (sequenceOf(name) + numbered).first { !isNameTaken(it) }
-    }
+    fun freeName(name: String): String = (sequenceOf(name) + generateSequence(2) { it + 1 }.map { "$name $it" }).first { !isNameTaken(it) }
 
     /**
      * Adds a preset of every index in [from], as [IndexPreset.from] makes it, or an empty one with the default conventions, at the
-     * end, and makes it active to edit.
+     * end, and makes it active to edit. Like every name given, [name] is trimmed.
      */
     fun add(name: String, from: BuiltInIndexSet?, id: String = newPresetId()): IndexPresets {
-        requireFree(name)
+        val name = freeTrimmed(name)
         val preset = from?.let { IndexPreset.from(it, id, name) } ?: IndexPreset(id, name, Game.BLACKJACK, basedOn = null, entries = emptyList())
         return IndexPresets(presets + preset, preset.id)
     }
 
     fun rename(id: String, name: String): IndexPresets {
-        requireFree(name, except = id)
+        val name = freeTrimmed(name, except = id)
         return update(id) { it.copy(name = name) }
     }
 
     /** Copies preset [id], conventions and all, as [name] just after it, and makes the copy active to edit. */
     fun duplicate(id: String, name: String, newId: String = newPresetId()): IndexPresets {
-        requireFree(name)
+        val name = freeTrimmed(name)
         val at = indexOf(id)
         val copy = presets[at].copy(id = newId, name = name)
         return IndexPresets(presets.toMutableList().apply { add(at + 1, copy) }, newId)
     }
 
-    private fun requireFree(name: String, except: String? = null) = require(!isNameTaken(name, except)) { "A preset is already named $name" }
+    private fun freeTrimmed(name: String, except: String? = null): String =
+        name.trim().also { require(!isNameTaken(it, except)) { "A preset is already named $it" } }
 
     /** Deletes preset [id], unless it's the last. Deleting the active one activates the preset that takes its place in the list. */
     fun delete(id: String): IndexPresets {
@@ -123,6 +127,8 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
         val left = presets.filterNot { it.id == id }
         return IndexPresets(left, if (id == activeId) left[at.coerceAtMost(left.lastIndex)].id else activeId)
     }
+
+    fun updateActive(change: (IndexPreset) -> IndexPreset): IndexPresets = update(activeId, change)
 
     /** Replaces preset [id] with what [change] makes of it, which keeps its id, such as its entries or conventions changed. */
     fun update(id: String, change: (IndexPreset) -> IndexPreset): IndexPresets {

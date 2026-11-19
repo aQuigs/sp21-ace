@@ -34,7 +34,7 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
 
     internal val total: HandTotal get() = HandTotal(value, soft = kind == HandKind.SOFT)
 
-    internal val pairCard: Upcard get() = if (value == 1) Upcard.ACE else Upcard.fromLabel("$value")
+    internal val pairCard: Upcard get() = Upcard.ofPoints(value)
 
     companion object {
         /** The hand [label] names, as [IndexHand.label] writes it. */

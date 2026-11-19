@@ -7,9 +7,8 @@ import com.aquigs.sp21ace.domain.history.TallyCounter
 enum class CardsShown { RANDOM, PRIORITIZE_WORSE }
 
 /**
- * How the flashcards are dealt, whatever the preset. [multiCardHands] shows stand and hit indices as hands of 3 or 4 cards about
- * half the time. It starts off, since published index tables give each number by hand total without saying how many cards make
- * it.
+ * How the flashcards are dealt, whatever the preset. [multiCardHands] starts off, since published index tables give each number
+ * by hand total without saying how many cards make it.
  */
 data class FlashcardOptions(val cardsShown: CardsShown = CardsShown.RANDOM, val multiCardHands: Boolean = false)
 

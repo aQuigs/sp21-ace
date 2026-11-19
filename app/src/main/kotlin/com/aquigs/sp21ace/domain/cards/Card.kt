@@ -54,7 +54,10 @@ fun cards(codes: String): List<Card> = codes.split(" ").map(::card)
 /** A soft total counts one ace as 11, which it does only while that doesn't bust the hand. */
 data class HandTotal(val value: Int, val soft: Boolean)
 
-fun List<Card>.total(): HandTotal = fold(HandTotal(0, soft = false)) { total, card -> total.plusCard(card.rank.value) }
+fun List<Card>.total(): HandTotal = totalOf(map { it.rank.value })
+
+/** The total of cards worth [points], an ace 1. */
+fun totalOf(points: List<Int>): HandTotal = points.fold(HandTotal(0, soft = false), HandTotal::plusCard)
 
 /** The total once a card worth [points], an ace 1, joins the hand. */
 fun HandTotal.plusCard(points: Int): HandTotal {

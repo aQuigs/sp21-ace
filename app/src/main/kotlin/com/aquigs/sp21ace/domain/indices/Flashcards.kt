@@ -29,10 +29,14 @@ data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = n
     /**
      * The run with a card from [dealer] in place of one it could not deal, such as after a preset swap or an edit, so a card is
      * never graded against a stale number, or a hand of 3 or more cards left up once they're switched off. A card it could deal
-     * stays.
+     * stays. With nothing left to deal, the last verdict goes too, since its index may be one no longer drilled.
      */
-    fun dealtFrom(dealer: FlashcardDealer, deal: (previous: Flashcard?) -> Flashcard? = dealer::deal): FlashcardRun =
-        if (card != null && dealer.couldDeal(card)) this else copy(card = deal(card))
+    fun dealtFrom(dealer: FlashcardDealer, deal: (previous: Flashcard?) -> Flashcard? = dealer::deal): FlashcardRun {
+        if (card != null && dealer.couldDeal(card)) return this
+
+        val next = deal(card)
+        return FlashcardRun(next, lastGrade.takeIf { next != null })
+    }
 }
 
 /**
@@ -54,8 +58,9 @@ data class AnsweredFlashcard(val run: FlashcardRun, val answer: FlashcardAnswer)
 
 /**
  * Grades [number] as the answer to [asked] and deals the next card at once, because a run never waits for a continue tap. [deal] is
- * handed the answer, so a deal that weighs answers can count this one. A tap on a card no longer showing, such as a second tap
- * before the screen redraws, or on one whose index [dealer] no longer deals, grades nothing: null.
+ * handed [history] with this answer added, which the store holds only once it is recorded, so a deal that weighs answers counts
+ * it. A tap on a card no longer showing, such as a second tap before the screen redraws, or on one [dealer] could not deal, grades
+ * nothing: null.
  */
 fun FlashcardRun.answer(
     asked: Flashcard,
@@ -63,10 +68,11 @@ fun FlashcardRun.answer(
     dealer: FlashcardDealer,
     time: Duration?,
     answeredAt: Instant,
-    deal: (FlashcardAnswer) -> Flashcard? = { dealer.deal(asked) },
+    history: List<FlashcardAnswer> = emptyList(),
+    deal: (previous: Flashcard, history: List<FlashcardAnswer>) -> Flashcard? = { previous, answers -> dealer.deal(previous, answers) },
 ): AnsweredFlashcard? {
-    if (asked != card || asked.index !in dealer.indices) return null
+    if (asked != card || !dealer.couldDeal(asked)) return null
 
     val recorded = FlashcardAnswer(answeredAt, dealer.game, asked.index, number, time, asked.player.size)
-    return AnsweredFlashcard(FlashcardRun(deal(recorded), FlashcardGrade(asked, number)), recorded)
+    return AnsweredFlashcard(FlashcardRun(deal(asked, history + recorded), FlashcardGrade(asked, number)), recorded)
 }
