@@ -21,6 +21,29 @@ enum class BuiltInIndexSet(val game: Game, val title: String, val rounding: Coun
     fun find(deviation: Deviation): BuiltInIndex? = indices.firstOrNull { it.index.deviation == deviation }
 }
 
+/**
+ * A built-in number changed in [revision] of the built-in sets: a preset based on [set] that still holds [from], saved before that
+ * revision, takes [to].
+ */
+internal data class IndexCorrection(val revision: Int, val set: BuiltInIndexSet, val from: PlayIndex, val to: PlayIndex) {
+    init {
+        require(revision > FIRST_REVISION && from.deviation == to.deviation && from != to) { "Not a correction: $this" }
+    }
+
+    companion object {
+        /** The revision presets saved before any correction carry. */
+        const val FIRST_REVISION = 1
+
+        internal fun of(revision: Int, set: BuiltInIndexSet, play: String, hand: String, upcard: String, from: Int, to: Int): IndexCorrection {
+            val deviation = Deviation.parse(play, hand, upcard)
+            return IndexCorrection(revision, set, PlayIndex(deviation, from), PlayIndex(deviation, to))
+        }
+    }
+}
+
+/** The built-in sets' revision now, which presets saved by this version carry. */
+internal val BUILT_IN_REVISION: Int = INDEX_CORRECTIONS.maxOfOrNull { it.revision } ?: IndexCorrection.FIRST_REVISION
+
 private val WHITESPACE = Regex("\\s+")
 private const val HEADER = "play hand upcard direction index"
 

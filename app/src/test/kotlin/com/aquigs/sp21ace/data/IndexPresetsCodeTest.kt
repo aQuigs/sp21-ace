@@ -1,10 +1,12 @@
 package com.aquigs.sp21ace.data
 
+import com.aquigs.sp21ace.domain.indices.BUILT_IN_REVISION
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
 import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.FakeIndices
 import com.aquigs.sp21ace.domain.indices.Game
+import com.aquigs.sp21ace.domain.indices.INDEX_CORRECTIONS
 import com.aquigs.sp21ace.domain.indices.IndexEntry
 import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexPresets
@@ -60,7 +62,7 @@ class IndexPresetsCodeTest {
 
         assertEquals(
             listOf(
-                "active=mine",
+                "active=mine revision=$BUILT_IN_REVISION",
                 "preset=mine game=BLACKJACK deckEstimate=PERCENTILE_95 rounding=TRUNCATE name=Mine",
                 "index=STAND:18:2:99:AT_OR_ABOVE on=true",
                 "index=SPLIT:A-A:3:-99:AT_OR_ABOVE on=false",
@@ -119,6 +121,32 @@ class IndexPresetsCodeTest {
     fun readsNothingFromTextWithNoPresetInIt() {
         for (code in listOf("", "active=mine", "hello", "active=mine\nindex=STAND:18:2:99 on=true", "active=x\npreset=x game=CHESS name=X")) {
             assertNull(code, IndexPresetsCode.parse(code))
+        }
+    }
+
+    private val correction = INDEX_CORRECTIONS.first()
+
+    // The seeded presets holding the number the first release shipped before the correction
+    private val firstRelease = IndexPresets.seeded().update(correction.set.name) { it.edit(correction.from) }
+
+    private val firstReleaseCode = IndexPresetsCode.print(firstRelease).replace(" revision=$BUILT_IN_REVISION", "")
+
+    @Test
+    fun presetsSavedWithNoRevisionOrAnOlderOneTakeTheCorrectionsSinceAndMustBeSavedAgain() {
+        for (stored in listOf(firstReleaseCode, firstReleaseCode.replaceFirst("\n", " revision=${correction.revision - 1}\n"))) {
+            assertEquals(stored, IndexPresetsCode.Loaded(IndexPresets.seeded(), corrected = true), IndexPresetsCode.load(stored))
+        }
+    }
+
+    @Test
+    fun presetsSavedAtTheCurrentRevisionLoadAsSavedSoAUsersOwnOldNumberStays() {
+        assertEquals(IndexPresetsCode.Loaded(firstRelease, corrected = false), IndexPresetsCode.load(IndexPresetsCode.print(firstRelease)))
+    }
+
+    @Test
+    fun nothingStoredOrNothingReadableLoadsTheSeededPresets() {
+        for (stored in listOf(null, "garbled")) {
+            assertEquals(IndexPresetsCode.Loaded(IndexPresets.seeded(), corrected = false), IndexPresetsCode.load(stored))
         }
     }
 }

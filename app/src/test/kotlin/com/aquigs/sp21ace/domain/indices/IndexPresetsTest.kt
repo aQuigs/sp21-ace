@@ -204,4 +204,69 @@ class IndexPresetsTest {
 
         assertEquals(listOf(FakeIndices.STAND, FakeIndices.DOUBLE, FakeIndices.HIT), mixed.enabledIndices)
     }
+
+    private val correction = INDEX_CORRECTIONS.first()
+    private val deviation = correction.from.deviation
+
+    // A preset saved from the corrected set before the correction, with that index switched off
+    private val saved = IndexPreset.from(correction.set, "saved").edit(correction.from).switch(deviation, enabled = false)
+    private val before = correction.revision - 1
+
+    @Test
+    fun aPresetSavedBeforeACorrectionTakesItInPlaceKeepingTheSwitch() {
+        val corrected = saved.corrected(since = before)
+
+        assertEquals(saved.entries.map { if (it.index.deviation == deviation) IndexEntry(correction.to, enabled = false) else it }, corrected.entries)
+        assertFalse(corrected.isCustom(correction.to))
+    }
+
+    @Test
+    fun aPresetSavedAtOrAfterACorrectionKeepsTheOldNumberAsTheUsersOwn() {
+        assertEquals(saved, saved.corrected(since = correction.revision))
+    }
+
+    @Test
+    fun aNumberTheUserSetOtherThanTheOldOneStays() {
+        val other = correction.from.copy(threshold = correction.from.threshold + 5)
+        for (own in listOf(other, correction.from.copy(direction = IndexDirection.AT_OR_BELOW))) {
+            val edited = saved.edit(own)
+            assertEquals(edited, edited.corrected(since = before))
+        }
+    }
+
+    @Test
+    fun aPresetNotBasedOnTheCorrectedSetKeepsTheOldNumber() {
+        val mine = preset("m", correction.from)
+        val others = BuiltInIndexSet.entries.filter { it != correction.set }.map { IndexPreset.from(it, it.name) }
+
+        assertEquals(mine, mine.corrected(since = before))
+        for (other in others) {
+            val holding = if (other.has(deviation)) other.edit(correction.from) else other.add(correction.from)
+            assertEquals(holding, holding.corrected(since = before))
+        }
+    }
+
+    @Test
+    fun laterCorrectionsOfOneRowApplyInRevisionOrderAndOnlyThoseNewerThanTheSave() {
+        val h17 = BuiltInIndexSet.BJ_SHOE_H17
+        val stand = FakeIndices.STAND
+        val corrections = listOf(
+            IndexCorrection(3, h17, stand.copy(threshold = 1), stand.copy(threshold = 0)),
+            IndexCorrection(2, h17, stand.copy(threshold = 2), stand.copy(threshold = 1)),
+        )
+        val saved = IndexPreset("p", "P", Game.BLACKJACK, basedOn = h17, entries = listOf(IndexEntry(stand.copy(threshold = 2))))
+
+        assertEquals(stand.copy(threshold = 0), saved.corrected(since = 1, corrections).entries.single().index)
+        assertEquals(stand.copy(threshold = 2), saved.corrected(since = 2, corrections).entries.single().index)
+        assertEquals(stand.copy(threshold = 0), saved.edit(stand.copy(threshold = 1)).corrected(since = 2, corrections).entries.single().index)
+    }
+
+    @Test
+    fun presetsAreCorrectedOneByOneAndTheSeededOnesNeedNone() {
+        val seeded = IndexPresets.seeded()
+        assertEquals(seeded, seeded.corrected(since = before))
+
+        val both = IndexPresets(listOf(three.presets[0], saved), activeId = "saved")
+        assertEquals(IndexPresets(listOf(three.presets[0], saved.corrected(since = before)), activeId = "saved"), both.corrected(since = before))
+    }
 }

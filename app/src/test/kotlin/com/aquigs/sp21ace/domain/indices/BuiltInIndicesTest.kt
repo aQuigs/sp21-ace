@@ -22,6 +22,14 @@ class BuiltInIndicesTest {
         assertEquals("Numbers that differ from their fixtures", emptyList<String>(), mismatches)
     }
 
+    @Test
+    fun eachRowsLastCorrectionEndsAtItsSetsNumber() {
+        for ((row, corrections) in INDEX_CORRECTIONS.groupBy { it.set to it.from.deviation }) {
+            val (set, deviation) = row
+            assertEquals("$set ${deviation.title}", set.find(deviation)?.index, corrections.maxBy { it.revision }.to)
+        }
+    }
+
     // Every row of a set's fixture. A row the sources dispute, status conflict, ships debated.
     private fun fixture(set: BuiltInIndexSet): List<BuiltInIndex> {
         val lines = Fixtures.tsv("indices", set)
