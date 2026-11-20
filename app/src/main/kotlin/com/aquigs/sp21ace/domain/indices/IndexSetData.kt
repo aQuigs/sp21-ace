@@ -13,17 +13,17 @@ internal val INDEX_SETS: Map<BuiltInIndexSet, String> = mapOf(
         SPLIT      10-10  6       AT_OR_ABOVE  +4†
         DOUBLE     10     10      AT_OR_ABOVE  +4
         STAND      12     3       AT_OR_ABOVE  +1†
-        STAND      12     2       AT_OR_ABOVE  +3
+        STAND      12     2       AT_OR_ABOVE  +3†
         DOUBLE     11     A       AT_OR_ABOVE  -1†
         DOUBLE     9      2       AT_OR_ABOVE  +1
         DOUBLE     10     A       AT_OR_ABOVE  +3
-        DOUBLE     9      7       AT_OR_ABOVE  +3
+        DOUBLE     9      7       AT_OR_ABOVE  +3†
         STAND      16     9       AT_OR_ABOVE  +5†
         STAND      13     2       AT_OR_ABOVE  -1
         STAND      12     4       AT_OR_ABOVE  0
-        STAND      12     5       AT_OR_ABOVE  -2
+        STAND      12     5       AT_OR_ABOVE  -2†
         STAND      12     6       AT_OR_ABOVE  -3†
-        STAND      13     3       AT_OR_ABOVE  -2
+        STAND      13     3       AT_OR_ABOVE  -2†
         SURRENDER  14     10      AT_OR_ABOVE  +3
         SURRENDER  15     10      AT_OR_ABOVE  0
         SURRENDER  15     9       AT_OR_ABOVE  +2
@@ -42,7 +42,7 @@ internal val INDEX_SETS: Map<BuiltInIndexSet, String> = mapOf(
         DOUBLE     11     A       AT_OR_ABOVE  +1
         DOUBLE     9      2       AT_OR_ABOVE  +1
         DOUBLE     10     A       AT_OR_ABOVE  +4†
-        DOUBLE     9      7       AT_OR_ABOVE  +3
+        DOUBLE     9      7       AT_OR_ABOVE  +3†
         STAND      16     9       AT_OR_ABOVE  +5†
         STAND      13     2       AT_OR_ABOVE  -1
         STAND      12     4       AT_OR_ABOVE  0

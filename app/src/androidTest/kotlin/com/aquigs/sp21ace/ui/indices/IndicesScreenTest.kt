@@ -106,7 +106,7 @@ class IndicesScreenTest {
         show()
 
         row("Hard 16 vs 9", "Stand at +5 or higher\u00A0†").performScrollTo().assertIsDisplayed()
-        row("Hard 12 vs 2", "Stand at +3 or higher").performScrollTo().assertIsDisplayed()
+        row("Hard 15 vs 10", "Stand at +4 or higher").performScrollTo().assertIsDisplayed()
         row("Hard 12 vs 3", "Stand at +1 or higher\u00A0†").performScrollTo().assertIsDisplayed()
         row("Hard 16 vs 10", string(R.string.custom_index, "Stand at +1 or higher")).performScrollTo().assertIsDisplayed()
     }
