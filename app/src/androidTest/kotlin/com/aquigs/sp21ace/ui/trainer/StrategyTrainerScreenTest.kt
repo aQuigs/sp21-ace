@@ -53,6 +53,7 @@ import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.answer
 import com.aquigs.sp21ace.ui.assertFits
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
+import com.aquigs.sp21ace.ui.overlaps
 import com.aquigs.sp21ace.ui.components.displayName
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
@@ -94,8 +95,6 @@ class StrategyTrainerScreenTest {
     private fun button(move: Move) = compose.onNodeWithContentDescription(string(move.displayName))
 
     private fun bounds(description: String) = compose.onNodeWithContentDescription(description).getBoundsInRoot()
-
-    private fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
 
     // The unmerged tree still holds the text a control hides from a screen reader
     private fun textsInside(description: String, count: Int): List<SemanticsNode> = compose.onAllNodes(

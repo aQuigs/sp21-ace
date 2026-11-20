@@ -9,6 +9,7 @@ import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.hasScrollToKeyAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.DpRect
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 
@@ -71,3 +72,8 @@ fun TextLayoutResult.assertFitsOnOneLine() {
     assertEquals("${layoutInput.text} lines", 1, lineCount)
     assertFits()
 }
+
+fun DpRect.overlaps(other: DpRect) = left < other.right && other.left < right && top < other.bottom && other.top < bottom
+
+/** The flashcard app bar's text: [parts] that never break inside, split by a bar the line may break after. */
+fun flashcardBarText(vararg parts: String) = parts.joinToString("\u00A0| ") { it.replace(' ', '\u00A0') }

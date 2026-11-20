@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
@@ -32,7 +33,8 @@ val CircleButtonSize = 64.dp
 
 /**
  * Blackjack Ace's round outlined button, at most [CircleButtonSize] across. [label] is for the eye, such as capitals or SURR.,
- * and a screen reader says [name]. [ringColor] recolours the ring alone, as a hint does.
+ * and a screen reader says [name]. [ringColor] recolors the ring alone, as a hint does. [maxFontSize] suits words; a short label,
+ * such as a number, can take a larger one.
  */
 @Composable
 fun CircleButton(
@@ -42,6 +44,8 @@ fun CircleButton(
     label: String = name.uppercase(),
     enabled: Boolean = true,
     ringColor: Color? = null,
+    // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen, or REDOUBLE, needs less
+    maxFontSize: TextUnit = 13.sp,
 ) {
     val color = MaterialTheme.colorScheme.primary
     // An outlined button greys out its label but not its border
@@ -66,8 +70,7 @@ fun CircleButton(
             // 7dp short, as DOUBLE does at its largest. The smallest circles have no room to spare for that.
             modifier = Modifier.widthIn(max = CircleButtonSize - 14.dp),
             fontWeight = FontWeight.Bold,
-            // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen, or REDOUBLE, needs less
-            autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = 13.sp),
+            autoSize = TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = maxFontSize),
             maxLines = 1,
         )
     }

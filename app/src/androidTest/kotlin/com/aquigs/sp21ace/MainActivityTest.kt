@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.aquigs.sp21ace.data.FlashcardHistoryStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
@@ -27,6 +28,8 @@ import com.aquigs.sp21ace.ui.onScreen
 import com.aquigs.sp21ace.ui.settings.pageIsDark
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,6 +46,7 @@ class MainActivityTest {
         TableStore(compose.activity).saveChips(STARTING_BANKROLL)
         SettingsStore(compose.activity).save(Settings())
         PracticeHistoryStore.forApp(compose.activity).clear()
+        FlashcardHistoryStore.forApp(compose.activity).clear()
         // The system keeps a chosen theme for the app, apart from the settings file
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             compose.activity.getSystemService(UiModeManager::class.java).setApplicationNightMode(UiModeManager.MODE_NIGHT_AUTO)
@@ -68,6 +72,23 @@ class MainActivityTest {
         compose.activityRule.scenario.recreate()
 
         assertEquals(answered, everythingOnScreen())
+    }
+
+    @Test
+    fun keepsTheFlashcardAndItsVerdictWhenRecreatedAndLeavesTheCardsAnswerUntimed() {
+        val history = FlashcardHistoryStore.forApp(compose.activity).history
+        openFromDrawer(R.string.index_flashcards)
+        compose.onNodeWithContentDescription("0").performClick()
+        val answered = everythingOnScreen()
+
+        compose.activityRule.scenario.recreate()
+
+        assertEquals(answered, everythingOnScreen())
+        compose.onNodeWithContentDescription("0").performClick()
+        // The card was on screen before the activity was recreated, so its time is unknown
+        val (before, after) = history.value.orEmpty().takeLast(2)
+        assertNotNull(before.time)
+        assertNull(after.time)
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.ui
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
@@ -20,11 +21,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.Sp21AceApp
+import com.aquigs.sp21ace.data.FlashcardHistoryStore
 import com.aquigs.sp21ace.data.HandCustomizationStore
+import com.aquigs.sp21ace.data.IndexPresetsStore
 import com.aquigs.sp21ace.data.PlayHistoryStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
@@ -40,6 +44,11 @@ import com.aquigs.sp21ace.domain.dealing.type
 import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
 import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.indices.Deviation
+import com.aquigs.sp21ace.domain.indices.Flashcard
+import com.aquigs.sp21ace.domain.indices.IndexPresets
+import com.aquigs.sp21ace.domain.indices.PlayIndex
+import com.aquigs.sp21ace.domain.indices.title
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.ChartTable
@@ -61,6 +70,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 @RunWith(AndroidJUnit4::class)
 class AppShellTest {
@@ -78,6 +88,15 @@ class AppShellTest {
     private val historyStore by lazy { PracticeHistoryStore(File(compose.activity.filesDir, "practice_history_app_shell_test.txt")) }
     private val tableStore by lazy { TableStore(compose.activity, "table_app_shell_test") }
     private val playHistoryStore by lazy { PlayHistoryStore(File(compose.activity.filesDir, "play_history_app_shell_test.txt")) }
+    private val presetsStore by lazy { IndexPresetsStore(compose.activity, "index_presets_app_shell_test") }
+    private val flashcardHistoryStore by lazy { FlashcardHistoryStore(File(compose.activity.filesDir, "flashcard_history_app_shell_test.txt")) }
+
+    // Shoe H17, the preset a first launch drills, stands on hard 16 vs 10 at 0 or higher and insures at +3 or higher
+    private val sixteenVsTen = IndexPresets.seeded().active.entries.first { it.index.deviation.title == "Hard 16 vs 10" }.index
+    private val sixteenVsKing = Flashcard(sixteenVsTen, cards("9c 7d"), card("Kh"))
+    private val insuranceCard = Flashcard(PlayIndex(Deviation.Insurance, 3), emptyList(), card("As"))
+    private var flashcardsDealt = 0
+    private var now = 0L
 
     private var handsDealt = 0
     private val played = mutableListOf<Boolean>()
@@ -102,6 +121,8 @@ class AppShellTest {
         settingsStore.save(Settings(colorTheme = ColorTheme.LIGHT))
         historyStore.clear()
         playHistoryStore.clear()
+        presetsStore.save(IndexPresets.seeded())
+        flashcardHistoryStore.clear()
 
         compose.setContent {
             Sp21AceApp(
@@ -111,10 +132,15 @@ class AppShellTest {
                 handsStore,
                 settingsStore,
                 tableStore,
+                presetsStore,
+                flashcardHistoryStore,
                 deal = { picker, history -> dealHand(picker, history) },
+                // 16 vs K first, then insurance and 16 vs K in turn
+                dealFlashcard = { _, _ -> if (flashcardsDealt++ % 2 == 0) sixteenVsKing else insuranceCard },
                 sounds = { played += it },
                 // Its shoe deals 8-J against a 4 first
                 random = Random(2),
+                clock = { now },
             )
         }
     }
@@ -122,6 +148,12 @@ class AppShellTest {
     private fun openFromDrawer(title: Int) {
         compose.onNodeWithContentDescription(string(R.string.open_menu)).performClick()
         drawerItem(title).performClick()
+    }
+
+    // A sub-page has no menu button, so Back first
+    private fun openFromDrawerOverSubPage(title: Int) {
+        compose.onNodeWithContentDescription(string(R.string.back)).performClick()
+        openFromDrawer(title)
     }
 
     private fun chooseDealerHits() {
@@ -140,20 +172,84 @@ class AppShellTest {
 
         compose.onNodeWithContentDescription(string(R.string.open_menu)).performClick()
 
-        compose.onNodeWithText(string(R.string.basic_strategy)).assertIsDisplayed()
         drawerItem(R.string.strategy_trainer).assertIsSelected()
-        compose.onNodeWithText(string(R.string.play)).assertIsDisplayed()
+        val headings = listOf(R.string.basic_strategy, R.string.card_counting, R.string.play).map { compose.onNodeWithText(string(it)).assertIsDisplayed() }
         val items = listOf(
             R.string.strategy_trainer,
             R.string.table_rules,
             R.string.strategy_chart,
             R.string.customize_hands,
             R.string.accuracy,
+            R.string.index_flashcards,
             R.string.play_spanish_21,
             R.string.settings,
         )
             .map { drawerItem(it).assertIsDisplayed().getBoundsInRoot() }
         items.zipWithNext().forEach { (above, below) -> assertTrue(below.top >= above.bottom) }
+        // Card Counting heads its one item, between Basic Strategy's last and Play's first
+        val cardCounting = headings[1].getBoundsInRoot()
+        assertTrue(items[4].bottom <= cardCounting.top && cardCounting.bottom <= items[5].top)
+    }
+
+    @Test
+    fun theDrawerOpensIndexFlashcardsWhoseAnswersJoinTheFlashcardHistoryTimedFromWhenTheDrawerClosed() {
+        openFromDrawer(R.string.index_flashcards)
+        appBarTitle(R.string.index_flashcards).assertIsDisplayed()
+        drawerItem(R.string.index_flashcards).assertIsNotDisplayed()
+        now += 2_000
+
+        compose.onNodeWithContentDescription("0").performClick()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
+        now += 900
+        compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
+
+        val answers = flashcardHistoryStore.history.value.orEmpty()
+        assertEquals(listOf(sixteenVsTen to 0, PlayIndex(Deviation.Insurance, 3) to 1), answers.map { it.index to it.answer })
+        assertEquals(listOf(2_000.milliseconds, 900.milliseconds), answers.map { it.time })
+        assertEquals(listOf(true, false), answers.map { it.isCorrect })
+    }
+
+    @Test
+    fun aDrawerDraggedPartOpenAndLetSpringBackLeavesTheFlashcardsAnswerUntimed() {
+        openFromDrawer(R.string.index_flashcards)
+        drawerItem(R.string.index_flashcards).assertIsNotDisplayed()
+
+        // A fifth of the way across, slowly, short of the halfway that opens it and too slow to fling it open
+        compose.onRoot().performTouchInput {
+            down(Offset(width * 0.1f, height * 0.4f))
+            repeat(10) { moveBy(Offset(width * 0.02f, 0f), delayMillis = 50) }
+        }
+        now += 3_000
+        compose.onRoot().performTouchInput { up() }
+        drawerItem(R.string.index_flashcards).assertIsNotDisplayed()
+
+        compose.onNodeWithContentDescription("0").performClick()
+
+        assertEquals(listOf(null), flashcardHistoryStore.history.value.orEmpty().map { it.time })
+    }
+
+    @Test
+    fun theDrawerOpenedOverAFlashcardLeavesItsAnswerUntimed() {
+        openFromDrawer(R.string.index_flashcards)
+        compose.onNodeWithContentDescription(string(R.string.open_menu)).performClick()
+        Espresso.pressBack()
+        drawerItem(R.string.index_flashcards).assertIsNotDisplayed()
+
+        compose.onNodeWithContentDescription("0").performClick()
+
+        assertEquals(listOf(null), flashcardHistoryStore.history.value.orEmpty().map { it.time })
+    }
+
+    @Test
+    fun withSoundEffectsSwitchedOnEachFlashcardAnswerSoundsRightOrWrong() {
+        openFromDrawer(R.string.settings)
+        compose.onNode(hasText(string(R.string.sound_effects)) and isToggleable()).performClick()
+        openFromDrawerOverSubPage(R.string.index_flashcards)
+
+        compose.onNodeWithContentDescription("0").performClick()
+        compose.onNodeWithContentDescription(string(R.string.count_minus, 3)).performClick()
+
+        assertEquals(listOf(true, false), played)
     }
 
     @Test
