@@ -22,8 +22,10 @@ data class ChartSquare(val row: ChartRow, val upcard: Upcard)
 val Card.upcard: Upcard get() = if (rank.value == 10) Upcard.TEN else Upcard.fromLabel(rank.label)
 
 /** The row a hand is read from: a two-card pair from the pairs table, any other hand by its [totalRow]. */
-fun chartRow(hand: List<Card>): ChartRow =
-    if (hand.isPair) hand[0].upcard.label.let { ChartRow(ChartTable.PAIRS, "$it-$it") } else totalRow(hand)
+fun chartRow(hand: List<Card>): ChartRow = if (hand.isPair) pairRow(hand[0].upcard) else totalRow(hand)
+
+/** The pairs table's row for two cards of [card]'s value, such as "8-8", or "10-10" for any two ten-value cards. */
+fun pairRow(card: Upcard): ChartRow = ChartRow(ChartTable.PAIRS, "${card.label}-${card.label}")
 
 /** The row a hand is read from by its total alone. */
 fun totalRow(hand: List<Card>): ChartRow = hand.total().row

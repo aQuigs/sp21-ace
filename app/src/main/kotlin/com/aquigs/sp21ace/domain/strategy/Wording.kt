@@ -1,14 +1,17 @@
 package com.aquigs.sp21ace.domain.strategy
 
 import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.total
 
 /** "Hard 14", "Soft 17", "Pair of 8s", "Pair of aces", or "Pair of 10s" for any two ten-value cards. */
-fun handClass(hand: List<Card>): String = when (chartRow(hand).table) {
-    ChartTable.PAIRS -> hand[0].upcard.let { if (it == Upcard.ACE) "Pair of aces" else "Pair of ${it.label}s" }
-    ChartTable.SOFT -> "Soft ${hand.total().value}"
-    else -> "Hard ${hand.total().value}"
-}
+fun handClass(hand: List<Card>): String = if (chartRow(hand).table == ChartTable.PAIRS) pairClass(hand[0].upcard) else totalClass(hand.total())
+
+/** "Hard 14" or "Soft 17". */
+fun totalClass(total: HandTotal): String = "${if (total.soft) "Soft" else "Hard"} ${total.value}"
+
+/** "Pair of 8s", "Pair of aces", or "Pair of 10s" for two cards of [card]'s value. */
+fun pairClass(card: Upcard): String = if (card == Upcard.ACE) "Pair of aces" else "Pair of ${card.label}s"
 
 /**
  * The square in words. When its card count or its bonus exception makes [correctMove] a hit for a hand of [cards] cards, that

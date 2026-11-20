@@ -4,7 +4,7 @@ import java.io.Serializable
 
 enum class Suit(val letter: Char) { SPADES('s'), HEARTS('h'), DIAMONDS('d'), CLUBS('c') }
 
-/** A Spanish deck has no 10-spots, so J, Q and K are its only ten-value cards. */
+/** Every rank of a full deck. A Spanish deck has no [TEN], so J, Q and K are its only ten-value cards. */
 enum class Rank(val label: String, val value: Int) {
     ACE("A", 1),
     TWO("2", 2),
@@ -15,6 +15,7 @@ enum class Rank(val label: String, val value: Int) {
     SEVEN("7", 7),
     EIGHT("8", 8),
     NINE("9", 9),
+    TEN("10", 10),
     JACK("J", 10),
     QUEEN("Q", 10),
     KING("K", 10),
@@ -22,7 +23,12 @@ enum class Rank(val label: String, val value: Int) {
 
 data class Card(val rank: Rank, val suit: Suit) : Serializable
 
-private val SPANISH_DECK: List<Card> = Rank.entries.flatMap { rank -> Suit.entries.map { Card(rank, it) } }
+/** The ranks a Spanish deck holds: every rank but [Rank.TEN], so nothing Spanish 21 deals is ever a 10-spot. */
+val SPANISH_RANKS: List<Rank> = Rank.entries - Rank.TEN
+
+private fun deckOf(ranks: List<Rank>): List<Card> = ranks.flatMap { rank -> Suit.entries.map { Card(rank, it) } }
+
+private val SPANISH_DECK: List<Card> = deckOf(SPANISH_RANKS)
 
 /** [decks] Spanish decks of 48 cards each, unshuffled. Every deck shares its cards, so a saved shoe writes each card once. */
 fun spanishShoe(decks: Int): List<Card> = List(decks) { SPANISH_DECK }.flatten()
@@ -31,10 +37,13 @@ fun spanishShoe(decks: Int): List<Card> = List(decks) { SPANISH_DECK }.flatten()
 val Card.code: String get() = "${rank.label}${suit.letter}"
 
 // Every code reads as one of these, so answers loaded by the thousand share their cards
-private val CARDS_BY_CODE: Map<String, Card> = spanishShoe(decks = 1).associateBy { it.code }
+private val CARDS_BY_CODE: Map<String, Card> = deckOf(Rank.entries).associateBy { it.code }
 
-/** The card [code] names, such as "7h". */
+/** The card [code] names, such as "7h", or "10h" for a 10-spot. */
 fun card(code: String): Card = requireNotNull(CARDS_BY_CODE[code]) { "Unknown card: $code" }
+
+/** The card [code] names, which must be one a Spanish deck holds, so never a 10-spot. */
+fun spanishCard(code: String): Card = card(code).also { require(it.rank in SPANISH_RANKS) { "A Spanish deck has no $code" } }
 
 /** The cards [codes] names, space-separated, such as "As 6d". */
 fun cards(codes: String): List<Card> = codes.split(" ").map(::card)

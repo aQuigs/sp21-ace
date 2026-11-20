@@ -1,7 +1,7 @@
 package com.aquigs.sp21ace.data
 
-import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.code
+import com.aquigs.sp21ace.domain.cards.spanishCard
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.RuleSet
@@ -33,8 +33,8 @@ internal object PracticeLine {
             answeredAt = Instant.ofEpochMilli(fields["at"].toLong()),
             ruleSet = RuleSet.valueOf(fields["rules"]),
             hand = TrainerHand(
-                fields["player"].split(',').map(::card),
-                card(fields["upcard"]),
+                fields["player"].split(',').map(::spanishCard),
+                spanishCard(fields["upcard"]),
                 doubled = fields.ifSaved("doubled")?.toBooleanStrict() ?: false,
             ),
             answer = Move.valueOf(fields["answer"]),

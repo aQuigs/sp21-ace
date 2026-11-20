@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.domain.dealing
 
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.Rank
+import com.aquigs.sp21ace.domain.cards.SPANISH_RANKS
 import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.cards.spanishShoe
@@ -38,7 +39,7 @@ class DealableHandsTest {
     // A way a round reaches a hand of 3 or more cards: the hand, its first two card values and how many cards it holds
     private data class Way(val hand: MultiCardHand, val start: List<Upcard>, val cards: Int)
 
-    private val oneOfEachValue = Rank.entries.distinctBy { it.value }
+    private val oneOfEachValue = SPANISH_RANKS.distinctBy { it.value }
 
     // A card of each value as a six-deck shoe of 288 draws it, the tens four ranks of 24
     private fun drawChance(rank: Rank) = (if (rank.value == 10) 72 else 24) / 288.0

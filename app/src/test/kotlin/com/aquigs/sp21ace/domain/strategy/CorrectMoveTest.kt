@@ -3,6 +3,7 @@ package com.aquigs.sp21ace.domain.strategy
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.Rank
+import com.aquigs.sp21ace.domain.cards.SPANISH_RANKS
 import com.aquigs.sp21ace.domain.cards.Suit
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
@@ -17,7 +18,7 @@ import org.junit.Test
 class CorrectMoveTest {
     private val h17 = StrategyCharts.forRules(RuleSet.H17)
     private val s17 = StrategyCharts.forRules(RuleSet.S17)
-    private val upcards = Rank.entries.map { Card(it, Suit.CLUBS) }
+    private val upcards = SPANISH_RANKS.map { Card(it, Suit.CLUBS) }
 
     @Test
     fun readsTwoCardPairsFromThePairsTableAndOtherHandsByTotal() {
@@ -268,7 +269,7 @@ class CorrectMoveTest {
 
     // Every set of card values from 3 to [maxCards] cards below 21, suits aside, since past two cards they decide nothing
     private fun multiCardHands(maxCards: Int): List<List<Card>> {
-        val ranks = Rank.entries.distinctBy { it.value }
+        val ranks = SPANISH_RANKS.distinctBy { it.value }
 
         fun grow(hand: List<Rank>): List<List<Rank>> {
             val points = hand.sumOf { it.value }
