@@ -21,14 +21,26 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     dismissLabel: String = stringResource(R.string.cancel),
+) = ConfirmDialog(title, confirmLabel, onConfirm, onDismiss, dismissLabel) { Text(message) }
+
+/** A [ConfirmDialog] whose [content] asks for more than a yes, and whose button works only while [confirmEnabled]. */
+@Composable
+fun ConfirmDialog(
+    title: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    dismissLabel: String = stringResource(R.string.cancel),
+    confirmEnabled: Boolean = true,
+    content: @Composable () -> Unit,
 ) {
     val armed by rememberArmed(Unit)
 
     AlertDialog(
         onDismissRequest = { if (armed) onDismiss() },
-        confirmButton = { TextButton(onClick = { if (armed) onConfirm() }) { Text(confirmLabel) } },
+        confirmButton = { TextButton(onClick = { if (armed) onConfirm() }, enabled = confirmEnabled) { Text(confirmLabel) } },
         dismissButton = { TextButton(onClick = { if (armed) onDismiss() }) { Text(dismissLabel) } },
         title = { Text(title) },
-        text = { Text(message) },
+        text = content,
     )
 }

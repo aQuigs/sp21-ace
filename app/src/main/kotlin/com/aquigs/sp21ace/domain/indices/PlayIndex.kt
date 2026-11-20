@@ -34,7 +34,7 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
 
     internal val total: HandTotal get() = HandTotal(value, soft = kind == HandKind.SOFT)
 
-    internal val pairCard: Upcard get() = if (value == 1) Upcard.ACE else Upcard.fromLabel("$value")
+    internal val pairCard: Upcard get() = Upcard.ofPoints(value)
 
     companion object {
         /** The hand [label] names, as [IndexHand.label] writes it. */
@@ -56,6 +56,21 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
 /** HIT is for indices that leave a stand or double as the count falls, as published charts print "hit at −1 or lower". */
 enum class DeviationPlay { HIT, STAND, DOUBLE, SPLIT, SURRENDER }
 
+/**
+ * The plays an index on a hand of this kind can name. Only a pair splits, and no basic strategy chart or index table surrenders a
+ * soft hand, which can always take a card without busting. A pair can be played as its total too, as in doubling a pair of 5s or
+ * surrendering a pair of 8s.
+ */
+val HandKind.plays: List<DeviationPlay>
+    get() = when (this) {
+        HandKind.HARD -> listOf(DeviationPlay.HIT, DeviationPlay.STAND, DeviationPlay.DOUBLE, DeviationPlay.SURRENDER)
+        HandKind.SOFT -> listOf(DeviationPlay.HIT, DeviationPlay.STAND, DeviationPlay.DOUBLE)
+        HandKind.PAIR -> DeviationPlay.entries
+    }
+
+/** The numbers an index can be set to, past the furthest any published Hi-Lo index reaches. */
+val INDEX_NUMBERS: IntRange = -10..10
+
 /** The question an index answers: when to make a play basic strategy doesn't, a hand's play against an upcard, or insurance. */
 sealed interface Deviation : Serializable {
     val upcard: Upcard
@@ -75,7 +90,7 @@ sealed interface Deviation : Serializable {
 
     data class OnHand(val hand: IndexHand, override val upcard: Upcard, val play: DeviationPlay) : Deviation {
         init {
-            require(play != DeviationPlay.SPLIT || hand.kind == HandKind.PAIR) { "Only a pair splits: ${hand.label}" }
+            require(play in hand.kind.plays) { "No $play index on ${hand.label}" }
         }
     }
 

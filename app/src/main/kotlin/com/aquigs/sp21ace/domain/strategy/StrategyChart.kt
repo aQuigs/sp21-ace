@@ -30,6 +30,9 @@ enum class Upcard(val label: String) {
     companion object {
         fun fromLabel(label: String): Upcard =
             requireNotNull(entries.firstOrNull { it.label == label }) { "Unknown upcard: $label" }
+
+        /** The upcard a card worth [points] reads as, an ace 1 and any ten-value card 10. */
+        fun ofPoints(points: Int): Upcard = if (points == 1) ACE else fromLabel("$points")
     }
 }
 

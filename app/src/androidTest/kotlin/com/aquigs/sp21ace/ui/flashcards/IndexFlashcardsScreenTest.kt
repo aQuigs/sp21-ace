@@ -40,6 +40,7 @@ import com.aquigs.sp21ace.domain.indices.DeviationPlay
 import com.aquigs.sp21ace.domain.indices.Flashcard
 import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
 import com.aquigs.sp21ace.domain.indices.FlashcardDealer
+import com.aquigs.sp21ace.domain.indices.FlashcardOptions
 import com.aquigs.sp21ace.domain.indices.FlashcardRun
 import com.aquigs.sp21ace.domain.indices.Game
 import com.aquigs.sp21ace.domain.indices.HandKind
@@ -84,6 +85,7 @@ class IndexFlashcardsScreenTest {
     private var covered by mutableStateOf(false)
     private var onScreen by mutableStateOf(true)
     private var windowFocused by mutableStateOf(true)
+    private var indicesOpened = 0
 
     /** The run as the composition root carries it out, timed by the test's clock, with only [deals] left to deal after [first]. */
     private inner class FakeRun(preset: IndexPreset, first: Flashcard, deals: List<Flashcard>) : IndexFlashcardsActions {
@@ -95,7 +97,7 @@ class IndexFlashcardsScreenTest {
         private val next = deals.iterator()
 
         override fun answer(asked: Flashcard, number: Int) {
-            run.answer(asked, number, dealer, timer.elapsed(asked), Instant.EPOCH) { next.next() }?.let {
+            run.answer(asked, number, dealer, timer.elapsed(asked), Instant.EPOCH) { _, _ -> next.next() }?.let {
                 run = it.run
                 timer.dealt(it.run.card)
                 answers += it.answer
@@ -105,6 +107,10 @@ class IndexFlashcardsScreenTest {
         override fun shown(card: Flashcard) = timer.shown(card)
 
         override fun interrupted() = timer.interrupted()
+
+        override fun changePresets(presets: IndexPresets) = Unit
+
+        override fun changeOptions(options: FlashcardOptions) = Unit
     }
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
@@ -143,11 +149,12 @@ class IndexFlashcardsScreenTest {
                     Sp21AceTheme {
                         if (onScreen) {
                             IndexFlashcardsScreen(
-                                state = IndexFlashcardsState(fake.run, fake.presets),
+                                state = IndexFlashcardsState(fake.run, fake.presets, FlashcardOptions()),
                                 settings = settings,
                                 covered = covered,
                                 actions = fake,
                                 onOpenDrawer = {},
+                                onOpenIndices = { indicesOpened++ },
                                 modifier = modifier,
                             )
                         }
@@ -246,11 +253,15 @@ class IndexFlashcardsScreenTest {
     }
 
     @Test
-    fun withNothingSwitchedOnTheScreenSaysSoAndOffersNoPad() {
+    fun withNothingSwitchedOnTheScreenSaysSoAndOffersTheWayToIndicesInPlaceOfThePad() {
         show(preset = h17.copy(entries = h17.entries.map { it.copy(enabled = false) })).run = FlashcardRun(null)
 
         compose.onNodeWithText(string(R.string.no_indices_switched_on)).assertIsDisplayed()
         button(0).assertDoesNotExist()
+
+        compose.onNodeWithText(string(R.string.choose_indices)).assertIsDisplayed().performClick()
+
+        assertEquals(1, indicesOpened)
     }
 
     @Test

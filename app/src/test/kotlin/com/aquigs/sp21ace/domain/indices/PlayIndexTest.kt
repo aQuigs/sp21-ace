@@ -31,8 +31,17 @@ class PlayIndexTest {
     }
 
     @Test
-    fun onlyAPairSplitsAndInsuranceIsAgainstAnAce() {
-        assertThrows(IllegalArgumentException::class.java) { Deviation.OnHand(IndexHand(HandKind.HARD, 16), Upcard.TEN, DeviationPlay.SPLIT) }
+    fun onlyAPairSplitsNoSoftHandSurrendersAndInsuranceIsAgainstAnAce() {
+        assertEquals(listOf(DeviationPlay.HIT, DeviationPlay.STAND, DeviationPlay.DOUBLE, DeviationPlay.SURRENDER), HandKind.HARD.plays)
+        assertEquals(listOf(DeviationPlay.HIT, DeviationPlay.STAND, DeviationPlay.DOUBLE), HandKind.SOFT.plays)
+        assertEquals(DeviationPlay.entries, HandKind.PAIR.plays)
+
+        for (hand in everyHand) {
+            for (play in DeviationPlay.entries) {
+                val made = runCatching { Deviation.OnHand(hand, Upcard.TEN, play) }
+                assertEquals("${hand.label} $play", play in hand.kind.plays, made.isSuccess)
+            }
+        }
         assertEquals(Upcard.ACE, Deviation.Insurance.upcard)
     }
 

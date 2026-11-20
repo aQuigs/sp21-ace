@@ -11,6 +11,8 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isSelectable
@@ -21,12 +23,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.Sp21AceApp
 import com.aquigs.sp21ace.data.FlashcardHistoryStore
+import com.aquigs.sp21ace.data.FlashcardOptionsStore
 import com.aquigs.sp21ace.data.HandCustomizationStore
 import com.aquigs.sp21ace.data.IndexPresetsStore
 import com.aquigs.sp21ace.data.PlayHistoryStore
@@ -44,8 +48,13 @@ import com.aquigs.sp21ace.domain.dealing.type
 import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
 import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
+import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
+import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.Flashcard
+import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
+import com.aquigs.sp21ace.domain.indices.FlashcardDealer
+import com.aquigs.sp21ace.domain.indices.FlashcardOptions
 import com.aquigs.sp21ace.domain.indices.IndexPresets
 import com.aquigs.sp21ace.domain.indices.PlayIndex
 import com.aquigs.sp21ace.domain.indices.title
@@ -89,6 +98,7 @@ class AppShellTest {
     private val tableStore by lazy { TableStore(compose.activity, "table_app_shell_test") }
     private val playHistoryStore by lazy { PlayHistoryStore(File(compose.activity.filesDir, "play_history_app_shell_test.txt")) }
     private val presetsStore by lazy { IndexPresetsStore(compose.activity, "index_presets_app_shell_test") }
+    private val flashcardOptionsStore by lazy { FlashcardOptionsStore(compose.activity, "flashcard_options_app_shell_test") }
     private val flashcardHistoryStore by lazy { FlashcardHistoryStore(File(compose.activity.filesDir, "flashcard_history_app_shell_test.txt")) }
 
     // Shoe H17, the preset a first launch drills, stands on hard 16 vs 10 at 0 or higher and insures at +3 or higher
@@ -96,6 +106,13 @@ class AppShellTest {
     private val sixteenVsKing = Flashcard(sixteenVsTen, cards("9c 7d"), card("Kh"))
     private val insuranceCard = Flashcard(PlayIndex(Deviation.Insurance, 3), emptyList(), card("As"))
     private var flashcardsDealt = 0
+    private var lastDealer: FlashcardDealer? = null
+
+    // 16 vs K first, then insurance and 16 vs K in turn, while their indices are dealt, and otherwise what the app would deal
+    private fun dealFlashcard(dealer: FlashcardDealer, previous: Flashcard?, history: List<FlashcardAnswer>): Flashcard? {
+        lastDealer = dealer
+        return (if (flashcardsDealt++ % 2 == 0) sixteenVsKing else insuranceCard).takeIf { it.index in dealer.indices } ?: dealer.deal(previous, history)
+    }
     private var now = 0L
 
     private var handsDealt = 0
@@ -122,6 +139,7 @@ class AppShellTest {
         historyStore.clear()
         playHistoryStore.clear()
         presetsStore.save(IndexPresets.seeded())
+        flashcardOptionsStore.save(FlashcardOptions())
         flashcardHistoryStore.clear()
 
         compose.setContent {
@@ -133,10 +151,10 @@ class AppShellTest {
                 settingsStore,
                 tableStore,
                 presetsStore,
+                flashcardOptionsStore,
                 flashcardHistoryStore,
                 deal = { picker, history -> dealHand(picker, history) },
-                // 16 vs K first, then insurance and 16 vs K in turn
-                dealFlashcard = { _, _ -> if (flashcardsDealt++ % 2 == 0) sixteenVsKing else insuranceCard },
+                dealFlashcard = ::dealFlashcard,
                 sounds = { played += it },
                 // Its shoe deals 8-J against a 4 first
                 random = Random(2),
@@ -181,14 +199,17 @@ class AppShellTest {
             R.string.customize_hands,
             R.string.accuracy,
             R.string.index_flashcards,
+            R.string.indices,
             R.string.play_spanish_21,
             R.string.settings,
         )
             .map { drawerItem(it).assertIsDisplayed().getBoundsInRoot() }
         items.zipWithNext().forEach { (above, below) -> assertTrue(below.top >= above.bottom) }
-        // Card Counting heads its one item, between Basic Strategy's last and Play's first
+        // Card Counting heads its items, between Basic Strategy's last and Play's first
         val cardCounting = headings[1].getBoundsInRoot()
         assertTrue(items[4].bottom <= cardCounting.top && cardCounting.bottom <= items[5].top)
+        val play = headings[2].getBoundsInRoot()
+        assertTrue(items[6].bottom <= play.top && play.bottom <= items[7].top)
     }
 
     @Test
@@ -526,5 +547,81 @@ class AppShellTest {
         repeat(20) { compose.onNodeWithContentDescription(string(R.string.move_split)).performClick() }
 
         assertEquals(List(20) { pairsSplit }, dealt.map { it.type(StrategyCharts.forRules(RuleSet.S17)) })
+    }
+
+    @Test
+    fun theDrawerOpensIndicesWhoseChangesTheStoresKeepAndTheFlashcardsFollow() {
+        openFromDrawer(R.string.indices)
+        appBarTitle(R.string.indices).assertIsDisplayed()
+
+        compose.onNodeWithText(string(R.string.multi_card_flashcards_off)).performClick()
+        compose.onNodeWithText(string(R.string.deck_estimate)).performClick()
+        compose.onNodeWithText(string(R.string.round)).performClick()
+        appBarTitle(R.string.indices).assertIsDisplayed()
+
+        assertEquals(FlashcardOptions(multiCardHands = true), flashcardOptionsStore.load())
+        assertEquals(DeckEstimate.ROUND, presetsStore.load().active.deckEstimate)
+
+        compose.onNode(hasContentDescription(string(R.string.insurance)) and isToggleable()).performScrollTo().performClick()
+        openFromDrawerOverSubPage(R.string.index_flashcards)
+        compose.onNodeWithContentDescription("0").performClick()
+
+        // The card showing kept its index, and the next came from a dealer without insurance
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
+        assertTrue(insuranceCard.index !in lastDealer!!.indices)
+        assertEquals(IndexPresets.seeded().active.enabledIndices - insuranceCard.index, lastDealer!!.indices.toList())
+    }
+
+    @Test
+    fun anIndexEditedThenLeftWithBackKeepsItsNumber() {
+        openFromDrawer(R.string.indices)
+        compose.onNode(hasText("Hard 16 vs 10") and hasText("Stand at 0 or higher")).performScrollTo().performClick()
+        appBarTitle(R.string.edit_index).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.true_count)}, +3").performScrollTo().performClick()
+        compose.onNodeWithText("Stand at +3 or higher").assertExists()
+
+        Espresso.pressBack()
+
+        appBarTitle(R.string.indices).assertIsDisplayed()
+        assertEquals(IndexPresets.seeded(), presetsStore.load())
+        compose.onNode(hasText("Hard 16 vs 10") and hasText("Stand at 0 or higher")).assertExists()
+    }
+
+    @Test
+    fun aDoubleTapOnAPresetGoesBackOnlyAsFarAsIndices() {
+        openFromDrawer(R.string.indices)
+        compose.onNodeWithText(string(R.string.preset)).performClick()
+        val pickS17 = compose.onNode(hasText("Shoe, S17") and isSelectable()).fetchSemanticsNode().config[SemanticsActions.OnClick].action
+
+        // Both taps land before the page under them is drawn
+        compose.runOnUiThread {
+            pickS17?.invoke()
+            pickS17?.invoke()
+        }
+
+        appBarTitle(R.string.indices).assertIsDisplayed()
+        assertEquals(BuiltInIndexSet.BJ_SHOE_S17.name, presetsStore.load().activeId)
+    }
+
+    @Test
+    fun withNothingSwitchedOnTheFlashcardsOfferTheWayToIndices() {
+        openFromDrawer(R.string.index_flashcards)
+        openFromDrawer(R.string.indices)
+        compose.onNodeWithText(string(R.string.preset)).performClick()
+        compose.onNodeWithText(string(R.string.new_preset)).performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNode(hasSetTextAction()).performTextReplacement("Mine")
+        compose.onNode(hasText(string(R.string.empty_preset)) and isSelectable()).performClick()
+        compose.onNodeWithText(string(R.string.create)).performClick()
+
+        // Back over Index Presets and Indices to the flashcards, which now have nothing to deal
+        compose.onNodeWithContentDescription(string(R.string.back)).performClick()
+        compose.onNodeWithContentDescription(string(R.string.back)).performClick()
+        compose.onNodeWithText(string(R.string.no_indices_switched_on)).assertIsDisplayed()
+        compose.onNodeWithText(string(R.string.choose_indices)).performClick()
+
+        appBarTitle(R.string.indices).assertIsDisplayed()
+        compose.onNode(hasText(string(R.string.preset)) and hasText("Mine")).assertIsDisplayed()
+        assertEquals("Mine", presetsStore.load().active.name)
     }
 }

@@ -26,7 +26,7 @@ class FlashcardRunTest {
 
     @Test
     fun gradesTheCardShowingThenDealsTheNextAndRecordsTheAnswer() {
-        val answered = FlashcardRun(sixteenCard).answer(sixteenCard, 0, dealer, 2350.milliseconds, at) { insuranceCard }
+        val answered = FlashcardRun(sixteenCard).answer(sixteenCard, 0, dealer, 2350.milliseconds, at) { _, _ -> insuranceCard }
 
         assertEquals(FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0)), answered?.run)
         assertEquals(FlashcardAnswer(at, Game.BLACKJACK, sixteenVsTen, 0, 2350.milliseconds, cards = 2), answered?.answer)
@@ -35,7 +35,7 @@ class FlashcardRunTest {
 
     @Test
     fun aWrongNumberIsGradedWrongAndAnUntimedAnswerStillCounts() {
-        val answered = requireNotNull(FlashcardRun(insuranceCard).answer(insuranceCard, -3, dealer, time = null, at) { sixteenCard })
+        val answered = requireNotNull(FlashcardRun(insuranceCard).answer(insuranceCard, -3, dealer, time = null, at) { _, _ -> sixteenCard })
 
         assertFalse(answered.run.lastGrade!!.isCorrect)
         assertEquals(FlashcardAnswer(at, Game.BLACKJACK, insurance, -3, time = null, cards = 0), answered.answer)
@@ -43,21 +43,26 @@ class FlashcardRunTest {
     }
 
     @Test
-    fun theDealIsHandedTheAnswerAndByDefaultDealsAnotherIndex() {
-        var handed: FlashcardAnswer? = null
-        val answered = FlashcardRun(sixteenCard).answer(sixteenCard, 1, dealer, null, at) { handed = it; insuranceCard }
+    fun theDealIsHandedTheHistoryWithTheAnswerAddedAndByDefaultDealsAnotherIndex() {
+        val earlier = FlashcardAnswer(at, Game.BLACKJACK, insurance, 3, null, cards = 0)
+        var handed: List<FlashcardAnswer>? = null
+        val answered = FlashcardRun(sixteenCard).answer(sixteenCard, 1, dealer, null, at, listOf(earlier)) { previous, history ->
+            assertEquals(sixteenCard, previous)
+            handed = history
+            insuranceCard
+        }
 
-        assertEquals(answered?.answer, handed)
+        assertEquals(listOf(earlier, answered!!.answer), handed)
         assertEquals(insurance, FlashcardRun(sixteenCard).answer(sixteenCard, 1, dealer, null, at)?.run?.card?.index)
     }
 
     @Test
     fun aTapOnACardNoLongerShowingOrOnAnIndexNoLongerDealtGradesNothing() {
         val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0))
-        assertNull(run.answer(sixteenCard, 0, dealer, null, at) { error("A stale tap must not deal") })
+        assertNull(run.answer(sixteenCard, 0, dealer, null, at) { _, _ -> error("A stale tap must not deal") })
 
         val swapped = FlashcardDealer(preset(sixteenVsTen.copy(threshold = 1)))
-        assertNull(FlashcardRun(sixteenCard).answer(sixteenCard, 0, swapped, null, at) { error("A stale index must not deal") })
+        assertNull(FlashcardRun(sixteenCard).answer(sixteenCard, 0, swapped, null, at) { _, _ -> error("A stale index must not deal") })
     }
 
     @Test
@@ -71,8 +76,18 @@ class FlashcardRunTest {
         assertEquals(FlashcardRun(insuranceCard, run.lastGrade), redealt)
         repeat(50) { assertTrue(run.dealtFrom(edited).card?.index in edited.indices) }
 
-        assertEquals(FlashcardRun(null, run.lastGrade), run.dealtFrom(FlashcardDealer(preset())))
+        // Nothing to deal, so no verdict on an index perhaps no longer drilled either
+        assertEquals(FlashcardRun(null), run.dealtFrom(FlashcardDealer(preset())))
         assertEquals(sixteenVsTen, FlashcardRun(null).dealtFrom(FlashcardDealer(preset(sixteenVsTen))).card?.index)
+    }
+
+    @Test
+    fun aHandOf3OrMoreCardsIsRedealtOnceTheyAreSwitchedOff() {
+        val threeCards = FlashcardRun(Flashcard(sixteenVsTen, cards("2c 4d Jh"), card("Kh")))
+        val withThreeCards = FlashcardDealer(preset(sixteenVsTen), FlashcardOptions(multiCardHands = true))
+
+        assertSame(threeCards, threeCards.dealtFrom(withThreeCards) { error("A card these options deal stays") })
+        repeat(20) { assertEquals(2, threeCards.dealtFrom(FlashcardDealer(preset(sixteenVsTen))).card?.player?.size) }
     }
 
     @Test
