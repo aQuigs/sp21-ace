@@ -4,12 +4,15 @@ import com.aquigs.sp21ace.domain.indices.BUILT_IN_REVISION
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
 import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
+import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.FakeIndices
 import com.aquigs.sp21ace.domain.indices.Game
 import com.aquigs.sp21ace.domain.indices.INDEX_CORRECTIONS
+import com.aquigs.sp21ace.domain.indices.IndexCorrection
 import com.aquigs.sp21ace.domain.indices.IndexEntry
 import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexPresets
+import com.aquigs.sp21ace.domain.indices.PlayIndex
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -124,18 +127,67 @@ class IndexPresetsCodeTest {
         }
     }
 
-    private val correction = INDEX_CORRECTIONS.first()
+    // The seeded presets as a build at [revision] saved them: every row corrected since holds the number it had then
+    private fun seededAt(revision: Int): IndexPresets = INDEX_CORRECTIONS
+        .filter { it.revision > revision }
+        .groupBy { it.set to it.from.deviation }
+        .map { (_, corrections) -> corrections.minBy { it.revision } }
+        .fold(IndexPresets.seeded()) { presets, correction -> presets.update(correction.set.name) { it.edit(correction.from) } }
 
-    // The seeded presets holding the number the first release shipped before the correction
-    private val firstRelease = IndexPresets.seeded().update(correction.set.name) { it.edit(correction.from) }
+    private fun savedAt(presets: IndexPresets, revision: Int?) =
+        IndexPresetsCode.print(presets).replace(" revision=$BUILT_IN_REVISION", revision?.let { " revision=$it" }.orEmpty())
 
-    private val firstReleaseCode = IndexPresetsCode.print(firstRelease).replace(" revision=$BUILT_IN_REVISION", "")
+    private val firstRelease = seededAt(IndexCorrection.FIRST_REVISION)
 
     @Test
     fun presetsSavedWithNoRevisionOrAnOlderOneTakeTheCorrectionsSinceAndMustBeSavedAgain() {
-        for (stored in listOf(firstReleaseCode, firstReleaseCode.replaceFirst("\n", " revision=${correction.revision - 1}\n"))) {
-            assertEquals(stored, IndexPresetsCode.Loaded(IndexPresets.seeded(), corrected = true), IndexPresetsCode.load(stored))
+        val stored = listOf(savedAt(firstRelease, revision = null)) +
+            (IndexCorrection.FIRST_REVISION until BUILT_IN_REVISION).map { savedAt(seededAt(it), it) }
+
+        for (code in stored) {
+            assertEquals(code, IndexPresetsCode.Loaded(IndexPresets.seeded(), corrected = true), IndexPresetsCode.load(code))
         }
+    }
+
+    // The seeded presets with H17's 12 vs 3, 12 vs 6, 13 vs 3 and 11 vs A at these numbers
+    private fun h17At(twelveVsThree: Int, twelveVsSix: Int, thirteenVsThree: Int, elevenVsAce: Int): IndexPresets {
+        val numbers = listOf(
+            Deviation.parse("STAND", "12", "3") to twelveVsThree,
+            Deviation.parse("STAND", "12", "6") to twelveVsSix,
+            Deviation.parse("STAND", "13", "3") to thirteenVsThree,
+            Deviation.parse("DOUBLE", "11", "A") to elevenVsAce,
+        )
+        return IndexPresets.seeded().update(BuiltInIndexSet.BJ_SHOE_H17.name) { preset ->
+            numbers.fold(preset) { edited, (deviation, number) -> edited.edit(PlayIndex(deviation, number)) }
+        }
+    }
+
+    private val shipped = h17At(twelveVsThree = 1, twelveVsSix = -4, thirteenVsThree = -3, elevenVsAce = 0)
+
+    @Test
+    fun theShippedH17NumbersAreTheOnesTheUpgradesLoad() {
+        assertEquals(IndexPresets.seeded(), shipped)
+    }
+
+    @Test
+    fun presetsMainSavedAtRevision2TakeTheThreeRevision3Corrections() {
+        val main = savedAt(h17At(twelveVsThree = 1, twelveVsSix = -3, thirteenVsThree = -2, elevenVsAce = -1), revision = 2)
+
+        assertEquals(IndexPresetsCode.Loaded(shipped, corrected = true), IndexPresetsCode.load(main))
+    }
+
+    @Test
+    fun presetsSavedBeforeAnyRevisionTakeAllFourCorrectionsInOneLoad() {
+        val beforeRevisions = savedAt(h17At(twelveVsThree = 2, twelveVsSix = -3, thirteenVsThree = -2, elevenVsAce = -1), revision = null)
+
+        assertEquals(IndexPresetsCode.Loaded(shipped, corrected = true), IndexPresetsCode.load(beforeRevisions))
+    }
+
+    @Test
+    fun aUsersOwnOldNumberSavedAtRevision3Stays() {
+        val own = h17At(twelveVsThree = 1, twelveVsSix = -3, thirteenVsThree = -3, elevenVsAce = 0)
+
+        assertEquals(IndexPresetsCode.Loaded(own, corrected = false), IndexPresetsCode.load(savedAt(own, revision = 3)))
     }
 
     @Test
