@@ -25,7 +25,7 @@ enum class BuiltInIndexSet(val game: Game, val title: String, val rounding: Coun
  * A built-in number changed in [revision] of the built-in sets: a preset based on [set] that still holds [from], saved before that
  * revision, takes [to].
  */
-data class IndexCorrection(val revision: Int, val set: BuiltInIndexSet, val from: PlayIndex, val to: PlayIndex) {
+internal data class IndexCorrection(val revision: Int, val set: BuiltInIndexSet, val from: PlayIndex, val to: PlayIndex) {
     init {
         require(revision > FIRST_REVISION && from.deviation == to.deviation && from != to) { "Not a correction: $this" }
     }
@@ -42,7 +42,7 @@ data class IndexCorrection(val revision: Int, val set: BuiltInIndexSet, val from
 }
 
 /** The built-in sets' revision now, which presets saved by this version carry. */
-val BUILT_IN_REVISION: Int = INDEX_CORRECTIONS.maxOfOrNull { it.revision } ?: IndexCorrection.FIRST_REVISION
+internal val BUILT_IN_REVISION: Int = INDEX_CORRECTIONS.maxOfOrNull { it.revision } ?: IndexCorrection.FIRST_REVISION
 
 private val WHITESPACE = Regex("\\s+")
 private const val HEADER = "play hand upcard direction index"

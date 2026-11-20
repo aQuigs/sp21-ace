@@ -14,13 +14,13 @@ class IndexPresetsStore(context: Context, name: String = "index_presets") {
 
     fun load(): IndexPresets {
         val loaded = IndexPresetsCode.load(prefs.getString(PRESETS, null))
-        loaded.rewrite?.let(::write)
+        if (loaded.corrected) save(loaded.presets)
         return loaded.presets
     }
 
-    fun save(presets: IndexPresets) = write(IndexPresetsCode.print(presets))
-
-    private fun write(code: String) = prefs.edit { putString(PRESETS, code) }
+    fun save(presets: IndexPresets) {
+        prefs.edit { putString(PRESETS, IndexPresetsCode.print(presets)) }
+    }
 
     private companion object {
         const val PRESETS = "presets"

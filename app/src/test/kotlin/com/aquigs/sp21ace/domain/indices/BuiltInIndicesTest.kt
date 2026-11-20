@@ -23,12 +23,11 @@ class BuiltInIndicesTest {
     }
 
     @Test
-    fun eachRowsLastCorrectionEndsAtItsSetsNumberAndTheRevisionIsTheNewest() {
+    fun eachRowsLastCorrectionEndsAtItsSetsNumber() {
         for ((row, corrections) in INDEX_CORRECTIONS.groupBy { it.set to it.from.deviation }) {
             val (set, deviation) = row
             assertEquals("$set ${deviation.title}", set.find(deviation)?.index, corrections.maxBy { it.revision }.to)
         }
-        assertEquals(INDEX_CORRECTIONS.maxOf { it.revision }, BUILT_IN_REVISION)
     }
 
     // Every row of a set's fixture. A row the sources dispute, status conflict, ships debated.

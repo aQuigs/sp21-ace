@@ -39,18 +39,16 @@ class IndexPresetsStoreTest {
         assertEquals(presets, IndexPresetsStore(context, name).load())
     }
 
-    // IndexPresetsCodeTest covers which corrections apply on the JVM; this shows the store writes the corrected presets back once
+    // IndexPresetsCodeTest covers which corrections apply on the JVM; this shows the store saves the corrected presets back
     @Test
-    fun presetsSavedBeforeACorrectionLoadCorrectedAndAreStoredSoAfterwards() {
+    fun presetsSavedBeforeACorrectionLoadCorrectedAndAreSavedAgainAsCorrected() {
         val first = INDEX_CORRECTIONS.first()
         val old = IndexPresets.seeded().update(first.set.name) { it.edit(first.from) }
-        val stored = IndexPresetsCode.print(old).replace(" revision=$BUILT_IN_REVISION", "")
-        context.getSharedPreferences(name, Context.MODE_PRIVATE).edit(commit = true) { putString("presets", stored) }
+        val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
+        prefs.edit(commit = true) { putString("presets", IndexPresetsCode.print(old).replace(" revision=$BUILT_IN_REVISION", "")) }
 
         assertEquals(IndexPresets.seeded(), IndexPresetsStore(context, name).load())
-
-        IndexPresetsStore(context, name).save(old)
-        assertEquals(old, IndexPresetsStore(context, name).load())
+        assertEquals(IndexPresetsCode.print(IndexPresets.seeded()), prefs.getString("presets", null))
     }
 
     @Test

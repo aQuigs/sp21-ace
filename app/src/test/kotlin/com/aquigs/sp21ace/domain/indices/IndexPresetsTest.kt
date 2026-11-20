@@ -205,44 +205,45 @@ class IndexPresetsTest {
         assertEquals(listOf(FakeIndices.STAND, FakeIndices.DOUBLE, FakeIndices.HIT), mixed.enabledIndices)
     }
 
-    private val stand12v3 = Deviation.OnHand(IndexHand(HandKind.HARD, 12), Upcard.THREE, DeviationPlay.STAND)
+    private val correction = INDEX_CORRECTIONS.first()
+    private val deviation = correction.from.deviation
 
-    // A preset saved from the H17 set before revision 2 moved its 12 v 3 from +2 to +1, with that index switched off
-    private val savedH17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17")
-        .edit(PlayIndex(stand12v3, 2))
-        .switch(stand12v3, enabled = false)
+    // A preset saved from the corrected set before the correction, with that index switched off
+    private val saved = IndexPreset.from(correction.set, "saved").edit(correction.from).switch(deviation, enabled = false)
+    private val before = correction.revision - 1
 
     @Test
     fun aPresetSavedBeforeACorrectionTakesItInPlaceKeepingTheSwitch() {
-        val corrected = savedH17.corrected(since = 1)
-        val expected = savedH17.entries.map { if (it.index.deviation == stand12v3) IndexEntry(PlayIndex(stand12v3, 1), enabled = false) else it }
+        val corrected = saved.corrected(since = before)
 
-        assertEquals(expected, corrected.entries)
-        assertFalse(corrected.isCustom(PlayIndex(stand12v3, 1)))
-        assertTrue(corrected.isDebated(PlayIndex(stand12v3, 1)))
+        assertEquals(saved.entries.map { if (it.index.deviation == deviation) IndexEntry(correction.to, enabled = false) else it }, corrected.entries)
+        assertFalse(corrected.isCustom(correction.to))
     }
 
     @Test
     fun aPresetSavedAtOrAfterACorrectionKeepsTheOldNumberAsTheUsersOwn() {
-        assertEquals(savedH17, savedH17.corrected(since = 2))
+        assertEquals(saved, saved.corrected(since = correction.revision))
     }
 
     @Test
     fun aNumberTheUserSetOtherThanTheOldOneStays() {
-        for (own in listOf(PlayIndex(stand12v3, 3), PlayIndex(stand12v3, 2, IndexDirection.AT_OR_BELOW))) {
-            val edited = savedH17.edit(own)
-            assertEquals(edited, edited.corrected(since = 1))
+        val other = correction.from.copy(threshold = correction.from.threshold + 5)
+        for (own in listOf(other, correction.from.copy(direction = IndexDirection.AT_OR_BELOW))) {
+            val edited = saved.edit(own)
+            assertEquals(edited, edited.corrected(since = before))
         }
     }
 
     @Test
     fun aPresetNotBasedOnTheCorrectedSetKeepsTheOldNumber() {
-        val mine = preset("m", PlayIndex(stand12v3, 2))
-        val s17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_S17, "s17")
+        val mine = preset("m", correction.from)
+        val others = BuiltInIndexSet.entries.filter { it != correction.set }.map { IndexPreset.from(it, it.name) }
 
-        assertEquals(mine, mine.corrected(since = 1))
-        assertEquals(PlayIndex(stand12v3, 2), s17.find(stand12v3)?.index)
-        assertEquals(s17, s17.corrected(since = 1))
+        assertEquals(mine, mine.corrected(since = before))
+        for (other in others) {
+            val holding = if (other.has(deviation)) other.edit(correction.from) else other.add(correction.from)
+            assertEquals(holding, holding.corrected(since = before))
+        }
     }
 
     @Test
@@ -263,10 +264,9 @@ class IndexPresetsTest {
     @Test
     fun presetsAreCorrectedOneByOneAndTheSeededOnesNeedNone() {
         val seeded = IndexPresets.seeded()
-        assertEquals(seeded, seeded.corrected(since = 1))
+        assertEquals(seeded, seeded.corrected(since = before))
 
-        val saved = IndexPresets(listOf(three.presets[0], savedH17), activeId = "h17")
-        val expected = IndexPresets(listOf(three.presets[0], savedH17.corrected(since = 1)), activeId = "h17")
-        assertEquals(expected, saved.corrected(since = 1))
+        val both = IndexPresets(listOf(three.presets[0], saved), activeId = "saved")
+        assertEquals(IndexPresets(listOf(three.presets[0], saved.corrected(since = before)), activeId = "saved"), both.corrected(since = before))
     }
 }

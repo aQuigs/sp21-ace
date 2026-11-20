@@ -35,7 +35,7 @@ data class IndexPreset(
      * This preset with the corrections to [basedOn] made after revision [since] applied in order: an entry still holding a
      * correction's old number takes the new one, switched on or off as it was, and any other number is the user's own and stays.
      */
-    fun corrected(since: Int, corrections: List<IndexCorrection> = INDEX_CORRECTIONS): IndexPreset = corrections
+    internal fun corrected(since: Int, corrections: List<IndexCorrection> = INDEX_CORRECTIONS): IndexPreset = corrections
         .filter { it.set == basedOn && it.revision > since }
         .sortedBy { it.revision }
         .fold(this) { preset, correction ->
@@ -89,9 +89,7 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
 
     val active: IndexPreset get() = presets.first { it.id == activeId }
 
-    /** Every preset [IndexPreset.corrected] since revision [since]. */
-    fun corrected(since: Int, corrections: List<IndexCorrection> = INDEX_CORRECTIONS): IndexPresets =
-        copy(presets = presets.map { it.corrected(since, corrections) })
+    internal fun corrected(since: Int): IndexPresets = copy(presets = presets.map { it.corrected(since) })
 
     /** The last preset can't be deleted. */
     val canDelete: Boolean get() = presets.size > 1

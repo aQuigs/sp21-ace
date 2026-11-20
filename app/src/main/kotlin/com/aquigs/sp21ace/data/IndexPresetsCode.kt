@@ -53,19 +53,18 @@ internal object IndexPresetsCode {
         }
     }.joinToString("\n")
 
-    /** What [stored] loads as, and the text to store in its place, or null when it needs none. */
-    data class Loaded(val presets: IndexPresets, val rewrite: String?)
+    /** What [stored] loads as, and whether it was [corrected], so it must be saved again to apply each correction only once. */
+    data class Loaded(val presets: IndexPresets, val corrected: Boolean)
 
     /**
-     * The presets [stored] holds, with every correction to a built-in set made since it was saved applied once, and the text that
-     * records that. Nothing stored, or nothing readable, loads the seeded presets.
+     * The presets [stored] holds, with every correction to a built-in set made since it was saved. Nothing stored, or nothing
+     * readable, loads the seeded presets.
      */
     fun load(stored: String?): Loaded {
-        val (presets, revision) = stored?.let(::read) ?: return Loaded(IndexPresets.seeded(), rewrite = null)
-        if (revision >= BUILT_IN_REVISION) return Loaded(presets, rewrite = null)
+        val (presets, revision) = stored?.let(::read) ?: return Loaded(IndexPresets.seeded(), corrected = false)
+        if (revision >= BUILT_IN_REVISION) return Loaded(presets, corrected = false)
 
-        val corrected = presets.corrected(since = revision)
-        return Loaded(corrected, print(corrected))
+        return Loaded(presets.corrected(since = revision), corrected = true)
     }
 
     fun parse(code: String): IndexPresets? = read(code)?.first
@@ -77,8 +76,8 @@ internal object IndexPresetsCode {
     private fun read(code: String): Pair<IndexPresets, Int>? {
         val lines = code.lines().filter(String::isNotBlank)
         val head = lines.firstOrNull()?.let(::LineFields)
-        val activeId = head?.let { runCatching { it[ACTIVE] }.getOrNull() }
-        val revision = head?.let { runCatching { it.ifSaved(REVISION)?.toInt() }.getOrNull() } ?: IndexCorrection.FIRST_REVISION
+        val activeId = runCatching { head?.get(ACTIVE) }.getOrNull()
+        val revision = runCatching { head?.ifSaved(REVISION)?.toInt() }.getOrNull() ?: IndexCorrection.FIRST_REVISION
 
         val blocks = mutableListOf<MutableList<String>>()
         for (line in lines) {
