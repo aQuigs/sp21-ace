@@ -1,13 +1,20 @@
 package com.aquigs.sp21ace.data
 
+import com.aquigs.sp21ace.domain.indices.BUILT_IN_REVISION
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
 import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
+import com.aquigs.sp21ace.domain.indices.Deviation
+import com.aquigs.sp21ace.domain.indices.DeviationPlay
 import com.aquigs.sp21ace.domain.indices.FakeIndices
 import com.aquigs.sp21ace.domain.indices.Game
+import com.aquigs.sp21ace.domain.indices.HandKind
+import com.aquigs.sp21ace.domain.indices.IndexHand
 import com.aquigs.sp21ace.domain.indices.IndexEntry
 import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexPresets
+import com.aquigs.sp21ace.domain.indices.PlayIndex
+import com.aquigs.sp21ace.domain.strategy.Upcard
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -60,7 +67,7 @@ class IndexPresetsCodeTest {
 
         assertEquals(
             listOf(
-                "active=mine",
+                "active=mine revision=$BUILT_IN_REVISION",
                 "preset=mine game=BLACKJACK deckEstimate=PERCENTILE_95 rounding=TRUNCATE name=Mine",
                 "index=STAND:18:2:99:AT_OR_ABOVE on=true",
                 "index=SPLIT:A-A:3:-99:AT_OR_ABOVE on=false",
@@ -119,6 +126,47 @@ class IndexPresetsCodeTest {
     fun readsNothingFromTextWithNoPresetInIt() {
         for (code in listOf("", "active=mine", "hello", "active=mine\nindex=STAND:18:2:99 on=true", "active=x\npreset=x game=CHESS name=X")) {
             assertNull(code, IndexPresetsCode.parse(code))
+        }
+    }
+
+    private val stand12v3 = Deviation.OnHand(IndexHand(HandKind.HARD, 12), Upcard.THREE, DeviationPlay.STAND)
+
+    // The seeded presets with H17 12 v 3 at +2, as the first release shipped it
+    private val firstRelease = IndexPresets.seeded().update(BuiltInIndexSet.BJ_SHOE_H17.name) { it.edit(PlayIndex(stand12v3, 2)) }
+
+    @Test
+    fun presetsSavedWithNoRevisionTakeEveryCorrectionOnceAndAreRewrittenAtTheCurrentRevision() {
+        val stored = IndexPresetsCode.print(firstRelease).replace(" revision=$BUILT_IN_REVISION", "")
+        val loaded = IndexPresetsCode.load(stored)
+
+        assertEquals(IndexPresets.seeded(), loaded.presets)
+        assertEquals(IndexPresetsCode.print(IndexPresets.seeded()), loaded.rewrite)
+    }
+
+    @Test
+    fun presetsSavedAtAnOlderRevisionTakeTheCorrectionsSinceIt() {
+        val stored = IndexPresetsCode.print(firstRelease).replace("revision=$BUILT_IN_REVISION", "revision=1")
+
+        assertEquals(IndexPresets.seeded(), IndexPresetsCode.load(stored).presets)
+    }
+
+    @Test
+    fun presetsSavedAtTheCurrentRevisionLoadAsSavedSoAUsersOwnOldNumberStays() {
+        val loaded = IndexPresetsCode.load(IndexPresetsCode.print(firstRelease))
+
+        assertEquals(firstRelease, loaded.presets)
+        assertNull(loaded.rewrite)
+    }
+
+    @Test
+    fun aSaveRecordsTheCurrentRevision() {
+        assertEquals("active=${BuiltInIndexSet.BJ_SHOE_H17.name} revision=$BUILT_IN_REVISION", IndexPresetsCode.print(firstRelease).lines().first())
+    }
+
+    @Test
+    fun nothingStoredOrNothingReadableLoadsTheSeededPresetsWithNothingToRewrite() {
+        for (stored in listOf(null, "garbled")) {
+            assertEquals(IndexPresetsCode.Loaded(IndexPresets.seeded(), rewrite = null), IndexPresetsCode.load(stored))
         }
     }
 }

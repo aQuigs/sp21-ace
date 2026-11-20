@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.core.content.edit
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.aquigs.sp21ace.domain.indices.BUILT_IN_REVISION
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
 import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
+import com.aquigs.sp21ace.domain.indices.INDEX_CORRECTIONS
 import com.aquigs.sp21ace.domain.indices.IndexPresets
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -37,15 +39,18 @@ class IndexPresetsStoreTest {
         assertEquals(presets, IndexPresetsStore(context, name).load())
     }
 
+    // IndexPresetsCodeTest covers which corrections apply on the JVM; this shows the store writes the corrected presets back once
     @Test
-    fun aSavedPresetStillHoldingACorrectedBuiltInNumberLoadsWithTheCorrection() {
-        val set = BuiltInIndexSet.BJ_SHOE_H17
-        val old = set.superseded.first()
-        val saved = IndexPresets.seeded().update(set.name) { it.edit(old) }
-
-        IndexPresetsStore(context, name).save(saved)
+    fun presetsSavedBeforeACorrectionLoadCorrectedAndAreStoredSoAfterwards() {
+        val first = INDEX_CORRECTIONS.first()
+        val old = IndexPresets.seeded().update(first.set.name) { it.edit(first.from) }
+        val stored = IndexPresetsCode.print(old).replace(" revision=$BUILT_IN_REVISION", "")
+        context.getSharedPreferences(name, Context.MODE_PRIVATE).edit(commit = true) { putString("presets", stored) }
 
         assertEquals(IndexPresets.seeded(), IndexPresetsStore(context, name).load())
+
+        IndexPresetsStore(context, name).save(old)
+        assertEquals(old, IndexPresetsStore(context, name).load())
     }
 
     @Test

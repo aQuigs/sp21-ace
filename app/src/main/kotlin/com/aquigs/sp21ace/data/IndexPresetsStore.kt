@@ -6,17 +6,21 @@ import com.aquigs.sp21ace.domain.indices.IndexPresets
 
 /**
  * Keeps the index presets through restarts. Until the first save it loads the built-in ones, and so does a save it can't read.
- * A saved preset loads with any built-in number corrected since it was saved.
+ * Saved presets load once with any built-in number corrected since they were saved, and are stored again as corrected.
  * A test passes its own [name], so it never overwrites the presets the app saved.
  */
 class IndexPresetsStore(context: Context, name: String = "index_presets") {
     private val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
 
-    fun load(): IndexPresets = prefs.getString(PRESETS, null)?.let(IndexPresetsCode::parse)?.corrected() ?: IndexPresets.seeded()
-
-    fun save(presets: IndexPresets) {
-        prefs.edit { putString(PRESETS, IndexPresetsCode.print(presets)) }
+    fun load(): IndexPresets {
+        val loaded = IndexPresetsCode.load(prefs.getString(PRESETS, null))
+        loaded.rewrite?.let(::write)
+        return loaded.presets
     }
+
+    fun save(presets: IndexPresets) = write(IndexPresetsCode.print(presets))
+
+    private fun write(code: String) = prefs.edit { putString(PRESETS, code) }
 
     private companion object {
         const val PRESETS = "presets"

@@ -207,14 +207,14 @@ class IndexPresetsTest {
 
     private val stand12v3 = Deviation.OnHand(IndexHand(HandKind.HARD, 12), Upcard.THREE, DeviationPlay.STAND)
 
-    // A preset saved from the H17 set before its 12 v 3 went from +2 to +1, with that index switched off
+    // A preset saved from the H17 set before revision 2 moved its 12 v 3 from +2 to +1, with that index switched off
     private val savedH17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17")
         .edit(PlayIndex(stand12v3, 2))
         .switch(stand12v3, enabled = false)
 
     @Test
-    fun aSavedPresetTakesItsSetsCorrectionInPlaceKeepingTheSwitch() {
-        val corrected = savedH17.corrected()
+    fun aPresetSavedBeforeACorrectionTakesItInPlaceKeepingTheSwitch() {
+        val corrected = savedH17.corrected(since = 1)
         val expected = savedH17.entries.map { if (it.index.deviation == stand12v3) IndexEntry(PlayIndex(stand12v3, 1), enabled = false) else it }
 
         assertEquals(expected, corrected.entries)
@@ -223,30 +223,50 @@ class IndexPresetsTest {
     }
 
     @Test
-    fun aNumberTheUserSetOtherThanTheSupersededOneStays() {
+    fun aPresetSavedAtOrAfterACorrectionKeepsTheOldNumberAsTheUsersOwn() {
+        assertEquals(savedH17, savedH17.corrected(since = 2))
+    }
+
+    @Test
+    fun aNumberTheUserSetOtherThanTheOldOneStays() {
         for (own in listOf(PlayIndex(stand12v3, 3), PlayIndex(stand12v3, 2, IndexDirection.AT_OR_BELOW))) {
             val edited = savedH17.edit(own)
-            assertEquals(edited, edited.corrected())
+            assertEquals(edited, edited.corrected(since = 1))
         }
     }
 
     @Test
-    fun aPresetNotBasedOnTheSetKeepsTheSupersededNumber() {
+    fun aPresetNotBasedOnTheCorrectedSetKeepsTheOldNumber() {
         val mine = preset("m", PlayIndex(stand12v3, 2))
         val s17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_S17, "s17")
 
-        assertEquals(mine, mine.corrected())
+        assertEquals(mine, mine.corrected(since = 1))
         assertEquals(PlayIndex(stand12v3, 2), s17.find(stand12v3)?.index)
-        assertEquals(s17, s17.corrected())
+        assertEquals(s17, s17.corrected(since = 1))
     }
 
     @Test
-    fun presetsLoadCorrectedOneByOneAndUnchangedWhenNothingIsSuperseded() {
+    fun laterCorrectionsOfOneRowApplyInRevisionOrderAndOnlyThoseNewerThanTheSave() {
+        val h17 = BuiltInIndexSet.BJ_SHOE_H17
+        val stand = FakeIndices.STAND
+        val corrections = listOf(
+            IndexCorrection(3, h17, stand.copy(threshold = 1), stand.copy(threshold = 0)),
+            IndexCorrection(2, h17, stand.copy(threshold = 2), stand.copy(threshold = 1)),
+        )
+        val saved = IndexPreset("p", "P", Game.BLACKJACK, basedOn = h17, entries = listOf(IndexEntry(stand.copy(threshold = 2))))
+
+        assertEquals(stand.copy(threshold = 0), saved.corrected(since = 1, corrections).entries.single().index)
+        assertEquals(stand.copy(threshold = 2), saved.corrected(since = 2, corrections).entries.single().index)
+        assertEquals(stand.copy(threshold = 0), saved.edit(stand.copy(threshold = 1)).corrected(since = 2, corrections).entries.single().index)
+    }
+
+    @Test
+    fun presetsAreCorrectedOneByOneAndTheSeededOnesNeedNone() {
         val seeded = IndexPresets.seeded()
-        assertEquals(seeded, seeded.corrected())
+        assertEquals(seeded, seeded.corrected(since = 1))
 
         val saved = IndexPresets(listOf(three.presets[0], savedH17), activeId = "h17")
-        val expected = IndexPresets(listOf(three.presets[0], savedH17.corrected()), activeId = "h17")
-        assertEquals(expected, saved.corrected())
+        val expected = IndexPresets(listOf(three.presets[0], savedH17.corrected(since = 1)), activeId = "h17")
+        assertEquals(expected, saved.corrected(since = 1))
     }
 }

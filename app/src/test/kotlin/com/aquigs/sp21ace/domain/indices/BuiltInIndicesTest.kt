@@ -2,8 +2,6 @@ package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.strategy.Fixtures
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,14 +23,12 @@ class BuiltInIndicesTest {
     }
 
     @Test
-    fun everySupersededNumberIsOnADeviationItsSetStillHasWithAnotherNumber() {
-        for (set in BuiltInIndexSet.entries) {
-            for (old in set.superseded) {
-                val current = set.find(old.deviation)?.index
-                assertNotNull("$set supersedes $old on a deviation it doesn't have", current)
-                assertNotEquals("$set supersedes its own number $old", old, current)
-            }
+    fun eachRowsLastCorrectionEndsAtItsSetsNumberAndTheRevisionIsTheNewest() {
+        for ((row, corrections) in INDEX_CORRECTIONS.groupBy { it.set to it.from.deviation }) {
+            val (set, deviation) = row
+            assertEquals("$set ${deviation.title}", set.find(deviation)?.index, corrections.maxBy { it.revision }.to)
         }
+        assertEquals(INDEX_CORRECTIONS.maxOf { it.revision }, BUILT_IN_REVISION)
     }
 
     // Every row of a set's fixture. A row the sources dispute, status conflict, ships debated.

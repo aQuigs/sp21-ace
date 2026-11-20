@@ -56,11 +56,7 @@ internal val INDEX_SETS: Map<BuiltInIndexSet, String> = mapOf(
     """,
 )
 
-// Numbers a set once shipped and has since corrected, in the same format, so a saved preset based on the set that still holds
-// one takes the set's current number when it loads
-internal val SUPERSEDED_INDICES: Map<BuiltInIndexSet, String> = mapOf(
-    BuiltInIndexSet.BJ_SHOE_H17 to """
-        play       hand   upcard  direction    index
-        STAND      12     3       AT_OR_ABOVE  +2
-    """,
+// Every built-in number changed since the first release, so presets saved before it take the new one once
+internal val INDEX_CORRECTIONS: List<IndexCorrection> = listOf(
+    IndexCorrection.of(revision = 2, BuiltInIndexSet.BJ_SHOE_H17, "STAND", "12", "3", from = 2, to = 1),
 )

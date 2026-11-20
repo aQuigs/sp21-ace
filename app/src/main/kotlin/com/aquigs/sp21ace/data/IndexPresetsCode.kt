@@ -1,9 +1,11 @@
 package com.aquigs.sp21ace.data
 
+import com.aquigs.sp21ace.domain.indices.BUILT_IN_REVISION
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
 import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.Game
+import com.aquigs.sp21ace.domain.indices.IndexCorrection
 import com.aquigs.sp21ace.domain.indices.IndexEntry
 import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexPresets
@@ -11,18 +13,20 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 
 /**
- * Every preset as text, a [LineFields] line each: the active preset's id first, then each preset's line followed by a line for
- * each of its entries, such as
+ * Every preset as text, a [LineFields] line each: the active preset's id and the [BUILT_IN_REVISION] it was saved at first, then
+ * each preset's line followed by a line for each of its entries, such as
  * ```
- * active=BJ_SHOE_H17
+ * active=BJ_SHOE_H17 revision=2
  * preset=BJ_SHOE_H17 game=BLACKJACK deckEstimate=TRUNCATE rounding=FLOOR basedOn=BJ_SHOE_H17 name=Shoe%2C+H17
  * index=STAND:16:10:0:AT_OR_ABOVE on=true
  * ```
  * The name is URL-encoded, so it holds no space. A preset started empty has no `basedOn`. A convention missing, or one this
- * version doesn't know, reads as its default, and a built-in set it doesn't know as none.
+ * version doesn't know, reads as its default, and a built-in set it doesn't know as none. Text saved before the revision joined
+ * reads as [IndexCorrection.FIRST_REVISION].
  */
 internal object IndexPresetsCode {
     private const val ACTIVE = "active"
+    private const val REVISION = "revision"
     private const val PRESET = "preset"
     private const val GAME = "game"
     private const val DECK_ESTIMATE = "deckEstimate"
@@ -34,7 +38,7 @@ internal object IndexPresetsCode {
     private const val UTF_8 = "UTF-8"
 
     fun print(presets: IndexPresets): String = buildList {
-        add(LineFields.print(ACTIVE to presets.activeId))
+        add(LineFields.print(ACTIVE to presets.activeId, REVISION to BUILT_IN_REVISION))
         presets.presets.forEach { preset ->
             val head = listOfNotNull(
                 PRESET to preset.id,
@@ -49,13 +53,32 @@ internal object IndexPresetsCode {
         }
     }.joinToString("\n")
 
+    /** What [stored] loads as, and the text to store in its place, or null when it needs none. */
+    data class Loaded(val presets: IndexPresets, val rewrite: String?)
+
+    /**
+     * The presets [stored] holds, with every correction to a built-in set made since it was saved applied once, and the text that
+     * records that. Nothing stored, or nothing readable, loads the seeded presets.
+     */
+    fun load(stored: String?): Loaded {
+        val (presets, revision) = stored?.let(::read) ?: return Loaded(IndexPresets.seeded(), rewrite = null)
+        if (revision >= BUILT_IN_REVISION) return Loaded(presets, rewrite = null)
+
+        val corrected = presets.corrected(since = revision)
+        return Loaded(corrected, print(corrected))
+    }
+
+    fun parse(code: String): IndexPresets? = read(code)?.first
+
     /**
      * Null when no preset reads. A preset or entry it can't read, such as one a later version saved with a game or play this one
      * doesn't know, is left out rather than losing the rest. With the active preset left out, the first is active.
      */
-    fun parse(code: String): IndexPresets? {
+    private fun read(code: String): Pair<IndexPresets, Int>? {
         val lines = code.lines().filter(String::isNotBlank)
-        val activeId = lines.firstOrNull()?.let { runCatching { LineFields(it)[ACTIVE] }.getOrNull() }
+        val head = lines.firstOrNull()?.let(::LineFields)
+        val activeId = head?.let { runCatching { it[ACTIVE] }.getOrNull() }
+        val revision = head?.let { runCatching { it.ifSaved(REVISION)?.toInt() }.getOrNull() } ?: IndexCorrection.FIRST_REVISION
 
         val blocks = mutableListOf<MutableList<String>>()
         for (line in lines) {
@@ -64,7 +87,7 @@ internal object IndexPresetsCode {
         val presets = blocks.mapNotNull(::readPreset).distinctBy { it.id }
         if (presets.isEmpty()) return null
 
-        return IndexPresets(presets, activeId?.takeIf { id -> presets.any { it.id == id } } ?: presets.first().id)
+        return IndexPresets(presets, activeId?.takeIf { id -> presets.any { it.id == id } } ?: presets.first().id) to revision
     }
 
     private fun readPreset(block: List<String>): IndexPreset? = try {
