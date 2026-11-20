@@ -42,8 +42,8 @@ class IndexPresetsStoreTest {
     // IndexPresetsCodeTest covers which corrections apply on the JVM; this shows the store saves the corrected presets back
     @Test
     fun presetsSavedBeforeACorrectionLoadCorrectedAndAreSavedAgainAsCorrected() {
-        val first = INDEX_CORRECTIONS.first()
-        val old = IndexPresets.seeded().update(first.set.name) { it.edit(first.from) }
+        val firstNumbers = INDEX_CORRECTIONS.groupBy { it.set to it.from.deviation }.map { (_, corrections) -> corrections.minBy { it.revision } }
+        val old = firstNumbers.fold(IndexPresets.seeded()) { presets, correction -> presets.update(correction.set.name) { it.edit(correction.from) } }
         val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
         prefs.edit(commit = true) { putString("presets", IndexPresetsCode.print(old).replace(" revision=$BUILT_IN_REVISION", "")) }
 

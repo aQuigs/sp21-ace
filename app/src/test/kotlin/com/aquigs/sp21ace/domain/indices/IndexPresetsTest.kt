@@ -262,6 +262,29 @@ class IndexPresetsTest {
     }
 
     @Test
+    fun everyCorrectionInOneRevisionAppliesToItsOwnRow() {
+        val h17 = BuiltInIndexSet.BJ_SHOE_H17
+        val stand = FakeIndices.STAND
+        val double = FakeIndices.DOUBLE
+        val corrections = listOf(
+            IndexCorrection(2, h17, stand, stand.copy(threshold = 1)),
+            IndexCorrection(2, h17, double, double.copy(threshold = 1)),
+        )
+        val saved = IndexPreset("p", "P", Game.BLACKJACK, basedOn = h17, entries = listOf(IndexEntry(stand), IndexEntry(double, enabled = false)))
+
+        assertEquals(
+            listOf(IndexEntry(stand.copy(threshold = 1)), IndexEntry(double.copy(threshold = 1), enabled = false)),
+            saved.corrected(since = 1, corrections).entries,
+        )
+        val ownStand = stand.copy(threshold = 5)
+        assertEquals(
+            listOf(IndexEntry(ownStand), IndexEntry(double.copy(threshold = 1), enabled = false)),
+            saved.edit(ownStand).corrected(since = 1, corrections).entries,
+        )
+        assertEquals(saved, saved.corrected(since = 2, corrections))
+    }
+
+    @Test
     fun presetsAreCorrectedOneByOneAndTheSeededOnesNeedNone() {
         val seeded = IndexPresets.seeded()
         assertEquals(seeded, seeded.corrected(since = before))

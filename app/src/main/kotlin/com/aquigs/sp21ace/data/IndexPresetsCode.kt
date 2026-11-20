@@ -16,7 +16,7 @@ import java.net.URLEncoder
  * Every preset as text, a [LineFields] line each: the active preset's id and the [BUILT_IN_REVISION] it was saved at first, then
  * each preset's line followed by a line for each of its entries, such as
  * ```
- * active=BJ_SHOE_H17 revision=2
+ * active=BJ_SHOE_H17 revision=3
  * preset=BJ_SHOE_H17 game=BLACKJACK deckEstimate=TRUNCATE rounding=FLOOR basedOn=BJ_SHOE_H17 name=Shoe%2C+H17
  * index=STAND:16:10:0:AT_OR_ABOVE on=true
  * ```
