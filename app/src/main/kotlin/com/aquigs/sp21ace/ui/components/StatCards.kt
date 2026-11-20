@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.history.Period
+import com.aquigs.sp21ace.domain.history.Tally
 import kotlinx.coroutines.delay
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
@@ -88,10 +89,22 @@ fun CountRow(content: @Composable RowScope.() -> Unit) {
 /** Blackjack Ace's Today, Week, Month and All Time chips. */
 @Composable
 private fun PeriodChips(selected: Period, onSelect: (Period) -> Unit, modifier: Modifier = Modifier) {
+    StatChips(Period.entries.map { it to it.title }, selected, onSelect, modifier, Alignment.CenterHorizontally)
+}
+
+/** A stats page's chips to choose one of [choices], each a value and its label. */
+@Composable
+fun <T> StatChips(
+    choices: List<Pair<T, Int>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    alignment: Alignment.Horizontal = Alignment.Start,
+) {
     // Wraps rather than running off a narrow screen at a large font size
-    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
-        Period.entries.forEach { period ->
-            FilterChip(selected = period == selected, onClick = { onSelect(period) }, label = { Text(stringResource(period.title)) })
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp, alignment)) {
+        choices.forEach { (choice, label) ->
+            FilterChip(selected = choice == selected, onClick = { onSelect(choice) }, label = { Text(stringResource(label)) })
         }
     }
 }
@@ -107,10 +120,28 @@ private val Period.title: Int
 /** A titled block of figures, which a screen reader reads as one item, each figure before its label. */
 @Composable
 fun StatCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
+    StatSection(title = title, modifier = Modifier.semantics(mergeDescendants = true) {}, content = content)
+}
+
+/** A titled block laid out as a [StatCard] is, whose parts a screen reader reads one by one, such as rows to tap. */
+@Composable
+fun StatSection(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Text(text = title, style = MaterialTheme.typography.headlineSmall)
         HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
         content()
+    }
+}
+
+/** How often answers were right, [tally]'s percentage over its counts right and wrong. */
+@Composable
+fun AccuracyCard(title: String, tally: Tally) {
+    StatCard(title = title) {
+        Figure(value = tally.percentText(), label = stringResource(R.string.accuracy), color = MaterialTheme.colorScheme.primary)
+        CountRow {
+            Count(value = tally.correct.toString(), label = stringResource(R.string.correct), modifier = Modifier.weight(1f))
+            Count(value = tally.incorrect.toString(), label = stringResource(R.string.incorrect), modifier = Modifier.weight(1f))
+        }
     }
 }
 

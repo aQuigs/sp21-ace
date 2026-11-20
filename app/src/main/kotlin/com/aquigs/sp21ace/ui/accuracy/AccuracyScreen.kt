@@ -19,13 +19,11 @@ import com.aquigs.sp21ace.domain.history.Accuracy
 import com.aquigs.sp21ace.domain.history.HandFilter
 import com.aquigs.sp21ace.domain.history.Period
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
-import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.accuracy
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.ui.chart.tabTitle
-import com.aquigs.sp21ace.ui.components.Count
-import com.aquigs.sp21ace.ui.components.CountRow
+import com.aquigs.sp21ace.ui.components.AccuracyCard
 import com.aquigs.sp21ace.ui.components.DoubledTabbedPages
 import com.aquigs.sp21ace.ui.components.Figure
 import com.aquigs.sp21ace.ui.components.MaxContentWidth
@@ -34,7 +32,6 @@ import com.aquigs.sp21ace.ui.components.StatCards
 import com.aquigs.sp21ace.ui.components.StatPage
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.components.displayName
-import com.aquigs.sp21ace.ui.components.percentText
 import com.aquigs.sp21ace.ui.components.rememberNow
 import java.time.Instant
 
@@ -97,20 +94,5 @@ private fun Cards(accuracy: Accuracy, hands: HandFilter) {
 private fun StreakCard(longest: Int) {
     StatCard(title = stringResource(R.string.streak)) {
         Figure(value = longest.toString(), label = stringResource(R.string.longest_streak), color = MaterialTheme.colorScheme.onSurface)
-    }
-}
-
-@Composable
-private fun AccuracyCard(title: String, tally: Tally) {
-    StatCard(title = title) {
-        Figure(
-            value = tally.percentText(),
-            label = stringResource(R.string.accuracy),
-            color = MaterialTheme.colorScheme.primary,
-        )
-        CountRow {
-            Count(value = tally.correct.toString(), label = stringResource(R.string.correct), modifier = Modifier.weight(1f))
-            Count(value = tally.incorrect.toString(), label = stringResource(R.string.incorrect), modifier = Modifier.weight(1f))
-        }
     }
 }

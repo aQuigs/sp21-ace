@@ -48,6 +48,7 @@ import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.ui.accuracy.AccuracyScreen
 import com.aquigs.sp21ace.ui.chart.StrategyChartScreen
 import com.aquigs.sp21ace.ui.components.SectionHeading
+import com.aquigs.sp21ace.ui.flashcards.FlashcardStatsScreen
 import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsActions
 import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsScreen
 import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsState
@@ -84,6 +85,7 @@ enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     Accuracy(R.string.accuracy, isRoot = false),
     Indices(R.string.indices, isRoot = false),
     IndexPresets(R.string.index_presets, isRoot = false),
+    FlashcardStats(R.string.flashcard_stats, isRoot = false),
     DeckEstimate(R.string.deck_estimate, isRoot = false),
     CountRounding(R.string.true_count_rounding, isRoot = false),
     CardsShown(R.string.cards_shown, isRoot = false),
@@ -105,7 +107,11 @@ private val BASIC_STRATEGY_ITEMS = listOf(
     Destination.Accuracy to R.drawable.ic_accuracy,
 )
 
-private val CARD_COUNTING_ITEMS = listOf(Destination.IndexFlashcards to R.drawable.ic_home, Destination.Indices to R.drawable.ic_customize_hands)
+private val CARD_COUNTING_ITEMS = listOf(
+    Destination.IndexFlashcards to R.drawable.ic_home,
+    Destination.Indices to R.drawable.ic_customize_hands,
+    Destination.FlashcardStats to R.drawable.ic_accuracy,
+)
 
 // Blackjack Ace's Play section also lists its own Table Rules and Strategy Chart, but here the table plays by the trainer's.
 private val PLAY_ITEMS = listOf(Destination.Play to R.drawable.ic_home, Destination.PlayStatistics to R.drawable.ic_accuracy)
@@ -244,6 +250,7 @@ fun AppShell(
                 },
                 onBack = back,
             )
+            Destination.FlashcardStats -> FlashcardStatsScreen(flashcards.history, flashcards.presets.active, onBack = back)
             Destination.IndexPresets -> IndexPresetsScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
             Destination.DeckEstimate -> DeckEstimateScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
             Destination.CountRounding -> CountRoundingScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
@@ -258,6 +265,7 @@ fun AppShell(
                 onOpenButtonLocation = { open(Destination.ButtonLocation) },
                 onClearHistory = onClearHistory,
                 onClearPlayHistory = onClearPlayHistory,
+                onClearFlashcardHistory = flashcardActions::clearHistory,
                 onBack = back,
             )
             Destination.ColorTheme -> ColorThemeScreen(settings, onSettingsChange, onBack = back)

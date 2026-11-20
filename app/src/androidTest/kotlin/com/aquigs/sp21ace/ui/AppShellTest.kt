@@ -200,6 +200,7 @@ class AppShellTest {
             R.string.accuracy,
             R.string.index_flashcards,
             R.string.indices,
+            R.string.flashcard_stats,
             R.string.play_spanish_21,
             R.string.settings,
         )
@@ -209,7 +210,31 @@ class AppShellTest {
         val cardCounting = headings[1].getBoundsInRoot()
         assertTrue(items[4].bottom <= cardCounting.top && cardCounting.bottom <= items[5].top)
         val play = headings[2].getBoundsInRoot()
-        assertTrue(items[6].bottom <= play.top && play.bottom <= items[7].top)
+        assertTrue(items[7].bottom <= play.top && play.bottom <= items[8].top)
+    }
+
+    private fun flashcardAccuracyCard() = compose.cardTexts(string(R.string.accuracy), string(R.string.correct))
+
+    @Test
+    fun theDrawerOpensFlashcardStatsOverTheFlashcardsAndAClearInSettingsEmptiesIt() {
+        openFromDrawer(R.string.index_flashcards)
+        compose.onNodeWithContentDescription("0").performClick()
+        compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
+
+        openFromDrawer(R.string.flashcard_stats)
+        appBarTitle(R.string.flashcard_stats).assertIsDisplayed()
+        assertEquals(compose.activity.accuracyCardTexts(R.string.accuracy, string(R.string.percentage, 50.0), correct = 1, incorrect = 1), flashcardAccuracyCard())
+        compose.onNodeWithText("Hard 16 vs 10").assertExists()
+
+        openFromDrawerOverSubPage(R.string.settings)
+        compose.onNodeWithText(string(R.string.clear_flashcard_history)).performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.clear)).performClick()
+        openFromDrawerOverSubPage(R.string.flashcard_stats)
+
+        assertEquals(emptyList<FlashcardAnswer>(), flashcardHistoryStore.history.value)
+        assertEquals(compose.activity.accuracyCardTexts(R.string.accuracy, string(R.string.no_data), correct = 0, incorrect = 0), flashcardAccuracyCard())
+        compose.onNodeWithText(string(R.string.no_answers_in_period)).assertExists()
     }
 
     @Test

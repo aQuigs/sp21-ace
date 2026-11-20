@@ -111,6 +111,8 @@ class IndexFlashcardsScreenTest {
         override fun changePresets(presets: IndexPresets) = Unit
 
         override fun changeOptions(options: FlashcardOptions) = Unit
+
+        override fun clearHistory() = Unit
     }
 
     private fun string(id: Int, vararg args: Any) = compose.activity.getString(id, *args)
@@ -149,7 +151,7 @@ class IndexFlashcardsScreenTest {
                     Sp21AceTheme {
                         if (onScreen) {
                             IndexFlashcardsScreen(
-                                state = IndexFlashcardsState(fake.run, fake.presets, FlashcardOptions()),
+                                state = IndexFlashcardsState(fake.run, fake.presets, FlashcardOptions(), history = emptyList()),
                                 settings = settings,
                                 covered = covered,
                                 actions = fake,

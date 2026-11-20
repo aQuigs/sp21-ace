@@ -53,6 +53,8 @@ class FlashcardLineTest {
             line.replace("STAND:18:2", "STAND:4:2"),
             line.replace("answer=-1", "answer=one"),
             line.replace("ms=2350", "ms=-5"),
+            // So long it reads as an infinite time, which no percentile can work with
+            line.replace("ms=2350", "ms=${Long.MAX_VALUE}"),
             line.replace("cards=2", "cards=-1"),
             // A field missing, a field twice, and a cut-short line run on into the next
             line.replace("index=STAND:18:2:99:AT_OR_ABOVE ", ""),
