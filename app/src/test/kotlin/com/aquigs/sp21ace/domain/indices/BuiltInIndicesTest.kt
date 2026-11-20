@@ -2,6 +2,8 @@ package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.strategy.Fixtures
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,6 +22,17 @@ class BuiltInIndicesTest {
         }
 
         assertEquals("Numbers that differ from their fixtures", emptyList<String>(), mismatches)
+    }
+
+    @Test
+    fun everySupersededNumberIsOnADeviationItsSetStillHasWithAnotherNumber() {
+        for (set in BuiltInIndexSet.entries) {
+            for (old in set.superseded) {
+                val current = set.find(old.deviation)?.index
+                assertNotNull("$set supersedes $old on a deviation it doesn't have", current)
+                assertNotEquals("$set supersedes its own number $old", old, current)
+            }
+        }
     }
 
     // Every row of a set's fixture. A row the sources dispute, status conflict, ships debated.

@@ -38,6 +38,17 @@ class IndexPresetsStoreTest {
     }
 
     @Test
+    fun aSavedPresetStillHoldingACorrectedBuiltInNumberLoadsWithTheCorrection() {
+        val set = BuiltInIndexSet.BJ_SHOE_H17
+        val old = set.superseded.first()
+        val saved = IndexPresets.seeded().update(set.name) { it.edit(old) }
+
+        IndexPresetsStore(context, name).save(saved)
+
+        assertEquals(IndexPresets.seeded(), IndexPresetsStore(context, name).load())
+    }
+
+    @Test
     fun loadsTheBuiltInPresetsWhenTheSaveCannotBeRead() {
         context.getSharedPreferences(name, Context.MODE_PRIVATE).edit(commit = true) { putString("presets", "garbled") }
 

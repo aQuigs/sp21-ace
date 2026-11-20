@@ -17,6 +17,9 @@ enum class BuiltInIndexSet(val game: Game, val title: String, val rounding: Coun
     /** In the order Wizard of Odds lists them: the Illustrious 18, then the Fab 4. */
     val indices: List<BuiltInIndex> by lazy { parseIndexSet(INDEX_SETS.getValue(this)) }
 
+    /** Numbers the set once shipped and has since corrected, each on a deviation the set still has. */
+    val superseded: List<PlayIndex> by lazy { SUPERSEDED_INDICES[this]?.let(::parseIndexSet).orEmpty().map { it.index } }
+
     /** The set's number for [deviation], or null when it has none. */
     fun find(deviation: Deviation): BuiltInIndex? = indices.firstOrNull { it.index.deviation == deviation }
 }

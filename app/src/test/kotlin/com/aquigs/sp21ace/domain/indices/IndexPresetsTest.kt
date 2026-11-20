@@ -204,4 +204,49 @@ class IndexPresetsTest {
 
         assertEquals(listOf(FakeIndices.STAND, FakeIndices.DOUBLE, FakeIndices.HIT), mixed.enabledIndices)
     }
+
+    private val stand12v3 = Deviation.OnHand(IndexHand(HandKind.HARD, 12), Upcard.THREE, DeviationPlay.STAND)
+
+    // A preset saved from the H17 set before its 12 v 3 went from +2 to +1, with that index switched off
+    private val savedH17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17")
+        .edit(PlayIndex(stand12v3, 2))
+        .switch(stand12v3, enabled = false)
+
+    @Test
+    fun aSavedPresetTakesItsSetsCorrectionInPlaceKeepingTheSwitch() {
+        val corrected = savedH17.corrected()
+        val expected = savedH17.entries.map { if (it.index.deviation == stand12v3) IndexEntry(PlayIndex(stand12v3, 1), enabled = false) else it }
+
+        assertEquals(expected, corrected.entries)
+        assertFalse(corrected.isCustom(PlayIndex(stand12v3, 1)))
+        assertTrue(corrected.isDebated(PlayIndex(stand12v3, 1)))
+    }
+
+    @Test
+    fun aNumberTheUserSetOtherThanTheSupersededOneStays() {
+        for (own in listOf(PlayIndex(stand12v3, 3), PlayIndex(stand12v3, 2, IndexDirection.AT_OR_BELOW))) {
+            val edited = savedH17.edit(own)
+            assertEquals(edited, edited.corrected())
+        }
+    }
+
+    @Test
+    fun aPresetNotBasedOnTheSetKeepsTheSupersededNumber() {
+        val mine = preset("m", PlayIndex(stand12v3, 2))
+        val s17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_S17, "s17")
+
+        assertEquals(mine, mine.corrected())
+        assertEquals(PlayIndex(stand12v3, 2), s17.find(stand12v3)?.index)
+        assertEquals(s17, s17.corrected())
+    }
+
+    @Test
+    fun presetsLoadCorrectedOneByOneAndUnchangedWhenNothingIsSuperseded() {
+        val seeded = IndexPresets.seeded()
+        assertEquals(seeded, seeded.corrected())
+
+        val saved = IndexPresets(listOf(three.presets[0], savedH17), activeId = "h17")
+        val expected = IndexPresets(listOf(three.presets[0], savedH17.corrected()), activeId = "h17")
+        assertEquals(expected, saved.corrected())
+    }
 }

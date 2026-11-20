@@ -31,6 +31,20 @@ data class IndexPreset(
     /** Whether [index] is [basedOn]'s own number and one the sources debate. */
     fun isDebated(index: PlayIndex): Boolean = basedOn?.find(index.deviation)?.let { it.debated && it.index == index } == true
 
+    /**
+     * This preset with every entry that still holds a number [basedOn] has since corrected moved to the corrected number, switched
+     * on or off as it was. An entry set to any other number is the user's own and stays.
+     */
+    fun corrected(): IndexPreset {
+        val set = basedOn ?: return this
+        return copy(
+            entries = entries.map { entry ->
+                val current = set.find(entry.index.deviation)?.index
+                if (current != null && entry.index in set.superseded) entry.copy(index = current) else entry
+            },
+        )
+    }
+
     /** Whether an index on [deviation] is listed, which makes adding another for it impossible. */
     fun find(deviation: Deviation): IndexEntry? = entries.firstOrNull { it.index.deviation == deviation }
 
@@ -77,6 +91,9 @@ data class IndexPresets(val presets: List<IndexPreset>, val activeId: String) {
     }
 
     val active: IndexPreset get() = presets.first { it.id == activeId }
+
+    /** Every preset [IndexPreset.corrected], as saved presets load after a built-in number is corrected. */
+    fun corrected(): IndexPresets = copy(presets = presets.map(IndexPreset::corrected))
 
     /** The last preset can't be deleted. */
     val canDelete: Boolean get() = presets.size > 1
