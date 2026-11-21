@@ -9,9 +9,10 @@ LIMIT_DB = 3
 RELEASE = 0.003
 
 C6 = 1046.5
-# A clay chip clacks from about 3 to 9 kHz and dies within tens of milliseconds; the stack under it adds a short, lower knock.
-# Each mode is (frequency, seconds to fade 60 dB, gain).
-CLAY = [(3200, 0.050, 1.0), (4860, 0.038, 0.7), (6940, 0.026, 0.45), (9280, 0.018, 0.25), (1150, 0.030, 0.35)]
+# The pat's bands and the thump's modes all sit above 500 Hz, where a phone's own speaker still gives them out. Each mode is
+# (frequency, seconds to fade 60 dB, gain).
+PAT = [(650, 0.005, 1.0), (1050, 0.005, 0.7), (1700, 0.005, 0.3)]
+THUMP = [(560, 0.036, 1.0), (860, 0.028, 0.5)]
 
 
 def bar(freq, ring):
@@ -20,23 +21,24 @@ def bar(freq, ring):
     return [(freq, ring, 1.0), (freq * 3.93, ring * 0.2, 0.22), (freq * 9.2, ring * 0.07, 0.06)]
 
 
-def resonate(excitation, freq, t60, out, start, gain):
-    """Rings a two-pole resonator at freq Hz, fading 60 dB over t60 s, from the excitation, into out from sample start."""
+def rung(excitation, freq, t60, length):
+    """The first `length` samples of a two-pole resonator at freq Hz, fading 60 dB over t60 s, rung by the excitation."""
     r = 10 ** (-3 / (t60 * RATE))
     w = 2 * math.pi * freq / RATE
     a1, a2 = 2 * r * math.cos(w), -r * r
-    norm = gain * math.sin(w)
     y1 = y2 = 0.0
-    for n in range(min(int(t60 * RATE), len(out) - start)):
+    ringing = []
+    for n in range(length):
         x = excitation[n] if n < len(excitation) else 0.0
         y = x + a1 * y1 + a2 * y2
-        out[start + n] += norm * y
+        ringing.append(y)
         y2, y1 = y1, y
+    return ringing
 
 
-def impact(out, at, amp, modes, contact, grit, rng, pitch):
+def impact(out, at, amp, modes, contact, grit, rng):
     """One hit at `at` s: a contact pulse `contact` s wide, brighter the shorter, with `grit` of rough noise, rung through the
-    modes. The pulse's area is amp, so a softer contact is as strong but duller."""
+    modes until each has faded. The pulse's area is amp, so a softer contact is as strong but duller."""
     width = max(2, round(contact * RATE))
     top = amp * math.pi / (2 * width)
     excitation = [
@@ -46,31 +48,44 @@ def impact(out, at, amp, modes, contact, grit, rng, pitch):
     start = int(at * RATE)
     # Where a hit lands decides how strongly each mode rings, and which way it first swings. Modes that all start the same way
     # would add up to a spike no real hit makes, which would cap how loud the sound could be.
+    # A unit pulse rings the resonator at 1 / sin(w), so the sine brings each mode back to its own gain.
     for freq, t60, gain in modes:
-        resonate(excitation, freq * pitch, t60, out, start, gain * rng.uniform(0.7, 1.3) * rng.choice((-1, 1)))
+        norm = gain * rng.uniform(0.7, 1.3) * rng.choice((-1, 1)) * math.sin(2 * math.pi * freq / RATE)
+        for n, y in enumerate(rung(excitation, freq, t60, min(int(t60 * RATE), len(out) - start))):
+            out[start + n] += norm * y
+
+
+def puff(out, bands, attack, decay, rng):
+    """A breath of noise that swells over `attack` s and fades over `decay` s, heard through the bands. Each band peaks at its
+    gain, however narrow it is."""
+    excitation = [
+        rng.gauss(0, 1) * (1 - math.exp(-k / (attack * RATE))) * math.exp(-k / (decay * RATE))
+        for k in range(int((3 * attack + 7 * decay) * RATE))
+    ]
+    for freq, t60, gain in bands:
+        band = rung(excitation, freq, t60, min(len(excitation) + int(t60 * RATE), len(out)))
+        top = max(abs(v) for v in band)
+        for n, v in enumerate(band):
+            out[n] += gain * v / top
 
 
 def right(out, rng):
     """One marimba note, C6, struck with a soft mallet and left to ring."""
-    impact(out, 0.0, 1.0, bar(C6, 0.45), 0.0006, 0.05, rng, 1.0)
+    impact(out, 0.0, 1.0, bar(C6, 0.45), 0.0006, 0.05, rng)
 
 
 def wrong(out, rng):
-    """Two clay chips set down, each landing with a clack and a quick rattle as it settles. A little under a clay chip's own pitch,
-    landing softly and settling slowly, so it doesn't sound upbeat."""
-    for at, amp in [(0.0, 1.0), (0.17, 0.8)]:
-        pitch = 0.88 * (1 + rng.uniform(-0.04, 0.04))
-        gap = 0.042 * 1.35
-        for _ in range(3):
-            impact(out, at, amp, CLAY, 0.00025, 0.3, rng, pitch * (1 + rng.uniform(-0.012, 0.012)))
-            at, gap, amp = at + gap, gap * 0.62, amp * 0.45
+    """A card laid flat on the felt: a soft pat of air, and the table's thump under it as the pat swells. Short and dull, with
+    nothing left ringing, against the note."""
+    puff(out, PAT, 0.002, 0.012, rng)
+    impact(out, 0.003, 0.5, THUMP, 0.0014, 0.0, rng)
 
 
 def limited(samples):
     """Brought down by up to LIMIT_DB where it peaks, then peaking at 1, for a little more loudness at the same peak. The gain
     looks a millisecond ahead and recovers over RELEASE, so it turns each hit's first few milliseconds down without clipping the
-    wave. Only a little, as every peak above the limit comes out level with the rest: much more and a chip's settling rattle
-    would be as loud as its landing."""
+    wave. Only a little, as every peak above the limit comes out level with the rest: much more and a sound's tail would come
+    up as loud as its start."""
     ahead = RATE // 1000
     ceiling = max(abs(s) for s in samples) * 10 ** (-LIMIT_DB / 20)
     need = [min(1, ceiling / max(abs(s), 1e-12)) for s in samples]
@@ -107,12 +122,12 @@ def write(path, samples, gain):
 
 
 def render(directory, sounds):
-    """Writes each of sounds, a {name: make} map, to <directory>/<name>.wav at one loudness: the most that keeps every one
-    within PEAK. Each has a seed of its own, so retuning one never changes another's noise or hits."""
+    """Writes each of sounds, a {name: (make, seed)} map, to <directory>/<name>.wav at one loudness: the most that keeps every
+    one within PEAK. Each has a seed of its own, so retuning one never changes another's noise or hits."""
     shaped, levels = {}, {}
-    for name, make in sounds.items():
+    for name, (make, seed) in sounds.items():
         samples = [0.0] * int(LENGTH * RATE)
-        make(samples, random.Random(name))
+        make(samples, random.Random(seed))
         shaped[name] = limited(samples)
         levels[name] = loudness(shaped[name])
     target = PEAK * min(levels.values())
@@ -121,4 +136,5 @@ def render(directory, sounds):
 
 
 if __name__ == '__main__':
-    render(sys.argv[1], {'right': right, 'wrong': wrong})
+    # The wrong sound keeps the seed it was picked by ear under: another seed is another pat
+    render(sys.argv[1], {'right': (right, 'right'), 'wrong': (wrong, 'card_flat')})
