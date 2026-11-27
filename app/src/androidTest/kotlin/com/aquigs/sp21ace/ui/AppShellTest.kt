@@ -123,7 +123,7 @@ class AppShellTest {
     // 16 vs K first, then insurance and 16 vs K in turn, while their indices are dealt, and otherwise what the app would deal
     private fun dealFlashcard(dealer: FlashcardDealer, previous: Flashcard?, history: List<FlashcardAnswer>): Flashcard? {
         lastDealer = dealer
-        return (if (flashcardsDealt++ % 2 == 0) sixteenVsKing else insuranceCard).takeIf { it.index in dealer.indices } ?: dealer.deal(previous, history)
+        return (if (flashcardsDealt++ % 2 == 0) sixteenVsKing else insuranceCard).takeIf { it.fact in dealer.indices } ?: dealer.deal(previous, history)
     }
     private var now = 0L
 
@@ -325,7 +325,7 @@ class AppShellTest {
         compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
 
         val answers = flashcardHistoryStore.history.value.orEmpty()
-        assertEquals(listOf(sixteenVsTen to 0, PlayIndex(Deviation.Insurance, 3) to 1), answers.map { it.index to it.answer })
+        assertEquals(listOf(sixteenVsTen to 0, PlayIndex(Deviation.Insurance, 3) to 1), answers.map { it.fact to it.answer })
         assertEquals(listOf(2_000.milliseconds, 900.milliseconds), answers.map { it.time })
         assertEquals(listOf(true, false), answers.map { it.isCorrect })
 
@@ -659,21 +659,26 @@ class AppShellTest {
         appBarTitle(R.string.indices).assertIsDisplayed()
 
         compose.onNodeWithText(string(R.string.multi_card_flashcards_off)).performClick()
+        compose.onNodeWithText(string(R.string.no_index_cards_off)).performClick()
         compose.onNodeWithText(string(R.string.deck_estimate)).performClick()
         compose.onNodeWithText(string(R.string.round)).performClick()
         appBarTitle(R.string.indices).assertIsDisplayed()
 
-        assertEquals(FlashcardOptions(multiCardHands = true), flashcardOptionsStore.load())
+        assertEquals(FlashcardOptions(noIndexCards = true, multiCardHands = true), flashcardOptionsStore.load())
         assertEquals(DeckEstimate.ROUND, presetsStore.load().active.deckEstimate)
 
         compose.onNode(hasContentDescription(string(R.string.insurance)) and isToggleable()).performScrollTo().performClick()
         openFromDrawerOverSubPage(R.string.index_flashcards)
         compose.onNodeWithContentDescription("0").performClick()
 
+        compose.onNodeWithContentDescription(string(R.string.no_index)).assertIsDisplayed()
         // The card showing kept its index, and the next came from a dealer without insurance
         compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
-        assertTrue(insuranceCard.index !in lastDealer!!.indices)
-        assertEquals(IndexPresets.seeded().active.enabledIndices - insuranceCard.index, lastDealer!!.indices.toList())
+        assertTrue(insuranceCard.fact !in lastDealer!!.indices)
+        assertEquals(IndexPresets.seeded().active.enabledIndices - insuranceCard.fact, lastDealer!!.indices.toList())
+
+        compose.onNodeWithContentDescription(string(R.string.no_index)).performClick()
+        assertEquals(listOf(0, null), flashcardHistoryStore.history.value?.map { it.answer })
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
@@ -47,20 +48,14 @@ fun CircleButton(
     // DOUBLE already needs 8 sp inside the ring of a small phone's circles at a large font size, so a shorter screen, or REDOUBLE, needs less
     maxFontSize: TextUnit = 13.sp,
 ) {
-    val color = MaterialTheme.colorScheme.primary
-    // An outlined button greys out its label but not its border
-    val disabledColor = MaterialTheme.colorScheme.disabledContent
-
-    OutlinedButton(
+    RingButton(
+        name = name,
         onClick = onClick,
         modifier = modifier
             .sizeIn(maxWidth = CircleButtonSize, maxHeight = CircleButtonSize)
-            .aspectRatio(1f)
-            .semantics { contentDescription = name },
+            .aspectRatio(1f),
         enabled = enabled,
-        shape = CircleShape,
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
-        border = BorderStroke(3.dp, ringColor ?: if (enabled) color else disabledColor),
+        ringColor = ringColor,
         // The ring is drawn inside the circle in the label's colour, so the label is fitted inside the ring rather than across it
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
@@ -74,6 +69,33 @@ fun CircleButton(
             maxLines = 1,
         )
     }
+}
+
+/** The ring and its color around a [CircleButton], or around a [label] too long for a circle. A screen reader says [name]. */
+@Composable
+fun RingButton(
+    name: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    ringColor: Color? = null,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    label: @Composable RowScope.() -> Unit,
+) {
+    val color = MaterialTheme.colorScheme.primary
+    // An outlined button greys out its label but not its border
+    val disabledColor = MaterialTheme.colorScheme.disabledContent
+
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.semantics { contentDescription = name },
+        enabled = enabled,
+        shape = CircleShape,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = color),
+        border = BorderStroke(3.dp, ringColor ?: if (enabled) color else disabledColor),
+        contentPadding = contentPadding,
+        content = label,
+    )
 }
 
 /** A [CircleButton] for [move], SURR. to the eye for a surrender, and ringed in green as the correct move when [hinted]. */

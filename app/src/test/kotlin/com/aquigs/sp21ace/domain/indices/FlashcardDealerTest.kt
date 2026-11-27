@@ -9,6 +9,7 @@ import com.aquigs.sp21ace.domain.cards.isPair
 import com.aquigs.sp21ace.domain.cards.total
 import com.aquigs.sp21ace.domain.cards.totalOf
 import com.aquigs.sp21ace.domain.drill.CardsShown
+import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.upcard
 import org.junit.Assert.assertEquals
@@ -36,7 +37,7 @@ class FlashcardDealerTest {
     @Test
     fun everyCardShowsItsIndexsHandAndUpcardInTwoCardsAndInsuranceTheDealersAceAlone() {
         for (card in deals(FlashcardDealer(everyKind))) {
-            val deviation = card.index.deviation
+            val deviation = card.fact.deviation
             assertEquals("$card", deviation.upcard, card.upcard.upcard)
 
             if (deviation !is Deviation.OnHand) {
@@ -62,10 +63,10 @@ class FlashcardDealerTest {
         val dealer = FlashcardDealer(everyKind.copy(entries = everyKind.entries.map { if (it.index == off) it.copy(enabled = false) else it }))
         val cards = deals(dealer)
 
-        assertEquals(everyKind.enabledIndices.toSet() - off, cards.map { it.index }.toSet())
-        assertEquals(dealer.indices, cards.map { it.index }.toSet())
+        assertEquals(everyKind.enabledIndices.toSet() - off, cards.map { it.fact }.toSet())
+        assertEquals(dealer.indices, cards.map { it.fact }.toSet())
         for ((previous, next) in cards.zipWithNext()) {
-            assertNotEquals(previous.index, next.index)
+            assertNotEquals(previous.fact, next.fact)
         }
     }
 
@@ -74,7 +75,7 @@ class FlashcardDealerTest {
         for (index in listOf(FakeIndices.INSURANCE, FakeIndices.SPLIT)) {
             val cards = deals(FlashcardDealer(preset(IndexEntry(index))), count = 200)
 
-            assertTrue(cards.all { it.index == index })
+            assertTrue(cards.all { it.fact == index })
             for ((previous, next) in cards.zipWithNext()) {
                 assertNotEquals(previous, next)
             }
@@ -127,7 +128,7 @@ class FlashcardDealerTest {
 
         // Never right weighs 1 / 5%, right 3 times in 4 weighs 1 / 75%, and unanswered 1 / 50%
         val weights = mapOf(never to 20.0, mostly to 4.0 / 3, unanswered to 2.0)
-        val shown = List(40_000) { dealer.deal(null, history, random)!!.index }.groupingBy { it }.eachCount()
+        val shown = List(40_000) { dealer.deal(null, history, random)!!.fact }.groupingBy { it }.eachCount()
         for ((index, weight) in weights) {
             assertEquals("$index", weight / weights.values.sum(), shown.getValue(index) / 40_000.0, 0.01)
         }
@@ -141,7 +142,7 @@ class FlashcardDealerTest {
 
         val cards = generateSequence(dealer.deal(null, history, random)) { dealer.deal(it, history, random) }.take(200).toList()
         for ((previous, next) in cards.zipWithNext()) {
-            assertNotEquals(previous.index, next.index)
+            assertNotEquals(previous.fact, next.fact)
         }
     }
 
@@ -227,5 +228,120 @@ class FlashcardDealerTest {
         assertFalse(off.couldDeal(card(Rank.TWO, Rank.THREE, Rank.SEVEN)))
         assertTrue(off.couldDeal(card(Rank.TEN, Rank.TWO)))
         assertFalse(FlashcardDealer(preset()).couldDeal(card(Rank.TEN, Rank.TWO)))
+    }
+
+    private fun onHand(play: DeviationPlay, hand: String, upcard: String) = Deviation.parse(play.name, hand, upcard) as Deviation.OnHand
+
+    private fun near(preset: IndexPreset) = nearMisses(preset).map { "${it.deviation.playName} ${it.deviation.title}" }.toSet()
+
+    @Test
+    fun theNearMissesAreTheClosestUpcardEitherSideOfEachIndexWithNoneForTheHandAskingForItsPlay() {
+        val h17 = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17")
+
+        assertEquals(
+            setOf(
+                "Stand Hard 16 vs 8", "Stand Hard 16 vs A",
+                "Stand Hard 15 vs 8", "Surrender Hard 15 vs 8",
+                "Split Pair of 10s vs 4", "Split Pair of 10s vs 7",
+                "Double Hard 10 vs 9", "Double Hard 11 vs 10",
+                "Double Hard 9 vs 3", "Double Hard 9 vs 6", "Double Hard 9 vs 8",
+                "Stand Hard 12 vs 7", "Stand Hard 13 vs 4",
+                "Surrender Hard 14 vs 9", "Surrender Hard 14 vs A",
+            ),
+            near(h17),
+        )
+    }
+
+    @Test
+    fun aHandThePresetListsEvenSwitchedOffOrABuiltInSetDefinesIsNoNearMiss() {
+        val sixteenVsTen = PlayIndex(onHand(DeviationPlay.STAND, "16", "10"), 0)
+        // 16 vs 9 is the built-in sets' alone
+        assertEquals(setOf("Stand Hard 16 vs 8", "Stand Hard 16 vs A"), near(preset(IndexEntry(sixteenVsTen))))
+
+        // Listed for another play, and switched off
+        val surrenderVsEight = PlayIndex(onHand(DeviationPlay.SURRENDER, "16", "8"), 4)
+        assertEquals(setOf("Stand Hard 16 vs 7", "Stand Hard 16 vs A"), near(preset(IndexEntry(sixteenVsTen), IndexEntry(surrenderVsEight, enabled = false))))
+
+        // A pair of 5s is hard 10, which the built-in sets index against a 10 and an ace
+        val fivesVsNine = PlayIndex(onHand(DeviationPlay.DOUBLE, "5-5", "9"), 2)
+        assertEquals(setOf("Double Pair of 5s vs 8"), near(preset(IndexEntry(fivesVsNine))))
+        val tenVsTen = PlayIndex(onHand(DeviationPlay.DOUBLE, "10", "10"), 4)
+        assertTrue("Double Hard 10 vs 9" !in near(preset(IndexEntry(tenVsTen), IndexEntry(fivesVsNine))))
+
+        // A switched-off index has no near misses of its own, and insurance has none
+        assertEquals(emptySet<String>(), near(preset(IndexEntry(sixteenVsTen, enabled = false), IndexEntry(FakeIndices.INSURANCE))))
+    }
+
+    @Test
+    fun aNearMissAsksInItsIndexsDirection() {
+        assertEquals(
+            setOf(IndexDirection.AT_OR_BELOW),
+            nearMisses(preset(IndexEntry(FakeIndices.HIT))).map { it.direction }.toSet(),
+        )
+    }
+
+    @Test
+    fun handsWithNoIndexAreDealtOnlyWhenSwitchedOnAndThenAboutOneCardInEight() {
+        assertTrue(deals(FlashcardDealer(everyKind)).none { it.fact is NoIndex })
+
+        // Prioritize worse weighs the indices alone, so the rate is the same
+        val worse = deals(FlashcardDealer(everyKind, FlashcardOptions(CardsShown.PRIORITIZE_WORSE, noIndexCards = true)), count = 40_000)
+        assertEquals(5000.0, worse.count { it.fact is NoIndex }.toDouble(), 250.0)
+
+        val cards = deals(FlashcardDealer(everyKind, FlashcardOptions(noIndexCards = true)), count = 40_000)
+        val noIndex = cards.filter { it.fact is NoIndex }
+        assertEquals(5000.0, noIndex.size.toDouble(), 250.0)
+        assertEquals(nearMisses(everyKind), noIndex.map { it.fact }.toSet())
+        for ((previous, next) in cards.zipWithNext()) {
+            assertNotEquals(previous.fact, next.fact)
+        }
+        for (card in noIndex) {
+            val deviation = card.fact.deviation as Deviation.OnHand
+            assertNull("$card", card.answer)
+            assertEquals("$card", deviation.upcard, card.upcard.upcard)
+            assertEquals("$card", deviation.hand.kind == HandKind.PAIR, card.player.isPair)
+        }
+    }
+
+    @Test
+    fun aHandWithNoIndexComesIn3Or4CardsAsAnIndexsHandDoes() {
+        val dealer = FlashcardDealer(everyKind, FlashcardOptions(noIndexCards = true, multiCardHands = true))
+        val stands = deals(dealer, count = 20_000).filter { it.fact is NoIndex && (it.fact.deviation as Deviation.OnHand).play == DeviationPlay.STAND }
+
+        assertEquals(0.5, stands.count { it.player.size > 2 } / stands.size.toDouble(), 0.1)
+        assertTrue(stands.all(dealer::couldDeal))
+    }
+
+    @Test
+    fun aHandWithNoIndexCouldBeDealtOnlyWhileSwitchedOnAndWithNone() {
+        val preset = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17")
+        val noIndex = FakeIndices.noIndex("STAND", "16", "8")
+        val card = Flashcard(noIndex, listOf(Card(Rank.TEN, Suit.SPADES), Card(Rank.SIX, Suit.SPADES)), Card(Rank.EIGHT, Suit.HEARTS))
+        val on = FlashcardOptions(noIndexCards = true)
+
+        assertTrue(FlashcardDealer(preset, on).couldDeal(card))
+        assertFalse(FlashcardDealer(preset).couldDeal(card))
+        assertFalse(FlashcardDealer(preset.add(PlayIndex(noIndex.deviation, 7)), on).couldDeal(card))
+    }
+
+    @Test
+    fun handsWithNoIndexShareATallyOfThoseThePresetStillHasNoneFor() {
+        val preset = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17")
+        val dealer = FlashcardDealer(preset, FlashcardOptions(noIndexCards = true))
+        val sixteenVsEight = FakeIndices.noIndex("STAND", "16", "8")
+        fun answer(fact: IndexFact, answer: Int?) = FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, fact, answer, null, 2)
+        val history = listOf(
+            answer(sixteenVsEight, null),
+            answer(FakeIndices.noIndex("STAND", "12", "7"), 3),
+            // Listed in this preset, so no hand without an index here
+            answer(FakeIndices.noIndex("STAND", "16", "10"), null),
+            // No hand of this preset's, so it was never asked here
+            answer(FakeIndices.noIndex("DOUBLE", "A-7", "6"), null),
+            answer(preset.enabledIndices.first(), null),
+        )
+        val card = Flashcard(sixteenVsEight, emptyList(), Card(Rank.EIGHT, Suit.HEARTS))
+
+        assertEquals(Tally(correct = 1, incorrect = 1), dealer.tally(card, history))
+        assertEquals(Tally(correct = 0, incorrect = 1), dealer.tally(card.copy(fact = preset.enabledIndices.first()), history))
     }
 }

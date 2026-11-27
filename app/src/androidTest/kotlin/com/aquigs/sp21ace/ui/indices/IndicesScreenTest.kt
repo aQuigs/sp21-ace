@@ -140,6 +140,17 @@ class IndicesScreenTest {
     }
 
     @Test
+    fun theSwitchForHandsWithNoIndexTurnsThemOn() {
+        show()
+
+        compose.onNode(hasText(string(R.string.hands_with_no_index)) and isToggleable()).assertIsOff()
+        compose.onNodeWithText(string(R.string.no_index_cards_off)).assertIsDisplayed().performClick()
+
+        assertEquals(FlashcardOptions(noIndexCards = true), options)
+        compose.onNodeWithText(string(R.string.no_index_cards_on)).assertIsDisplayed()
+    }
+
+    @Test
     fun aPresetWithNoIndicesSaysSoUnderAddIndex() {
         presets = presets.add("Mine", from = null)
         show()

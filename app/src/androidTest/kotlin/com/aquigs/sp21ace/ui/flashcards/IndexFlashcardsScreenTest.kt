@@ -50,6 +50,7 @@ import com.aquigs.sp21ace.domain.indices.IndexEntry
 import com.aquigs.sp21ace.domain.indices.IndexHand
 import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexPresets
+import com.aquigs.sp21ace.domain.indices.NoIndex
 import com.aquigs.sp21ace.domain.indices.PlayIndex
 import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
@@ -84,6 +85,7 @@ class IndexFlashcardsScreenTest {
 
     private var now = 0L
     private var settings by mutableStateOf(Settings())
+    private var options by mutableStateOf(FlashcardOptions())
     private var covered by mutableStateOf(false)
     private var onScreen by mutableStateOf(true)
     private var windowFocused by mutableStateOf(true)
@@ -94,12 +96,12 @@ class IndexFlashcardsScreenTest {
         val presets = IndexPresets(listOf(preset), preset.id)
         val answers = mutableListOf<FlashcardAnswer>()
         var run by mutableStateOf(FlashcardRun(first))
-        private val dealer = FlashcardDealer(preset)
+        private val dealer = FlashcardDealer(preset, options)
         private val timer = AnswerTimer<Flashcard> { now }.also { it.dealt(first) }
         private val next = deals.iterator()
 
-        override fun answer(asked: Flashcard, number: Int) {
-            run.answer(asked, number, dealer, timer.elapsed(asked), Instant.EPOCH, answers) { _, _ -> next.next() }?.let {
+        override fun answer(asked: Flashcard, answer: Int?) {
+            run.answer(asked, answer, dealer, timer.elapsed(asked), Instant.EPOCH, answers) { _, _ -> next.next() }?.let {
                 run = it.run
                 timer.dealt(it.run.card)
                 answers += it.answer
@@ -155,7 +157,7 @@ class IndexFlashcardsScreenTest {
                     Sp21AceTheme {
                         if (onScreen) {
                             IndexFlashcardsScreen(
-                                state = IndexFlashcardsState(fake.run, fake.presets, FlashcardOptions(), history = emptyList()),
+                                state = IndexFlashcardsState(fake.run, fake.presets, options, history = emptyList()),
                                 settings = settings,
                                 covered = covered,
                                 actions = fake,
@@ -293,6 +295,49 @@ class IndexFlashcardsScreenTest {
 
         assertEquals(listOf(0), fake.answers.map { it.answer })
         compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
+    }
+
+    private val sixteenVsEight = Flashcard(
+        NoIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 16), Upcard.EIGHT, DeviationPlay.STAND)),
+        cards("9c 7d"),
+        card("8h"),
+    )
+
+    private fun noIndexButton() = compose.onNodeWithContentDescription(string(R.string.no_index))
+
+    @Test
+    fun theNoIndexButtonShowsOnlyWhileHandsWithNoIndexAreOn() {
+        show()
+        noIndexButton().assertDoesNotExist()
+
+        options = FlashcardOptions(noIndexCards = true)
+
+        noIndexButton().assertIsDisplayed()
+    }
+
+    @Test
+    fun aHandWithNoIndexAsksAsAnIndexDoesAndNoIndexIsItsRightAnswer() {
+        options = FlashcardOptions(noIndexCards = true)
+        val fake = show(first = sixteenVsEight)
+        compose.onNodeWithText("STAND at ? or higher").assertIsDisplayed()
+
+        noIndexButton().performClick()
+
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 8", "No index", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 8. No index. 0.0 seconds. Accuracy 100.0%").assertIsDisplayed()
+        assertEquals(listOf(null), fake.answers.map { it.answer })
+    }
+
+    @Test
+    fun aNumberForAHandWithNoIndexAndNoIndexForAnIndexAreWrong() {
+        options = FlashcardOptions(noIndexCards = true)
+        show(first = sixteenVsEight, deals = listOf(sixteenVsKing, insuranceCard))
+
+        button(2).performClick()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 8", "No index", "You answered +2", "0.0 s", "Accuracy 0.0%")).assertIsDisplayed()
+
+        noIndexButton().performClick()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered no index", "0.0 s", "Accuracy 0.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -529,15 +574,18 @@ class IndexFlashcardsScreenTest {
     // The pad as a 360dp-wide phone lays it out: a button for every number, the negatives above zero and the positives, every
     // button at least 40dp across and clear of the cards, the prompt and each other, each label on one line, and none moving
     // as the next card is dealt
-    private fun assertPadFits(reach: Int, fontScale: Float = 1f) {
+    private fun assertPadFits(reach: Int, fontScale: Float = 1f, noIndex: Boolean = false) {
         // Stand on hard 16 vs 10 at the far end of the pad, or at 0 for the pad's least reach
-        val first = sixteenVsKing.copy(index = sixteenVsTen.copy(threshold = if (reach > 5) -reach else 0))
+        val index = sixteenVsTen.copy(threshold = if (reach > 5) -reach else 0)
+        val first = sixteenVsKing.copy(fact = index)
+        options = FlashcardOptions(noIndexCards = noIndex)
         settings = Settings(handTotals = true)
-        show(oneIndex(first.index), first, deals = listOf(first.copy(player = cards("10s 6h"))), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(fontScale))
+        show(oneIndex(index), first, deals = listOf(first.copy(player = cards("10s 6h"))), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(fontScale))
 
         val numbers = -reach..reach
         val buttons = numbers.map { button(it).assertIsDisplayed().getBoundsInRoot() }
-        val others = listOf(string(R.string.face_down_card), "King of hearts", "9 of clubs", "7 of diamonds", "Stand at what true count or higher?").map(::bounds)
+        val cards = listOf(string(R.string.face_down_card), "King of hearts", "9 of clubs", "7 of diamonds")
+        val others = (cards + "Stand at what true count or higher?" + listOf(string(R.string.no_index)).filter { noIndex }).map(::bounds)
 
         for ((number, box) in numbers.zip(buttons)) {
             assertTrue("$number is ${box.width} wide", box.width >= 40.dp && box.height >= 40.dp)
@@ -559,6 +607,8 @@ class IndexFlashcardsScreenTest {
                 .fetchSemanticsNodes().single().textLayout().assertFitsOnOneLine()
         }
 
+        if (noIndex) noIndexButton().assertIsDisplayed().getBoundsInRoot().let { assertTrue("$it", it.bottom <= 640.dp && it.height >= 40.dp) }
+
         button(0).performClick()
         assertEquals(buttons, numbers.map { button(it).getBoundsInRoot() })
     }
@@ -567,14 +617,15 @@ class IndexFlashcardsScreenTest {
     private fun assertLongestBarFits(hand: IndexHand, title: String, player: List<Card>) {
         val index = PlayIndex(Deviation.OnHand(hand, Upcard.TEN, DeviationPlay.SURRENDER), -10)
         val first = Flashcard(index, player, card("Kh"))
+        options = FlashcardOptions(noIndexCards = true)
         show(oneIndex(index), first, deals = listOf(first), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(2f))
             .answers += List(999) { FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, index, index.threshold, null, cards = 2) }
         compose.waitForIdle()
         now += 999_900
 
-        button(10).performClick()
+        noIndexButton().performClick()
 
-        val bar = flashcardBarText(title, "Surrender at −10 or higher", "You answered +10", "999.9 s", "Accuracy 99.9%")
+        val bar = flashcardBarText(title, "Surrender at −10 or higher", "You answered no index", "999.9 s", "Accuracy 99.9%")
         compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
 
@@ -601,6 +652,13 @@ class IndexFlashcardsScreenTest {
 
     @Test
     fun onANarrowPhoneAtTheLargestFontSizeThePadOf10EitherSideStillFits() = assertPadFits(10, fontScale = 2f)
+
+    @Test
+    fun onANarrowPhoneThePadOf5EitherSideFitsWithNoIndex() = assertPadFits(5, noIndex = true)
+
+    // The tallest there is
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeThePadOf10EitherSideStillFitsWithNoIndex() = assertPadFits(10, fontScale = 2f, noIndex = true)
 
     @Test
     fun theLabelsShowASignAndATrueMinusAndAScreenReaderSaysPlusAndMinus() {

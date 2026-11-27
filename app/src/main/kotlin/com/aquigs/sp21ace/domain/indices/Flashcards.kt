@@ -16,25 +16,28 @@ private const val MIN_PAD_REACH = 5
 val IndexPreset.flashcardPad: AnswerPad
     get() = maxOf(MIN_PAD_REACH, enabledIndices.maxOfOrNull { it.threshold.absoluteValue } ?: 0).let { AnswerPad(-it..it) }
 
-/** An index flashcard: an [index] and the cards that ask for it, the [player]'s hand, none for insurance, against the dealer's [upcard]. */
-data class Flashcard(val index: PlayIndex, val player: List<Card>, val upcard: Card) : DrillCard {
-    override val answer: Int get() = index.threshold
+/**
+ * An index flashcard: a [fact] and the cards that ask for it, the [player]'s hand, none for insurance, against the dealer's
+ * [upcard]. Its answer is null where there is no index.
+ */
+data class Flashcard(val fact: IndexFact, val player: List<Card>, val upcard: Card) : DrillCard<Int?> {
+    override val answer: Int? get() = fact.threshold
 }
 
-typealias FlashcardGrade = DrillGrade<Flashcard>
+typealias FlashcardGrade = DrillGrade<Flashcard, Int?>
 
-typealias FlashcardRun = DrillRun<Flashcard>
+typealias FlashcardRun = DrillRun<Flashcard, Int?>
 
 /**
- * A flashcard answer as the history keeps it. Stats key on the [index] itself, its number and direction included, so the same fact
- * shares its record across presets. [time] is how long the card was on screen before the answer, or null when its display was
- * interrupted. [cards] is how many the player's hand held, none for insurance.
+ * A flashcard answer as the history keeps it, [answer] null for no index. Stats key on the [fact] itself, an index's number and
+ * direction included, so the same fact shares its record across presets. [time] is how long the card was on screen before the
+ * answer, or null when its display was interrupted. [cards] is how many the player's hand held, none for insurance.
  */
-data class FlashcardAnswer(val answeredAt: Instant, val game: Game, val index: PlayIndex, val answer: Int, val time: Duration?, val cards: Int) {
+data class FlashcardAnswer(val answeredAt: Instant, val game: Game, val fact: IndexFact, val answer: Int?, val time: Duration?, val cards: Int) {
     init {
         require(time == null || (!time.isNegative() && time.isFinite())) { "An answer time out of range: $time" }
         require(cards >= 0) { "A hand of $cards cards" }
     }
 
-    val isCorrect: Boolean get() = answer == index.threshold
+    val isCorrect: Boolean get() = answer == fact.threshold
 }

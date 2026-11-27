@@ -22,6 +22,8 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.FlashcardGrade
 import com.aquigs.sp21ace.domain.indices.IndexDirection
+import com.aquigs.sp21ace.domain.indices.NoIndex
+import com.aquigs.sp21ace.domain.indices.PlayIndex
 import com.aquigs.sp21ace.domain.indices.flashcardPad
 import com.aquigs.sp21ace.domain.indices.inPlainWords
 import com.aquigs.sp21ace.domain.indices.playName
@@ -31,6 +33,8 @@ import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.ui.components.Dissolve
 import com.aquigs.sp21ace.ui.components.HandsColumn
+import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
+import com.aquigs.sp21ace.ui.components.RingButton
 
 /**
  * A flashcard of an index: the cards, the play it asks about and a pad of true counts to answer with, or with no index switched
@@ -58,7 +62,7 @@ fun IndexFlashcardsScreen(
                 showTime = settings.flashcardTimer,
                 onOpenDrawer = onOpenDrawer,
                 // The hand, or for insurance, which has none, the play
-                bold = { grade -> grade.card.index.deviation.let { if (it is Deviation.OnHand) it.title else it.playName } },
+                bold = { grade -> grade.card.fact.deviation.let { if (it is Deviation.OnHand) it.title else it.playName } },
                 parts = { feedbackParts(it) },
             )
         },
@@ -79,19 +83,37 @@ fun IndexFlashcardsScreen(
         },
         face = { card -> HandsColumn(card.upcard, card.player, settings.handTotals) },
     ) { card ->
-        Prompt(card.index.deviation.playName, card.index.direction)
+        Prompt(card.fact.deviation.playName, card.fact.direction)
         // The card this frame shows, even if a tap lands after the next one is dealt but before it is drawn
         NumberPad(state.presets.active.flashcardPad) { number -> actions.answer(card, number) }
+        if (state.options.noIndexCards) NoIndexButton { actions.answer(card, null) }
     }
 }
 
-/** "Hard 16 vs 10", "Stand at 0 or higher" and, after a wrong answer, "You answered +2". Insurance names itself as the play, so only once. */
+/**
+ * "Hard 16 vs 10", "Stand at 0 or higher" or "No index" and, after a wrong answer, "You answered +2". Insurance names itself as the
+ * play, so only once.
+ */
 @Composable
 private fun feedbackParts(grade: FlashcardGrade): List<String> {
-    val index = grade.card.index
-    val answered = if (grade.isCorrect) null else stringResource(R.string.you_answered, signedCount(grade.answer))
+    val fact = grade.card.fact
+    val right = when (fact) {
+        is PlayIndex -> fact.inPlainWords
+        is NoIndex -> stringResource(R.string.no_index)
+    }
+    val answered = grade.answer?.let { stringResource(R.string.you_answered, signedCount(it)) } ?: stringResource(R.string.you_answered_no_index)
 
-    return listOfNotNull(index.deviation.title.takeIf { index.deviation is Deviation.OnHand }, index.inPlainWords, answered)
+    return listOfNotNull(fact.deviation.title.takeIf { fact.deviation is Deviation.OnHand }, right, answered.takeIf { !grade.isCorrect })
+}
+
+/** Ringed and at a fixed size like the pad's numbers. */
+@Composable
+private fun NoIndexButton(onClick: () -> Unit) {
+    val name = stringResource(R.string.no_index)
+
+    ProvideDefaultFontScale {
+        RingButton(name = name, onClick = onClick) { Text(text = name.uppercase(), fontWeight = FontWeight.Bold) }
+    }
 }
 
 /** "STAND at ? or higher", the play in capitals. */

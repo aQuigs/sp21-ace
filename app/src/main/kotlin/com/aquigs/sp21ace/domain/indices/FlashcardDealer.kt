@@ -16,6 +16,9 @@ import kotlin.time.Duration
 // Grouped as a dealer's upcard reads them, so a ten-value card is a 10, J, Q or K, each as often as a deck holds it
 private val DECK_BY_VALUE: Map<Upcard, List<Card>> = FULL_DECK.groupBy { it.upcard }
 
+// Occasional, so a drill stays mostly its indices
+private const val CARDS_PER_NO_INDEX = 8
+
 // A double, split or surrender is offered only on the first two cards, but a hand of any size stands or hits
 private val ANY_SIZE_PLAYS = setOf(DeviationPlay.STAND, DeviationPlay.HIT)
 
@@ -31,21 +34,39 @@ internal fun multiCardHands(upcard: Upcard): Map<HandTotal, List<List<List<Int>>
 }
 
 /**
+ * The hands closest to [preset]'s switched-on indices that have none: on either side of each, the nearest upcard its hand
+ * [has none][IndexPreset.hasNone] against. Each asks for that index's play, so it passes for one.
+ */
+internal fun nearMisses(preset: IndexPreset): Set<NoIndex> = preset.enabledIndices.flatMap { index ->
+    val deviation = index.deviation as? Deviation.OnHand ?: return@flatMap emptyList()
+    val (below, above) = Upcard.entries.map { NoIndex(deviation.copy(upcard = it), index.direction) }
+        .filter(preset::hasNone)
+        .partition { it.deviation.upcard < deviation.upcard }
+
+    listOfNotNull(below.lastOrNull(), above.firstOrNull())
+}.toSet()
+
+/**
  * Deals the flashcards of [preset]'s switched-on indices as [options] says, built once per change of either, so a deal only
- * picks. Never the same index twice in a row while more than one is on. A two-card hard total is never a pair, a ten-value card
- * is a 10, J, Q or K at random, and insurance shows the dealer's ace alone. With [FlashcardOptions.multiCardHands] on, a stand
+ * picks. Never the same index twice in a row while more than one is on. With [FlashcardOptions.noIndexCards] on, about 1 card in
+ * 8 is one of its [nearMisses]. A two-card hard total is never a pair, a ten-value card is a 10, J, Q or K at random, and
+ * insurance shows the dealer's ace alone. With [FlashcardOptions.multiCardHands] on, a stand
  * or hit index on a total is a hand of 3 or 4 cards half the time a basic strategy player could hold one against its upcard;
  * every other hand is two cards.
  */
-class FlashcardDealer(preset: IndexPreset, private val options: FlashcardOptions = FlashcardOptions()) : CardDealer<Flashcard, FlashcardAnswer> {
+class FlashcardDealer(private val preset: IndexPreset, private val options: FlashcardOptions = FlashcardOptions()) :
+    CardDealer<Flashcard, Int?, FlashcardAnswer> {
     val game: Game = preset.game
 
     /** The indices dealt, in the preset's order. */
     val indices: Set<PlayIndex> = preset.enabledIndices.toSet()
 
-    // Only for the indices dealt, since every upcard's hands would hold thousands of lists
+    private val nearMisses: Set<NoIndex> = if (options.noIndexCards) nearMisses(preset) else emptySet()
+    private val facts: Set<IndexFact> = indices + nearMisses
+
+    // Only for the facts dealt, since every upcard's hands would hold thousands of lists
     private val multiCardHands: Map<Deviation.OnHand, List<List<List<Int>>>> = if (!options.multiCardHands) emptyMap() else {
-        val drawsOn = indices.map { it.deviation }.filterIsInstance<Deviation.OnHand>().filter { it.play in ANY_SIZE_PLAYS && it.hand.kind != HandKind.PAIR }
+        val drawsOn = facts.map { it.deviation }.filterIsInstance<Deviation.OnHand>().filter { it.play in ANY_SIZE_PLAYS && it.hand.kind != HandKind.PAIR }
         val byUpcard = drawsOn.map { it.upcard }.distinct().associateWith(::multiCardHands)
         drawsOn.associateWith { byUpcard.getValue(it.upcard)[it.hand.total].orEmpty() }.filterValues { it.isNotEmpty() }
     }
@@ -57,28 +78,36 @@ class FlashcardDealer(preset: IndexPreset, private val options: FlashcardOptions
      * the accuracy [history] gives it, as the trainer's hands do. Null while no index is switched on.
      */
     override fun deal(previous: Flashcard?, history: List<FlashcardAnswer>, random: Random): Flashcard? {
-        val candidates = indices.filter { indices.size == 1 || it != previous?.index }.ifEmpty { return null }
-        val index = options.cardsShown.pick(candidates, random) { history.tallyByIndex(game) }
+        val candidates = indices.filter { indices.size == 1 || it != previous?.fact }.ifEmpty { return null }
+        val fact = dealNearMiss(previous, random) ?: options.cardsShown.pick(candidates, random) { history.tallyByFact(game) }
 
         // Every hand comes in more than one suit, so a redraw soon finds another
-        return generateSequence { cardsFor(index, random) }.first { it != previous }
+        return generateSequence { cardsFor(fact, random) }.first { it != previous }
+    }
+
+    private fun dealNearMiss(previous: Flashcard?, random: Random): NoIndex? {
+        val candidates = nearMisses.filter { it != previous?.fact }
+        return if (candidates.isEmpty() || random.nextInt(CARDS_PER_NO_INDEX) > 0) null else candidates.random(random)
     }
 
     /** Whether [card] is one this dealer could deal, so a card left from another preset or other options is redealt. */
     override fun couldDeal(card: Flashcard): Boolean {
-        val deviation = card.index.deviation
-        return card.index in indices && (card.player.size <= 2 || card.player.map { it.rank.value } in multiCardSets[deviation].orEmpty())
+        val deviation = card.fact.deviation
+        return card.fact in facts && (card.player.size <= 2 || card.player.map { it.rank.value } in multiCardSets[deviation].orEmpty())
     }
 
-    override fun record(card: Flashcard, number: Int, time: Duration?, answeredAt: Instant): FlashcardAnswer =
-        FlashcardAnswer(answeredAt, game, card.index, number, time, card.player.size)
+    override fun record(card: Flashcard, answer: Int?, time: Duration?, answeredAt: Instant): FlashcardAnswer =
+        FlashcardAnswer(answeredAt, game, card.fact, answer, time, card.player.size)
 
-    override fun tally(card: Flashcard, history: List<FlashcardAnswer>): Tally =
-        history.filter { it.index == card.index }.tallyByIndex(game)[card.index] ?: Tally(correct = 0, incorrect = 0)
+    /** Hands with no index share one tally, as they share a row in the stats. */
+    override fun tally(card: Flashcard, history: List<FlashcardAnswer>): Tally {
+        val answers = history.filter { it.game == game && if (card.fact is NoIndex) preset.hasNone(it.fact) else it.fact == card.fact }
+        return answers.count { it.isCorrect }.let { Tally(correct = it, incorrect = answers.size - it) }
+    }
 
-    private fun cardsFor(index: PlayIndex, random: Random): Flashcard = when (val deviation = index.deviation) {
-        Deviation.Insurance -> Flashcard(index, player = emptyList(), upcard = draw(Upcard.ACE, random))
-        is Deviation.OnHand -> Flashcard(index, playerCards(deviation, random), draw(deviation.upcard, random))
+    private fun cardsFor(fact: IndexFact, random: Random): Flashcard = when (val deviation = fact.deviation) {
+        Deviation.Insurance -> Flashcard(fact, player = emptyList(), upcard = draw(Upcard.ACE, random))
+        is Deviation.OnHand -> Flashcard(fact, playerCards(deviation, random), draw(deviation.upcard, random))
     }
 
     private fun playerCards(deviation: Deviation.OnHand, random: Random): List<Card> {

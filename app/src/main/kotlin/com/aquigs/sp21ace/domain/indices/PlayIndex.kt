@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.cards.HandTotal
+import com.aquigs.sp21ace.domain.cards.totalOf
 import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.pairRow
@@ -32,7 +33,9 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
     /** The hand as the strategy charts key their rows: "16" for hard 16, "A-7" for soft 18, "8-8" and "A-A" for pairs. */
     val label: String get() = row.hand
 
-    internal val total: HandTotal get() = HandTotal(value, soft = kind == HandKind.SOFT)
+    /** What the hand adds up to, a pair included. */
+    internal val total: HandTotal
+        get() = if (kind == HandKind.PAIR) totalOf(listOf(value, value)) else HandTotal(value, soft = kind == HandKind.SOFT)
 
     internal val pairCard: Upcard get() = Upcard.ofPoints(value)
 
@@ -92,6 +95,9 @@ sealed interface Deviation : Serializable {
         init {
             require(play in hand.kind.plays) { "No $play index on ${hand.label}" }
         }
+
+        /** The total and upcard asked about, whichever play is named. A pair can be played as its total. */
+        internal val square: Pair<HandTotal, Upcard> get() = hand.total to upcard
     }
 
     /** Insurance is offered only against a dealer ace, and asks for no hand. */
@@ -103,16 +109,28 @@ sealed interface Deviation : Serializable {
 /** Which side of its number an index makes its play on. Published charts print both forms, such as "hit at −1 or lower". */
 enum class IndexDirection { AT_OR_ABOVE, AT_OR_BELOW }
 
+/** What a flashcard asks for and its answer: the [threshold] of the play on [deviation], or null where there is no such index. */
+sealed interface IndexFact : Serializable {
+    val deviation: Deviation
+    val direction: IndexDirection
+    val threshold: Int?
+}
+
+/** That no index is defined for the [deviation]'s hand against its upcard, asked for as the index it passes for would be. */
+data class NoIndex(override val deviation: Deviation.OnHand, override val direction: IndexDirection = IndexDirection.AT_OR_ABOVE) : IndexFact {
+    override val threshold: Int? get() = null
+}
+
 /**
- * An index, the fact a flashcard asks for: make the [deviation]'s play at a true count of [threshold] or higher, or at
+ * An index: make the [deviation]'s play at a true count of [threshold] or higher, or at
  * [threshold] or lower for [IndexDirection.AT_OR_BELOW], and play basic strategy on the other side. The same deviation with
  * another threshold or direction, as under other rules or after an edit, is another fact.
  */
 data class PlayIndex(
-    val deviation: Deviation,
-    val threshold: Int,
-    val direction: IndexDirection = IndexDirection.AT_OR_ABOVE,
-) : Serializable
+    override val deviation: Deviation,
+    override val threshold: Int,
+    override val direction: IndexDirection = IndexDirection.AT_OR_ABOVE,
+) : IndexFact
 
 /** An index in a preset, which is drilled while [enabled]. */
 data class IndexEntry(val index: PlayIndex, val enabled: Boolean = true)

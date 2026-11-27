@@ -15,15 +15,15 @@ import com.aquigs.sp21ace.ui.flashcards.DrillActions
 import java.time.Instant
 
 /** A flashcard drill as the composition root runs it: the [run] its page shows, and what the page asks for carried out. */
-internal class Drill<C : DrillCard, A>(
-    private val state: MutableState<DrillRun<C>>,
+internal class Drill<C : DrillCard<N>, N, A>(
+    private val state: MutableState<DrillRun<C, N>>,
     private val timer: AnswerTimer<C>,
-    private val dealer: CardDealer<C, A>,
+    private val dealer: CardDealer<C, N, A>,
     private val store: HistoryStore<A>,
     private val deal: (previous: C?, history: List<A>) -> C?,
     private val onAnswered: (isCorrect: Boolean) -> Unit,
-) : DrillActions<C> {
-    val run: DrillRun<C> get() = state.value
+) : DrillActions<C, N> {
+    val run: DrillRun<C, N> get() = state.value
 
     // The store's own value, which a collected one can trail, or null until it loads
     private val history: List<A>? get() = store.history.value
@@ -32,16 +32,16 @@ internal class Drill<C : DrillCard, A>(
     fun redeal() = show(run.dealtFrom(dealer) { deal(it, history.orEmpty()) })
 
     // Every card dealt starts its time afresh
-    private fun show(next: DrillRun<C>) {
+    private fun show(next: DrillRun<C, N>) {
         if (next.card != run.card) timer.dealt(next.card)
         state.value = next
     }
 
-    override fun answer(asked: C, number: Int) {
-        val (next, answer) = run.answer(asked, number, dealer, timer.elapsed(asked), Instant.now(), history, deal) ?: return
+    override fun answer(asked: C, answer: N) {
+        val (next, recorded) = run.answer(asked, answer, dealer, timer.elapsed(asked), Instant.now(), history, deal) ?: return
         show(next)
-        store.append(answer)
-        onAnswered(number == asked.answer)
+        store.append(recorded)
+        onAnswered(answer == asked.answer)
     }
 
     override fun shown(card: C) = timer.shown(card)
@@ -59,13 +59,13 @@ internal class Drill<C : DrillCard, A>(
 
 /** A drill of [dealer]'s cards answered into [store], a change of [dealer] redealing a card it could not deal. [deal] is its deal. */
 @Composable
-internal fun <C : DrillCard, A> rememberDrill(
-    dealer: CardDealer<C, A>,
+internal fun <C : DrillCard<N>, N, A> rememberDrill(
+    dealer: CardDealer<C, N, A>,
     store: HistoryStore<A>,
     clock: () -> Long,
     deal: (previous: C?, history: List<A>) -> C?,
     onAnswered: (isCorrect: Boolean) -> Unit,
-): Drill<C, A> {
+): Drill<C, N, A> {
     // Not saved, so a card restored in a recreated activity, which showed before, is never timed from partway through
     val timer = remember { AnswerTimer<C>(clock) }
     val state = rememberSaveable { mutableStateOf(DrillRun(deal(null, store.history.value.orEmpty())).also { timer.dealt(it.card) }) }

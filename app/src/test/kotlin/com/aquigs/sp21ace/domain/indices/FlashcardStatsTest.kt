@@ -79,6 +79,29 @@ class FlashcardStatsTest {
     }
 
     @Test
+    fun handsWithNoIndexShareARowWhileAnsweredWhichSortsAsTheRestDoAndCountOverall() {
+        fun answer(fact: IndexFact, answer: Int?) = FlashcardAnswer(now, Game.BLACKJACK, fact, answer, 1.seconds, cards = 2)
+        val stats = listOf(
+            answer(FakeIndices.noIndex("STAND", "18", "3"), null),
+            answer(FakeIndices.noIndex("SPLIT", "A-A", "4"), 2),
+            // The preset lists an index on this hand for another play, so it isn't one without, and none on hard 12 at all
+            answer(FakeIndices.noIndex("HIT", "18", "2"), null),
+            answer(FakeIndices.noIndex("STAND", "12", "7"), null),
+            answer(stand, null),
+        ).stats()
+
+        assertEquals(listOf(stand, split, double, null), stats.indices.map { it.index })
+        assertEquals(Tally(correct = 1, incorrect = 1), stats.indices.last().tally)
+        assertEquals(2, stats.indices.last().times.timed)
+        assertEquals(Tally(correct = 0, incorrect = 1), stats.row(stand).tally)
+        assertEquals(Tally(correct = 1, incorrect = 2), stats.overall)
+
+        assertEquals(listOf(stand, null, split, double), stats.indices.sortedBy(IndexOrder.LEAST_ACCURATE).map { it.index })
+
+        assertEquals(listOf(stand, split, double), listOf(answer(stand)).stats().indices.map { it.index })
+    }
+
+    @Test
     fun anUntimedAnswerCountsForAccuracyButNeverForSpeed() {
         val stats = listOf(answer(stand, time = 2.seconds), answer(stand, right = false, time = null)).stats()
 

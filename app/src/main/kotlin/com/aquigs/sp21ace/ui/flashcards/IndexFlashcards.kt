@@ -17,7 +17,7 @@ data class IndexFlashcardsState(
 )
 
 /** What the index flashcards' pages ask for, which the composition root carries out with the stores. */
-interface IndexFlashcardsActions : DrillActions<Flashcard> {
+interface IndexFlashcardsActions : DrillActions<Flashcard, Int?> {
     /** The presets as an edit on the Indices or Index Presets page leaves them. */
     fun changePresets(presets: IndexPresets)
 

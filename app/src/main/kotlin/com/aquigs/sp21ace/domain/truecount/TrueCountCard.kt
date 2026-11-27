@@ -33,7 +33,7 @@ value class Decks(val quarters: Int) : Comparable<Decks> {
 val TRUE_COUNT_PAD = AnswerPad(-6..6, openEnded = true)
 
 /** A [runningCount] to convert with [decksLeft] of a shoe of [shoe] decks, the fraction going as [rounding] says. */
-data class TrueCountCard(val shoe: Int, val decksLeft: Decks, val rounding: CountRounding, val runningCount: Int) : DrillCard {
+data class TrueCountCard(val shoe: Int, val decksLeft: Decks, val rounding: CountRounding, val runningCount: Int) : DrillCard<Int> {
     val decksDiscarded: Decks get() = Decks.whole(shoe) - decksLeft
 
     val trueCount: Int get() = rounding.divide(runningCount * Decks.QUARTERS_PER_DECK, decksLeft.quarters)

@@ -194,6 +194,8 @@
     <string name="you_answered">You answered %1$s</string>
     <string name="count_plus">plus %1$d</string>
     <string name="count_minus">minus %1$d</string>
+    <string name="no_index">No index</string>
+    <string name="you_answered_no_index">You answered no index</string>
     <string name="no_indices_switched_on">No indices are switched on in this preset.</string>
     <string name="choose_indices">Choose indices</string>
 
@@ -212,6 +214,9 @@
     <string name="cards_shown">Cards shown</string>
     <string name="cards_shown_intro"><![CDATA[Choose which index each flashcard asks for.<br><br><b>%1$s</b> asks for every index switched on as often as the next.<br><br><b>%2$s</b> asks for an index more often the worse you do with it: get it right half as often and it comes up twice as often. An index you haven\'t answered yet counts as 50%% right. An index with another number, such as one you edited, starts afresh.]]></string>
     <string name="prioritize_worse_indices">Prioritize worse indices</string>
+    <string name="hands_with_no_index">Hands with no index</string>
+    <string name="no_index_cards_on">About 1 card in 8 is a hand close to one of your indices that has none</string>
+    <string name="no_index_cards_off">Every card has an index</string>
     <string name="multi_card_flashcards_on">Stand and hit indices show 3 or 4 cards about half the time</string>
     <string name="multi_card_flashcards_off">Every hand shows 2 cards</string>
     <string name="add_index">Add index</string>

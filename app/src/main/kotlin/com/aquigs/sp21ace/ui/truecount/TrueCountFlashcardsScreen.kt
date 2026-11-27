@@ -41,13 +41,13 @@ import com.aquigs.sp21ace.ui.flashcards.NumberPad
 /** What the true count pages show: the flashcard run, the options it is dealt by and every answer given. */
 @Immutable
 data class TrueCountState(
-    val run: DrillRun<TrueCountCard>,
+    val run: DrillRun<TrueCountCard, Int>,
     val options: TrueCountOptions,
     val history: List<TrueCountAnswer>,
 )
 
 /** What the true count pages ask for, which the composition root carries out with the stores. */
-interface TrueCountActions : DrillActions<TrueCountCard> {
+interface TrueCountActions : DrillActions<TrueCountCard, Int> {
     fun changeOptions(options: TrueCountOptions)
 }
 
@@ -86,7 +86,7 @@ fun TrueCountFlashcardsScreen(
 
 /** "+7 with 3.5 decks left", "True count +2" and, after a wrong answer, "You answered +1", whichever decks the card showed. */
 @Composable
-private fun feedbackParts(grade: DrillGrade<TrueCountCard>): List<String> {
+private fun feedbackParts(grade: DrillGrade<TrueCountCard, Int>): List<String> {
     val card = grade.card
     val answered = if (grade.isCorrect) null else stringResource(R.string.you_answered, TRUE_COUNT_PAD.inPlainWords(grade.answer))
 

@@ -66,7 +66,7 @@ fun FlashcardStatsScreen(
     var period by rememberSaveable { mutableStateOf(Period.TODAY) }
     var order by rememberSaveable { mutableStateOf(IndexOrder.LEAST_ACCURATE) }
     // Here rather than with the rows, which a period with no answers takes off the page, so rows opened stay open past it
-    var expanded by rememberSaveable { mutableStateOf(emptySet<PlayIndex>()) }
+    var expanded by rememberSaveable { mutableStateOf(emptySet<PlayIndex?>()) }
     val asOf = rememberNow(now)
     val stats = rememberStats(period, asOf, history, preset) { history.flashcardStats(preset, period, asOf) }
     val rows = remember(stats, order) { stats.indices.sortedBy(order) }
@@ -102,8 +102,8 @@ private fun IndexRows(
     axisEnd: Duration?,
     order: IndexOrder,
     onOrder: (IndexOrder) -> Unit,
-    expanded: Set<PlayIndex>,
-    onToggle: (PlayIndex) -> Unit,
+    expanded: Set<PlayIndex?>,
+    onToggle: (PlayIndex?) -> Unit,
 ) {
     // Chips like the period's, which wrap at a large font where a segmented button's halves would squeeze their words
     StatChips(ORDERS, order, onOrder)
@@ -116,13 +116,15 @@ private fun IndexRows(
 }
 
 /**
- * An index's name and number, its accuracy, answers and median time, and its spread of times on the axis every row shares. A row
- * with timed answers opens and closes its own histogram, shown by its chevron, and a screen reader hears it as one item.
+ * An index's name and number, or that the hands have none, its accuracy, answers and median time, and its spread of times on the
+ * axis every row shares. A row with timed answers opens and closes its own histogram, shown by its chevron, and a screen reader
+ * hears it as one item.
  */
 @Composable
 private fun IndexRow(row: IndexStats, axisEnd: Duration?, expanded: Boolean, onToggle: () -> Unit) {
     val spread = row.times.spread
-    val words = row.index.inPlainWords
+    val title = row.index?.deviation?.title ?: stringResource(R.string.no_index)
+    val words = row.index?.inPlainWords ?: stringResource(R.string.hands_with_no_index)
     val toggle = if (spread == null || axisEnd == null) {
         Modifier.semantics(mergeDescendants = true) {}
     } else {
@@ -134,7 +136,7 @@ private fun IndexRow(row: IndexStats, axisEnd: Duration?, expanded: Boolean, onT
 
     Column(modifier = Modifier.fillMaxWidth().then(toggle).padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = row.index.deviation.title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            Text(text = title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             if (spread != null) ExpandIcon(expanded)
         }
         Text(

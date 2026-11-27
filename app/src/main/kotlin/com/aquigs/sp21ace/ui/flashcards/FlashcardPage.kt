@@ -59,9 +59,9 @@ private val MinButton = 40.dp
 private val MaxButton = 56.dp
 
 /** What a flashcard drill's page asks for, which the composition root carries out with the drill's history. */
-interface DrillActions<C : DrillCard> {
-    /** [number] tapped as the answer to [asked], the card that frame showed. */
-    fun answer(asked: C, number: Int)
+interface DrillActions<C : DrillCard<N>, N> {
+    /** [answer] tapped for [asked], the card that frame showed. */
+    fun answer(asked: C, answer: N)
 
     /** [card] is on screen with nothing over it. */
     fun shown(card: C)
@@ -82,11 +82,11 @@ interface DrillActions<C : DrillCard> {
  * focus, or the drawer [covered] over it, interrupts the card showing, so its answer records no time.
  */
 @Composable
-internal fun <C : DrillCard> FlashcardPage(
-    run: DrillRun<C>,
+internal fun <C : DrillCard<*>> FlashcardPage(
+    run: DrillRun<C, *>,
     settings: Settings,
     covered: Boolean,
-    actions: DrillActions<C>,
+    actions: DrillActions<C, *>,
     topBar: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     empty: @Composable ColumnScope.() -> Unit = {},
@@ -143,13 +143,13 @@ internal fun <C : DrillCard> FlashcardPage(
  * first in bold, or all of it.
  */
 @Composable
-internal fun <C : DrillCard> DrillBar(
-    lastGrade: DrillGrade<C>?,
+internal fun <C : DrillCard<N>, N> DrillBar(
+    lastGrade: DrillGrade<C, N>?,
     title: String,
     showTime: Boolean,
     onOpenDrawer: () -> Unit,
-    bold: (DrillGrade<C>) -> String? = { null },
-    parts: @Composable (DrillGrade<C>) -> List<String>,
+    bold: (DrillGrade<C, N>) -> String? = { null },
+    parts: @Composable (DrillGrade<C, N>) -> List<String>,
 ) {
     FeedbackBar(
         verdict = lastGrade,
@@ -172,7 +172,7 @@ internal fun <C : DrillCard> DrillBar(
 
 /** For a timed card "2.4 s", as [timeFormat] words it, and "Accuracy 66.6%", how often what it asked has ever been answered right. */
 @Composable
-private fun figures(grade: DrillGrade<*>, showTime: Boolean, @StringRes timeFormat: Int): List<String> = listOfNotNull(
+private fun figures(grade: DrillGrade<*, *>, showTime: Boolean, @StringRes timeFormat: Int): List<String> = listOfNotNull(
     grade.time?.takeIf { showTime }?.let { stringResource(timeFormat, it.inSeconds) },
     grade.tally?.percentText()?.let { stringResource(R.string.flashcard_accuracy, it) },
 )

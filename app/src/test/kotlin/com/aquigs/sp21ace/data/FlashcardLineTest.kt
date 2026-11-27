@@ -33,6 +33,16 @@ class FlashcardLineTest {
     }
 
     @Test
+    fun readsBackAHandWithNoIndexAndAnAnswerOfNoIndex() {
+        val noIndex = FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, FakeIndices.noIndex("STAND", "16", "8"), null, null, cards = 2)
+        val answers = listOf(noIndex, noIndex.copy(answer = 3), wrongStand.copy(answer = null))
+
+        assertEquals(answers, answers.map { FlashcardLine.parse(FlashcardLine.print(it)) })
+        assertEquals("at=0 index=STAND:16:8:NONE:AT_OR_ABOVE answer=NONE cards=2 game=BLACKJACK", FlashcardLine.print(noIndex))
+        assertNull(FlashcardLine.parse("at=0 index=INSURANCE:NONE:AT_OR_ABOVE answer=NONE cards=0 game=BLACKJACK"))
+    }
+
+    @Test
     fun aFieldAddedLaterDoesntStopALineLoading() {
         assertEquals(wrongStand, FlashcardLine.parse(FlashcardLine.print(wrongStand).replace(" answer=", " preset=x answer=")))
     }
