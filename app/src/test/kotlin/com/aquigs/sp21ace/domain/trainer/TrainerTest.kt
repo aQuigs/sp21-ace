@@ -1,8 +1,8 @@
 package com.aquigs.sp21ace.domain.trainer
 
-import com.aquigs.sp21ace.serializedAndBack
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.domain.drill.Streak
 import com.aquigs.sp21ace.domain.strategy.Action
 import com.aquigs.sp21ace.domain.strategy.BonusException
 import com.aquigs.sp21ace.domain.strategy.Move
@@ -10,6 +10,7 @@ import com.aquigs.sp21ace.domain.strategy.Play
 import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyChart
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
+import com.aquigs.sp21ace.serializedAndBack
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -33,7 +34,7 @@ class TrainerTest {
         val grade = Grade(sixteenVsAce, Play(Action.HIT), Move.HIT, Move.HIT)
 
         assertEquals(
-            Answered(TrainerState(softSeventeenVsTen, grade, streak = 1), grade),
+            Answered(TrainerState(softSeventeenVsTen, grade, streak = Streak(1)), grade),
             TrainerState(sixteenVsAce).answer(sixteenVsAce, Move.HIT, s17) { softSeventeenVsTen },
         )
     }
@@ -106,33 +107,25 @@ class TrainerTest {
     }
 
     @Test
-    fun eachRightAnswerAddsOneToTheStreakWithNoCapAtTheTopRung() {
+    fun eachRightAnswerAddsOneToTheStreak() {
         val once = TrainerState(sixteenVsAce).after(sixteenVsAce, Move.HIT) { eightsVsSix }
         val twice = once.after(eightsVsSix, Move.SPLIT) { softSeventeenVsTen }
 
-        assertEquals(listOf(1, 2), listOf(once.streak, twice.streak))
-        assertEquals(257, TrainerState(sixteenVsAce, streak = 256).after(sixteenVsAce, Move.HIT) { eightsVsSix }.streak)
+        assertEquals(listOf(Streak(1), Streak(2)), listOf(once.streak, twice.streak))
     }
 
     @Test
     fun aWrongAnswerDropsTheStreakToZero() {
-        val next = TrainerState(eightsVsSix, streak = 5).after(eightsVsSix, Move.STAND) { sixteenVsAce }
+        val next = TrainerState(eightsVsSix, streak = Streak(5)).after(eightsVsSix, Move.STAND) { sixteenVsAce }
 
-        assertEquals(0, next.streak)
-    }
-
-    @Test
-    fun theMeterMarksTheHighestRungTheStreakHasReached() {
-        val rungs = listOf(0, 1, 3, 4, 255, 256, 300).associateWith { STREAK_RUNGS[streakRung(it)] }
-
-        assertEquals(mapOf(0 to 0, 1 to 1, 3 to 2, 4 to 4, 255 to 128, 256 to 256, 300 to 256), rungs)
+        assertEquals(Streak(), next.streak)
     }
 
     @Test
     fun comesBackEqualFromSerialization() {
         // Android serializes the saved state once the app is in the background, which recreating the activity in a device test doesn't.
         // A right answer from a streak and a doubled hand dealt next, so neither field lost in transit can hide behind its default.
-        val state = TrainerState(sixEightVsFour, streak = 2).after(sixEightVsFour, Move.HIT) { TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true) }
+        val state = TrainerState(sixEightVsFour, streak = Streak(2)).after(sixEightVsFour, Move.HIT) { TrainerHand(cards("5c 6d 3h"), card("9s"), doubled = true) }
 
         assertEquals(state, state.serializedAndBack())
     }

@@ -1,4 +1,4 @@
-package com.aquigs.sp21ace.ui.trainer
+package com.aquigs.sp21ace.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -29,9 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.trainer.STREAK_RUNGS
-import com.aquigs.sp21ace.domain.trainer.streakRung
-import com.aquigs.sp21ace.ui.components.autoSizeDownTo
+import com.aquigs.sp21ace.domain.drill.Streak
 import kotlin.math.roundToInt
 
 private val CircleSize = 36.dp
@@ -48,23 +46,23 @@ private const val CLIMB_MILLIS = 300
  * [numbersOnRight], whatever the language.
  */
 @Composable
-fun StreakMeter(streak: Int, modifier: Modifier = Modifier, numbersOnRight: Boolean = false) {
+fun StreakMeter(streak: Streak, modifier: Modifier = Modifier, numbersOnRight: Boolean = false) {
     val scheme = MaterialTheme.colorScheme
     // Fractional on the way from one rung to the next
-    val rung by animateFloatAsState(streakRung(streak).toFloat(), tween(CLIMB_MILLIS), label = "streak rung")
+    val rung by animateFloatAsState(streak.rung.toFloat(), tween(CLIMB_MILLIS), label = "streak rung")
     // Grey until the first right answer, as in Blackjack Ace
-    val lit = streak > 0
+    val lit = streak.count > 0
     val accent = fade(if (lit) scheme.secondary else scheme.outlineVariant)
-    val description = stringResource(R.string.streak_count, streak)
+    val description = stringResource(R.string.streak_count, streak.count)
 
     Layout(
         contents = listOf<@Composable () -> Unit>(
-            { STREAK_RUNGS.forEach { Text(text = "$it", color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) } },
+            { Streak.RUNGS.forEach { Text(text = "$it", color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) } },
             { Spacer(Modifier.drawBehind { drawRail(rung, accent, scheme.outlineVariant) }) },
             {
                 Box(modifier = Modifier.background(accent, CircleShape), contentAlignment = Alignment.Center) {
                     Text(
-                        text = "$streak",
+                        text = "${streak.count}",
                         modifier = Modifier.padding(horizontal = 4.dp),
                         color = fade(if (lit) scheme.onSecondary else scheme.onSurfaceVariant),
                         fontWeight = FontWeight.Bold,
@@ -93,10 +91,11 @@ fun StreakMeter(streak: Int, modifier: Modifier = Modifier, numbersOnRight: Bool
         val labels = labelMeasurables.map { it.measure(Constraints()) }
         val caption = captionMeasurables.single().measure(Constraints())
 
-        val fitsEveryLabel = circleSize + labels.maxOf { it.height } * STREAK_RUNGS.lastIndex + gap + caption.height
+        val fitsEveryLabel = circleSize + labels.maxOf { it.height } * Streak.RUNGS.lastIndex + gap + caption.height
         val height = fitsEveryLabel.coerceIn(constraints.minHeight, constraints.maxHeight)
-        // A window squeezed shorter than the meter would otherwise hand the rail a negative height, which throws
-        val ladderHeight = (height - gap - caption.height).coerceAtLeast(circleSize)
+        // A window squeezed shorter than the meter drops the caption, then the ladder, rather than draw over what is below them
+        val captionFits = height >= circleSize + gap + caption.height
+        val ladderHeight = (if (captionFits) height - gap - caption.height else height).coerceAtLeast(circleSize)
         val rail = railMeasurables.single().measure(Constraints.fixed(circleSize, ladderHeight))
         val circle = circleMeasurables.single().measure(Constraints.fixed(circleSize, circleSize))
 
@@ -107,6 +106,8 @@ fun StreakMeter(streak: Int, modifier: Modifier = Modifier, numbersOnRight: Bool
         fun centre(index: Float) = rungCentre(index, ladderHeight.toFloat(), circleSize.toFloat()).roundToInt()
 
         layout(meterWidth, height) {
+            if (height < circleSize) return@layout
+
             // Laid out with the labels on the left, then turned around for the right, rather than mirrored by the language
             fun Placeable.placeOnSide(x: Int, y: Int) = place(if (numbersOnRight) meterWidth - x - width else x, y)
 
@@ -121,7 +122,7 @@ fun StreakMeter(streak: Int, modifier: Modifier = Modifier, numbersOnRight: Bool
             }
             rail.placeOnSide(railX - circleSize / 2, 0)
             circle.placeOnSide(railX - circleSize / 2, centre(rung) - circleSize / 2)
-            caption.placeOnSide(railX - caption.width / 2, ladderHeight + gap)
+            if (captionFits) caption.placeOnSide(railX - caption.width / 2, ladderHeight + gap)
         }
     }
 }
@@ -131,12 +132,12 @@ private fun fade(color: Color): Color = animateColorAsState(color, tween(CLIMB_M
 
 // Evenly up the ladder, inset by half a circle so a circle on the bottom or top rung stays inside it
 private fun rungCentre(index: Float, ladderHeight: Float, circleSize: Float): Float =
-    ladderHeight - circleSize / 2 - (ladderHeight - circleSize) * index / STREAK_RUNGS.lastIndex
+    ladderHeight - circleSize / 2 - (ladderHeight - circleSize) * index / Streak.RUNGS.lastIndex
 
 private fun DrawScope.drawRail(rung: Float, accent: Color, rail: Color) {
     fun at(index: Float) = Offset(center.x, rungCentre(index, size.height, CircleSize.roundToPx().toFloat()))
 
-    drawLine(rail, at(STREAK_RUNGS.lastIndex.toFloat()), at(0f), RailWidth.toPx())
+    drawLine(rail, at(Streak.RUNGS.lastIndex.toFloat()), at(0f), RailWidth.toPx())
     drawLine(accent, at(rung), at(0f), RailWidth.toPx())
-    for (index in STREAK_RUNGS.indices) drawCircle(if (index < rung) accent else rail, DotSize.toPx() / 2, at(index.toFloat()))
+    for (index in Streak.RUNGS.indices) drawCircle(if (index < rung) accent else rail, DotSize.toPx() / 2, at(index.toFloat()))
 }

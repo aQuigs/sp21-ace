@@ -13,10 +13,11 @@ data class Settings(
     val buttonLocation: ButtonLocation = ButtonLocation.RIGHT,
     val handTotals: Boolean = false,
     val chartButton: Boolean = true,
-    val soundEffects: Boolean = false,
     val streakMeter: Boolean = true,
+    val soundEffects: Boolean = false,
     val flashcardTimer: Boolean = true,
-    val flashcardStreak: Boolean = true,
     val warnOnIncorrectMove: Boolean = true,
     val hintButton: Boolean = true,
-)
+) {
+    val buttonsOnLeft: Boolean get() = buttonLocation == ButtonLocation.LEFT
+}

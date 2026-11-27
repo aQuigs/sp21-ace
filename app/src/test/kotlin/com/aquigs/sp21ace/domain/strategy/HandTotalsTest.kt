@@ -1,12 +1,11 @@
-package com.aquigs.sp21ace.domain.trainer
+package com.aquigs.sp21ace.domain.strategy
 
-import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class HandTotalsTest {
-    private fun total(player: String) = TrainerHand(cards(player), card("6d")).playerTotal
+    private fun total(player: String) = totalLabel(cards(player))
 
     @Test
     fun aHardOrSoftHandReadsAsItsChartRow() {
@@ -30,6 +29,6 @@ class HandTotalsTest {
 
     @Test
     fun aBustReadsAsItsTotal() {
-        assertEquals("26", totalLabel(cards("Kc 6d Qs")))
+        assertEquals("26", total("Kc 6d Qs"))
     }
 }

@@ -2,17 +2,14 @@ package com.aquigs.sp21ace.ui.flashcards
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -26,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -53,15 +49,12 @@ import com.aquigs.sp21ace.domain.indices.playName
 import com.aquigs.sp21ace.domain.indices.signedCount
 import com.aquigs.sp21ace.domain.indices.title
 import com.aquigs.sp21ace.domain.settings.Settings
-import com.aquigs.sp21ace.domain.strategy.upcard
-import com.aquigs.sp21ace.domain.trainer.totalLabel
 import com.aquigs.sp21ace.ui.components.CircleButton
-import com.aquigs.sp21ace.ui.components.DealerHand
 import com.aquigs.sp21ace.ui.components.Dissolve
-import com.aquigs.sp21ace.ui.components.DissolvingHand
+import com.aquigs.sp21ace.ui.components.DrillTable
 import com.aquigs.sp21ace.ui.components.FeedbackBar
 import com.aquigs.sp21ace.ui.components.FeedbackText
-import com.aquigs.sp21ace.ui.components.HandArea
+import com.aquigs.sp21ace.ui.components.HandsColumn
 import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
 import com.aquigs.sp21ace.ui.components.percentText
 import kotlinx.coroutines.delay
@@ -131,13 +124,13 @@ fun IndexFlashcardsScreen(
                     Button(onClick = onOpenIndices) { Text(stringResource(R.string.choose_indices)) }
                 }
             } else {
-                Box(Modifier.weight(1f)) {
-                    Hands(card, settings.handTotals, Modifier.fillMaxSize())
-                    // In the space either side of the dealer's two cards, at the default font size, which always leaves room
-                    ProvideDefaultFontScale {
-                        if (settings.flashcardStreak) Streak(state.run.streak, Modifier.align(Alignment.TopStart))
-                        if (settings.flashcardTimer) CardTime(time, Modifier.align(Alignment.TopEnd))
-                    }
+                DrillTable(
+                    streak = state.run.streak,
+                    settings = settings,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    overMeter = if (settings.flashcardTimer) ({ CardTime(time) }) else null,
+                ) {
+                    HandsColumn(card.upcard, card.player, settings.handTotals)
                 }
                 Prompt(card.index.deviation.playName, card.index.direction)
                 // The card this frame shows, even if a tap lands after the next one is dealt but before it is drawn
@@ -189,71 +182,27 @@ private const val SEPARATOR = "\u00A0| "
 
 private fun String.unbroken() = replace(' ', '\u00A0')
 
+/**
+ * The card's time under its caption, at the default font size, so it takes no more width than the meter under it. Reads [time]
+ * itself, so each tick redraws only this. A screen reader hears whole seconds, which change less often.
+ */
 @Composable
-private fun Streak(streak: Int, modifier: Modifier = Modifier) {
-    Readout(
-        caption = stringResource(R.string.streak),
-        value = "$streak",
-        spoken = stringResource(R.string.streak_count, streak),
-        // Muted until the first right answer, as the streak meter is
-        color = if (streak > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-        alignment = Alignment.Start,
-        modifier = modifier,
-    )
-}
-
-/** Reads [time] itself, so each tick redraws only this. A screen reader hears whole seconds, which change less often. */
-@Composable
-private fun CardTime(time: State<Duration?>, modifier: Modifier = Modifier) {
+private fun CardTime(time: State<Duration?>) {
     val shown = time.value
     val seconds = shown?.inWholeSeconds?.toInt()
+    val spoken = seconds?.let { pluralStringResource(R.plurals.card_time_spoken, it, it) } ?: stringResource(R.string.card_untimed)
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Readout(
-        caption = stringResource(R.string.card_time),
-        value = shown?.let { secondsText(it) } ?: stringResource(R.string.no_data),
-        spoken = seconds?.let { pluralStringResource(R.plurals.card_time_spoken, it, it) } ?: stringResource(R.string.card_untimed),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        alignment = Alignment.End,
-        modifier = modifier,
-    )
-}
-
-/** A [value] under its [caption], lined up on the edge it sits at, and one item for a screen reader. */
-@Composable
-private fun Readout(caption: String, value: String, spoken: String, color: Color, alignment: Alignment.Horizontal, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.clearAndSetSemantics { contentDescription = spoken }, horizontalAlignment = alignment) {
-        Text(text = caption, color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-        Text(
-            text = value,
-            color = color,
-            fontWeight = FontWeight.Bold,
-            // Digits of one width, so a time doesn't shake as it counts
-            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-        )
-    }
-}
-
-/** The dealer's hand over the player's, or for insurance the dealer's alone, with the player's space left empty so the cards don't move. */
-@Composable
-private fun Hands(card: Flashcard, handTotals: Boolean, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxWidth().wrapContentWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        HandArea(
-            label = stringResource(R.string.dealer),
-            total = card.upcard.upcard.label.takeIf { handTotals },
-            modifier = Modifier.weight(1f),
-        ) { fan ->
-            DealerHand(card.upcard, fan)
-        }
-        if (card.player.isEmpty()) {
-            Spacer(Modifier.weight(1f))
-        } else {
-            HandArea(
-                label = stringResource(R.string.you),
-                total = totalLabel(card.player).takeIf { handTotals },
-                modifier = Modifier.weight(1f),
-            ) { fan ->
-                DissolvingHand(card.player, fan)
-            }
+    ProvideDefaultFontScale {
+        Column(modifier = Modifier.clearAndSetSemantics { contentDescription = spoken }, horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = stringResource(R.string.card_time), color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = shown?.let { secondsText(it) } ?: stringResource(R.string.no_data),
+                color = color,
+                fontWeight = FontWeight.Bold,
+                // Digits of one width, so a time doesn't shake as it counts
+                style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+            )
         }
     }
 }

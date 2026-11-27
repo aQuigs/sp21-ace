@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.ui.chart.ChartTile
 
-/** The trainer's and the table's [parts] left to right, or right to left with the buttons on the left, so the buttons keep to the edge. */
+/** A drill's and the table's [parts] left to right, or right to left with the buttons on the left, so the buttons keep to the edge. */
 @Composable
 fun EdgeRow(buttonsOnLeft: Boolean, parts: List<@Composable RowScope.() -> Unit>, modifier: Modifier = Modifier) {
     // Left and Right name sides of the screen, so a right-to-left language mustn't reverse the row

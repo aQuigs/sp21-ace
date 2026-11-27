@@ -204,7 +204,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun theFlashcardTimerAndStreakCounterStartVisibleUnderCardCountingAndHideOnTheirOwn() {
+    fun theFlashcardTimerStartsVisibleUnderCardCountingAndHides() {
         showSettings()
 
         val timer = switch(R.string.flashcard_timer).performScrollTo().assertIsOn()
@@ -212,10 +212,6 @@ class SettingsScreenTest {
         timer.performClick()
         assertEquals(Settings(flashcardTimer = false), settings)
         summary(R.string.flashcard_timer, R.string.hidden).assertIsDisplayed()
-
-        switch(R.string.flashcard_streak).performScrollTo().assertIsOn().performClick()
-        assertEquals(Settings(flashcardTimer = false, flashcardStreak = false), settings)
-        summary(R.string.flashcard_streak, R.string.hidden).assertIsDisplayed()
     }
 
     @Test

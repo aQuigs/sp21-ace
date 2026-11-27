@@ -1,8 +1,8 @@
 package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.drill.Streak
 import com.aquigs.sp21ace.domain.history.Tally
-import com.aquigs.sp21ace.domain.trainer.nextStreak
 import java.io.Serializable
 import java.time.Instant
 import kotlin.math.absoluteValue
@@ -33,7 +33,7 @@ data class FlashcardGrade(val card: Flashcard, val answer: Int, val tally: Tally
  * An endless flashcard run: the [card] showing, or none while no index is switched on, the verdict on the last one, and the
  * [streak] of right answers. Serializable so the activity saves it as it is through recreation and process death.
  */
-data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = null, val streak: Int = 0) : Serializable {
+data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = null, val streak: Streak = Streak()) : Serializable {
     /**
      * The run with a card from [dealer] in place of one it could not deal, such as after a preset swap or an edit, so a card is
      * never graded against a stale number, or a hand of 3 or more cards left up once they're switched off. A card it could deal
@@ -47,7 +47,7 @@ data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = n
     }
 
     /** The run once the history is cleared, with nothing left that counts its answers. */
-    fun historyCleared(): FlashcardRun = copy(lastGrade = null, streak = 0)
+    fun historyCleared(): FlashcardRun = copy(lastGrade = null, streak = Streak())
 }
 
 /**
@@ -88,5 +88,5 @@ fun FlashcardRun.answer(
     val answers = history.orEmpty() + recorded
     val tally = history?.let { answers.filter { it.index == asked.index }.tallyByIndex(dealer.game).getValue(asked.index) }
     val grade = FlashcardGrade(asked, number, tally, time?.inWholeMilliseconds)
-    return AnsweredFlashcard(FlashcardRun(deal(asked, answers), grade, nextStreak(streak, grade.isCorrect)), recorded)
+    return AnsweredFlashcard(FlashcardRun(deal(asked, answers), grade, streak.after(grade.isCorrect)), recorded)
 }
