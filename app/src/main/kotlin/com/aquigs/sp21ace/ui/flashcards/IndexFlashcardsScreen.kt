@@ -97,13 +97,14 @@ fun IndexFlashcardsScreen(
     val time = remember(card) { mutableStateOf(card?.let(actions::time)) }
     LaunchedEffect(card, hidden, settings.flashcardTimer) {
         if (hidden) currentActions.interrupted()
-        if (card == null) return@LaunchedEffect
+        if (card != null && !hidden) currentActions.shown(card)
+        if (card == null || !settings.flashcardTimer) return@LaunchedEffect
 
-        if (!hidden) currentActions.shown(card)
-        while (settings.flashcardTimer) {
-            time.value = currentActions.time(card)
-            // Once untimed, a card stays so
-            val shown = time.value.takeIf { !hidden } ?: break
+        while (true) {
+            val shown = currentActions.time(card)
+            time.value = shown
+            // Once untimed a card stays so, and a hidden one's time stands still
+            if (hidden || shown == null) break
             delay(TICK_MILLIS - shown.inWholeMilliseconds % TICK_MILLIS)
         }
     }
@@ -132,8 +133,8 @@ fun IndexFlashcardsScreen(
                     Hands(card, settings.handTotals, Modifier.fillMaxSize())
                     // In the space either side of the dealer's two cards, at the default font size, which always leaves room
                     ProvideDefaultFontScale {
-                        if (settings.flashcardStreak) Streak(state.run.streak, Alignment.Start, Modifier.align(Alignment.TopStart))
-                        if (settings.flashcardTimer) CardTime(time, Alignment.End, Modifier.align(Alignment.TopEnd))
+                        if (settings.flashcardStreak) Streak(state.run.streak, Modifier.align(Alignment.TopStart))
+                        if (settings.flashcardTimer) CardTime(time, Modifier.align(Alignment.TopEnd))
                     }
                 }
                 Prompt(card.index.deviation.playName, card.index.direction)
@@ -182,21 +183,21 @@ private const val SEPARATOR = "\u00A0| "
 private fun String.unbroken() = replace(' ', '\u00A0')
 
 @Composable
-private fun Streak(streak: Int, alignment: Alignment.Horizontal, modifier: Modifier = Modifier) {
+private fun Streak(streak: Int, modifier: Modifier = Modifier) {
     Readout(
         caption = stringResource(R.string.streak),
         value = "$streak",
         spoken = stringResource(R.string.streak_count, streak),
         // Muted until the first right answer, as the streak meter is
         color = if (streak > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-        alignment = alignment,
+        alignment = Alignment.Start,
         modifier = modifier,
     )
 }
 
 /** Reads [time] itself, so each tick redraws only this. A screen reader hears whole seconds, which change less often. */
 @Composable
-private fun CardTime(time: State<Duration?>, alignment: Alignment.Horizontal, modifier: Modifier = Modifier) {
+private fun CardTime(time: State<Duration?>, modifier: Modifier = Modifier) {
     val shown = time.value
     val seconds = shown?.inWholeSeconds?.toInt()
 
@@ -205,7 +206,7 @@ private fun CardTime(time: State<Duration?>, alignment: Alignment.Horizontal, mo
         value = shown?.let { secondsText(it) } ?: stringResource(R.string.no_data),
         spoken = seconds?.let { pluralStringResource(R.plurals.card_time_spoken, it, it) } ?: stringResource(R.string.card_untimed),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        alignment = alignment,
+        alignment = Alignment.End,
         modifier = modifier,
     )
 }

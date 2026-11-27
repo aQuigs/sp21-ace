@@ -465,6 +465,7 @@ class IndexFlashcardsScreenTest {
     private fun assertPadFits(reach: Int, fontScale: Float = 1f) {
         // Stand on hard 16 vs 10 at the far end of the pad, or at 0 for the pad's least reach
         val first = sixteenVsKing.copy(index = sixteenVsTen.copy(threshold = if (reach > 5) -reach else 0))
+        settings = Settings(handTotals = true)
         show(oneIndex(first.index), first, deals = listOf(first.copy(player = cards("10s 6h"))), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(fontScale))
 
         val numbers = -reach..reach
@@ -480,8 +481,8 @@ class IndexFlashcardsScreenTest {
             for (b in buttons.drop(i + 1)) assertFalse("$a overlaps $b", a.overlaps(b))
         }
         assertTrue(buttons.take(reach).maxOf { it.bottom } <= buttons.drop(reach).minOf { it.top })
-        for (readout in listOf(string(R.string.streak_count, 0), compose.activity.resources.getQuantityString(R.plurals.card_time_spoken, 0, 0)).map(::bounds)) {
-            val dealer = compose.onNodeWithText(string(R.string.dealer)).getBoundsInRoot()
+        val dealer = listOf(string(R.string.dealer), "10").map { compose.onNodeWithText(it).getBoundsInRoot() }
+        for (readout in listOf(streak(0), cardTime(0)).map { it.getBoundsInRoot() }) {
             for (other in others + buttons + dealer) assertFalse("$readout overlaps $other", readout.overlaps(other))
         }
         for (number in numbers) {

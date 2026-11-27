@@ -183,7 +183,6 @@ class MainActivityTest {
         return listOf(correct, incorrect).sumOf { overall[overall.indexOf(it) - 1].toInt() }
     }
 
-    // Hands are dealt at random, so compare every card, bar and recap word rather than expected values
     // The flashcard's time counts on, so what it says, its caption and its value are left out
     private fun everythingOnScreenButTheTime(): List<String> {
         val everything = everythingOnScreen()
@@ -191,6 +190,7 @@ class MainActivityTest {
         return everything.filterIndexed { i, _ -> i !in caption - 1..caption + 1 }
     }
 
+    // Hands are dealt at random, so compare every card, bar and recap word rather than expected values
     private fun everythingOnScreen(): List<String> =
         compose.onAllNodes(SemanticsMatcher("any node") { true }, useUnmergedTree = true).fetchSemanticsNodes().flatMap { node ->
             node.config.getOrElse(SemanticsProperties.ContentDescription) { emptyList() } +
