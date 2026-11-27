@@ -13,7 +13,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +28,8 @@ import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.data.TableStore
+import com.aquigs.sp21ace.data.TrueCountHistoryStore
+import com.aquigs.sp21ace.data.TrueCountOptionsStore
 import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.record
 import com.aquigs.sp21ace.domain.drill.Streak
@@ -36,24 +37,28 @@ import com.aquigs.sp21ace.domain.game.Shoe
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.history.playedHandsSince
-import com.aquigs.sp21ace.domain.indices.AnswerTimer
 import com.aquigs.sp21ace.domain.indices.Flashcard
 import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
 import com.aquigs.sp21ace.domain.indices.FlashcardDealer
 import com.aquigs.sp21ace.domain.indices.FlashcardOptions
-import com.aquigs.sp21ace.domain.indices.FlashcardRun
 import com.aquigs.sp21ace.domain.indices.IndexPresets
-import com.aquigs.sp21ace.domain.indices.answer
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
+import com.aquigs.sp21ace.domain.truecount.TrueCountAnswer
+import com.aquigs.sp21ace.domain.truecount.TrueCountCard
+import com.aquigs.sp21ace.domain.truecount.TrueCountDealer
+import com.aquigs.sp21ace.domain.truecount.TrueCountOptions
 import com.aquigs.sp21ace.ui.AppShell
+import com.aquigs.sp21ace.ui.flashcards.DrillActions
 import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsActions
 import com.aquigs.sp21ace.ui.flashcards.IndexFlashcardsState
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import com.aquigs.sp21ace.ui.theme.isDark
 import com.aquigs.sp21ace.ui.trainer.AnswerSounds
 import com.aquigs.sp21ace.ui.trainer.rememberAnswerSounds
+import com.aquigs.sp21ace.ui.truecount.TrueCountActions
+import com.aquigs.sp21ace.ui.truecount.TrueCountState
 import java.time.Instant
 import kotlin.random.Random
 
@@ -71,15 +76,29 @@ class MainActivity : ComponentActivity() {
         val presetsStore = IndexPresetsStore(this)
         val flashcardOptionsStore = FlashcardOptionsStore(this)
         val flashcardHistoryStore = FlashcardHistoryStore.forApp(this)
+        val trueCountOptionsStore = TrueCountOptionsStore(this)
+        val trueCountHistoryStore = TrueCountHistoryStore.forApp(this)
 
         setContent {
-            Sp21AceApp(store, historyStore, playHistoryStore, handsStore, settingsStore, tableStore, presetsStore, flashcardOptionsStore, flashcardHistoryStore)
+            Sp21AceApp(
+                store,
+                historyStore,
+                playHistoryStore,
+                handsStore,
+                settingsStore,
+                tableStore,
+                presetsStore,
+                flashcardOptionsStore,
+                flashcardHistoryStore,
+                trueCountOptionsStore,
+                trueCountHistoryStore,
+            )
         }
     }
 }
 
 /**
- * The composition root. Tests pass their own stores, [deal] and [dealFlashcard], [sounds], the [random] that shuffles the table's
+ * The composition root. Tests pass their own stores, [deal], [dealFlashcard] and [dealTrueCount], [sounds], the [random] that shuffles the table's
  * shoe, and the [clock] that times flashcard answers.
  */
 @Composable
@@ -93,8 +112,13 @@ internal fun Sp21AceApp(
     presetsStore: IndexPresetsStore,
     flashcardOptionsStore: FlashcardOptionsStore,
     flashcardHistoryStore: FlashcardHistoryStore,
+    trueCountOptionsStore: TrueCountOptionsStore,
+    trueCountHistoryStore: TrueCountHistoryStore,
     deal: (picker: HandPicker, history: List<PracticeAnswer>) -> TrainerHand = { picker, history -> picker.pick(history) },
     dealFlashcard: (dealer: FlashcardDealer, previous: Flashcard?, history: List<FlashcardAnswer>) -> Flashcard? = { dealer, previous, history ->
+        dealer.deal(previous, history)
+    },
+    dealTrueCount: (dealer: TrueCountDealer, previous: TrueCountCard?, history: List<TrueCountAnswer>) -> TrueCountCard? = { dealer, previous, history ->
         dealer.deal(previous, history)
     },
     sounds: AnswerSounds? = null,
@@ -110,6 +134,7 @@ internal fun Sp21AceApp(
     val history by historyStore.history.collectAsState()
     val playHistory by playHistoryStore.history.collectAsState()
     val flashcardAnswers by flashcardHistoryStore.history.collectAsState()
+    val trueCountAnswers by trueCountHistoryStore.history.collectAsState()
     // Each deal reads the rules, the customization and the history, so a change applies from the next hand while the one on the table stays
     val picker = remember(rules.ruleSet, customization) { HandPicker(rules.ruleSet, customization) }
     var trainer by rememberSaveable { mutableStateOf(TrainerState(deal(picker, history.orEmpty()))) }
@@ -118,55 +143,44 @@ internal fun Sp21AceApp(
     var presets by remember { mutableStateOf(presetsStore.load()) }
     var flashcardOptions by remember { mutableStateOf(flashcardOptionsStore.load()) }
     val flashcardDealer = remember(presets.active, flashcardOptions) { FlashcardDealer(presets.active, flashcardOptions) }
-    // The store's own value, which a collected one can trail
-    fun flashcardHistory() = flashcardHistoryStore.history.value.orEmpty()
-    fun nextFlashcard(previous: Flashcard?) = dealFlashcard(flashcardDealer, previous, flashcardHistory())
-    // Not saved, so a card restored in a recreated activity, which showed before, is never timed from partway through
-    val answerTimer = remember { AnswerTimer(clock) }
-    var flashcardRun by rememberSaveable { mutableStateOf(FlashcardRun(nextFlashcard(null)).also { answerTimer.dealt(it.card) }) }
+    var trueCountOptions by remember { mutableStateOf(trueCountOptionsStore.load()) }
+    val trueCountDealer = remember(trueCountOptions) { TrueCountDealer(trueCountOptions) }
+    fun playSound(isCorrect: Boolean) {
+        if (settings.soundEffects) answerSounds?.play(isCorrect)
+    }
+
+    val flashcards = rememberDrill(
+        flashcardDealer,
+        flashcardHistoryStore,
+        clock,
+        deal = { previous, history -> dealFlashcard(flashcardDealer, previous, history) },
+        onAnswered = ::playSound,
+    )
+    val trueCounts = rememberDrill(
+        trueCountDealer,
+        trueCountHistoryStore,
+        clock,
+        deal = { previous, history -> dealTrueCount(trueCountDealer, previous, history) },
+        onAnswered = ::playSound,
+    )
 
     fun savePresets(next: IndexPresets) {
         presets = next
         presetsStore.save(next)
     }
 
-    // Every card dealt starts its time afresh
-    fun showRun(next: FlashcardRun) {
-        if (next.card != flashcardRun.card) answerTimer.dealt(next.card)
-        flashcardRun = next
-    }
-
-    // A change of preset deals afresh in place of a card whose index it no longer drills, rather than grading a stale number
-    LaunchedEffect(flashcardDealer) { showRun(flashcardRun.dealtFrom(flashcardDealer) { nextFlashcard(it) }) }
-    val flashcardActions = object : IndexFlashcardsActions {
-        override fun answer(asked: Flashcard, number: Int) {
-            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now(), flashcardHistoryStore.history.value) { previous, history ->
-                dealFlashcard(flashcardDealer, previous, history)
-            }
-                ?.let { (next, answer) ->
-                    showRun(next)
-                    flashcardHistoryStore.append(answer)
-                    if (settings.soundEffects) answerSounds?.play(answer.isCorrect)
-                }
-        }
-
-        override fun shown(card: Flashcard) = answerTimer.shown(card)
-
-        override fun interrupted() = answerTimer.interrupted()
-
-        override fun time(card: Flashcard) = answerTimer.display(card)
-
+    val flashcardActions = object : IndexFlashcardsActions, DrillActions<Flashcard> by flashcards {
         override fun changePresets(presets: IndexPresets) = savePresets(presets)
 
         override fun changeOptions(options: FlashcardOptions) {
             flashcardOptions = options
             flashcardOptionsStore.save(options)
         }
-
-        override fun clearHistory() {
-            flashcardHistoryStore.clear()
-            // The streak and the verdict's accuracy live in the run, not in the history
-            flashcardRun = flashcardRun.historyCleared()
+    }
+    val trueCountActions = object : TrueCountActions, DrillActions<TrueCountCard> by trueCounts {
+        override fun changeOptions(options: TrueCountOptions) {
+            trueCountOptions = options
+            trueCountOptionsStore.save(options)
         }
     }
 
@@ -196,14 +210,16 @@ internal fun Sp21AceApp(
             settings = settings,
             history = history.orEmpty(),
             playHistory = playHistory.orEmpty(),
-            flashcards = IndexFlashcardsState(flashcardRun, presets, flashcardOptions, flashcardAnswers.orEmpty()),
+            flashcards = IndexFlashcardsState(flashcards.run, presets, flashcardOptions, flashcardAnswers.orEmpty()),
             flashcardActions = flashcardActions,
+            trueCounts = TrueCountState(trueCounts.run, trueCountOptions, trueCountAnswers.orEmpty()),
+            trueCountActions = trueCountActions,
             onAnswer = { asked, move ->
                 // The store's history, since the collected one can trail a quick second answer
                 trainer.record(asked, move, rules.ruleSet, historyStore.history.value.orEmpty(), Instant.now()) { deal(picker, it) }?.let { (next, answer) ->
                     trainer = next
                     historyStore.append(answer)
-                    if (settings.soundEffects) answerSounds?.play(answer.isCorrect)
+                    playSound(answer.isCorrect)
                 }
             },
             onTableUpdate = { change -> change(table)?.let(::seat) },

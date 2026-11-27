@@ -35,7 +35,7 @@ import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
-import com.aquigs.sp21ace.domain.indices.AnswerTimer
+import com.aquigs.sp21ace.domain.drill.AnswerTimer
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
 import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.DeviationPlay
@@ -51,7 +51,6 @@ import com.aquigs.sp21ace.domain.indices.IndexHand
 import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexPresets
 import com.aquigs.sp21ace.domain.indices.PlayIndex
-import com.aquigs.sp21ace.domain.indices.answer
 import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Upcard
@@ -96,7 +95,7 @@ class IndexFlashcardsScreenTest {
         val answers = mutableListOf<FlashcardAnswer>()
         var run by mutableStateOf(FlashcardRun(first))
         private val dealer = FlashcardDealer(preset)
-        private val timer = AnswerTimer { now }.also { it.dealt(first) }
+        private val timer = AnswerTimer<Flashcard> { now }.also { it.dealt(first) }
         private val next = deals.iterator()
 
         override fun answer(asked: Flashcard, number: Int) {

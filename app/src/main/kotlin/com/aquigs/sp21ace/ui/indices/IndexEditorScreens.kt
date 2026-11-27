@@ -36,6 +36,7 @@ import com.aquigs.sp21ace.domain.indices.title
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.ui.components.ActionRow
 import com.aquigs.sp21ace.ui.components.ChipChoices
+import com.aquigs.sp21ace.ui.components.ChipField
 import com.aquigs.sp21ace.ui.components.ConfirmDialog
 import com.aquigs.sp21ace.ui.components.InfoRow
 import com.aquigs.sp21ace.ui.components.SettingsHeader
@@ -57,7 +58,7 @@ fun AddIndexScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, onBa
     val toAdd = index?.takeIf { listed == null }
 
     SettingsPage(title = stringResource(R.string.add_index), onBack = onBack, modifier = modifier) {
-        Chips(
+        ChipField(
             name = stringResource(R.string.index_hand),
             choices = IndexKind.entries.map { it to stringResource(it.title) },
             selected = draft.kind,
@@ -65,14 +66,14 @@ fun AddIndexScreen(presets: IndexPresets, onChange: (IndexPresets) -> Unit, onBa
         )
 
         if (draft.kind != IndexKind.INSURANCE) {
-            Chips(
+            ChipField(
                 name = stringResource(if (draft.kind == IndexKind.PAIR) R.string.pair_of else R.string.total),
                 choices = draft.values.map { it to if (draft.kind == IndexKind.PAIR) Upcard.ofPoints(it).label else "$it" },
                 selected = draft.value,
                 onSelect = { draft = draft.copy(value = it) },
             )
-            Chips(stringResource(R.string.dealers_upcard), UPCARDS.map { it to it.label }, draft.upcard) { draft = draft.copy(upcard = it) }
-            Chips(stringResource(R.string.index_play), draft.plays.map { it to it.title }, draft.play) { draft = draft.copy(play = it) }
+            ChipField(stringResource(R.string.dealers_upcard), UPCARDS.map { it to it.label }, draft.upcard) { draft = draft.copy(upcard = it) }
+            ChipField(stringResource(R.string.index_play), draft.plays.map { it to it.title }, draft.play) { draft = draft.copy(play = it) }
         }
 
         NumberFields(
@@ -169,17 +170,10 @@ private fun NumberFields(play: String?, direction: IndexDirection, threshold: In
     val number = numberInPlainWords(threshold, direction)
     val name = stringResource(R.string.true_count)
 
-    Chips(stringResource(R.string.direction), IndexDirection.entries.map { it to it.inPlainWords }, direction, onDirection)
+    ChipField(stringResource(R.string.direction), IndexDirection.entries.map { it to it.inPlainWords }, direction, onDirection)
     SettingsHeader(name)
     SettingsNote(play?.let { indexInPlainWords(it, threshold, direction) } ?: number)
     ChipChoices(name, INDEX_NUMBERS.map { it to signedCount(it) }, threshold, onThreshold)
-}
-
-/** A field of the form: its heading over its values. */
-@Composable
-private fun <T> Chips(name: String, choices: List<Pair<T, String>>, selected: T?, onSelect: (T) -> Unit) {
-    SettingsHeader(name)
-    ChipChoices(name, choices, selected, onSelect)
 }
 
 // "Hard 16 vs 10, Stand", or "Insurance", which names itself

@@ -20,8 +20,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.drill.CardsShown
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
-import com.aquigs.sp21ace.domain.indices.CardsShown
 import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.Deviation

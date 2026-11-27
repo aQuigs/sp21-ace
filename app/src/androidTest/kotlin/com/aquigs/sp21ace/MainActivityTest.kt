@@ -13,6 +13,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.data.FlashcardHistoryStore
 import com.aquigs.sp21ace.data.PracticeHistoryStore
@@ -157,7 +158,7 @@ class MainActivityTest {
 
     private fun openFromDrawer(title: Int) {
         compose.onNodeWithContentDescription(compose.activity.getString(R.string.open_menu)).performClick()
-        compose.onNode(hasText(compose.activity.getString(title)) and isSelectable()).performClick()
+        compose.onNode(hasText(compose.activity.getString(title)) and isSelectable()).performScrollTo().performClick()
     }
 
     // Counted on the All tabs of hands not yet doubled and those already doubled, since the hand dealt is random, and against

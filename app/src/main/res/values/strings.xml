@@ -299,6 +299,38 @@
     <string name="expanded">Expanded</string>
     <string name="collapsed">Collapsed</string>
     <string name="index_switched_off">%1$s\u00A0·\u00A0Off</string>
+    <string name="true_count_flashcards">True Count Flashcards</string>
+    <string name="true_count_options">True Count Options</string>
+    <string name="true_count_stats">True Count Stats</string>
+    <string name="running_count">Running count</string>
+    <string name="decks_left_caption">Decks left</string>
+    <string name="decks_discarded_caption">Decks in discard tray</string>
+    <plurals name="decks_left">
+        <item quantity="one">%1$s deck left</item>
+        <item quantity="other">%1$s decks left</item>
+    </plurals>
+    <plurals name="deck_count">
+        <item quantity="one">%1$d deck</item>
+        <item quantity="other">%1$d decks</item>
+    </plurals>
+    <string name="count_with_decks">%1$s with %2$s</string>
+    <string name="true_count_is">True count %1$s</string>
+    <string name="true_count_prompt_spoken">What is the true count?</string>
+    <string name="true_count_options_intro">Divide the running count by the decks left to get the true count, then round it to a whole number.</string>
+    <string name="shoe_size">Shoe size</string>
+    <string name="deck_precision">Deck precision</string>
+    <string name="whole_decks">Whole decks</string>
+    <string name="half_decks">Half decks</string>
+    <string name="quarter_decks">Quarter decks</string>
+    <string name="decks_shown">Decks shown</string>
+    <string name="rounding_example">1.5 counts as %1$s, and −1.5 as %2$s.</string>
+    <string name="prioritize_worse_decks">Prioritize worse decks left</string>
+    <string name="prioritize_worse_decks_note">Decks left you get right half as often come up twice as often, counted for this shoe size. Any you haven\'t answered yet count as 50% right.</string>
+    <string name="no_true_count_answers">No true count answers in this period.</string>
+    <string name="true_count_square_accuracy">%1$s, true count %2$s: %3$d%% right</string>
+    <string name="true_count_square_no_answers">%1$s, true count %2$s: no answers</string>
+    <string name="clear_true_count_history">Clear true count history</string>
+    <string name="clear_true_count_history_message">Are you sure you want to clear your true count history? This resets everything built on it: True Count Stats, which decks Prioritize worse decks left favors, and the true count streak.</string>
     <string name="flashcard_timer">Flashcard timer</string>
     <string name="card_time">Time</string>
     <plurals name="card_time_spoken">
@@ -307,6 +339,6 @@
     </plurals>
     <string name="card_untimed">This card isn\'t timed</string>
     <string name="flashcard_accuracy">Accuracy %1$s</string>
-    <string name="clear_flashcard_history">Clear flashcard history</string>
-    <string name="clear_flashcard_history_message">Are you sure you want to clear your flashcard history? This resets everything built on it: Flashcard Stats, which indices Prioritize worse indices favors, and the flashcards\' streak.</string>
+    <string name="clear_flashcard_history">Clear index flashcard history</string>
+    <string name="clear_flashcard_history_message">Are you sure you want to clear your index flashcard history? This resets everything built on it: Flashcard Stats, which indices Prioritize worse indices favors, and the index flashcard streak.</string>
 </resources>

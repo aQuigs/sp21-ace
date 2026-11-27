@@ -33,8 +33,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.indices.TimeHistogram
-import com.aquigs.sp21ace.domain.indices.TimeSpread
+import com.aquigs.sp21ace.domain.drill.TimeHistogram
+import com.aquigs.sp21ace.domain.drill.TimeSpread
 import com.aquigs.sp21ace.ui.components.readingUp
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds

@@ -263,6 +263,13 @@ fun <T> ChipChoices(name: String, choices: List<Pair<T, String>>, selected: T?, 
     }
 }
 
+/** A setting's values as [ChipChoices] under its heading. */
+@Composable
+fun <T> ChipField(name: String, choices: List<Pair<T, String>>, selected: T?, onSelect: (T) -> Unit) {
+    SettingsHeader(name)
+    ChipChoices(name, choices, selected, onSelect)
+}
+
 /** A line of a form's own, such as what it will make or why it can't, lined up with the rows' titles. */
 @Composable
 fun SettingsNote(text: String, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {

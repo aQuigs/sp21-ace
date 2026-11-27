@@ -69,6 +69,11 @@ import com.aquigs.sp21ace.ui.settings.ColorThemeScreen
 import com.aquigs.sp21ace.ui.settings.SettingsScreen
 import com.aquigs.sp21ace.ui.statistics.PlayStatisticsScreen
 import com.aquigs.sp21ace.ui.trainer.StrategyTrainerScreen
+import com.aquigs.sp21ace.ui.truecount.TrueCountActions
+import com.aquigs.sp21ace.ui.truecount.TrueCountFlashcardsScreen
+import com.aquigs.sp21ace.ui.truecount.TrueCountOptionsScreen
+import com.aquigs.sp21ace.ui.truecount.TrueCountState
+import com.aquigs.sp21ace.ui.truecount.TrueCountStatsScreen
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -76,6 +81,7 @@ import kotlin.math.abs
 enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     StrategyTrainer(R.string.strategy_trainer, isRoot = true),
     IndexFlashcards(R.string.index_flashcards, isRoot = true),
+    TrueCountFlashcards(R.string.true_count_flashcards, isRoot = true),
     Play(R.string.play_spanish_21, isRoot = true),
     StrategyChart(R.string.strategy_chart, isRoot = false),
     TableRules(R.string.table_rules, isRoot = false),
@@ -86,6 +92,8 @@ enum class Destination(@StringRes val title: Int, val isRoot: Boolean) {
     Indices(R.string.indices, isRoot = false),
     IndexPresets(R.string.index_presets, isRoot = false),
     FlashcardStats(R.string.flashcard_stats, isRoot = false),
+    TrueCountOptions(R.string.true_count_options, isRoot = false),
+    TrueCountStats(R.string.true_count_stats, isRoot = false),
     DeckEstimate(R.string.deck_estimate, isRoot = false),
     CountRounding(R.string.true_count_rounding, isRoot = false),
     CardsShown(R.string.cards_shown, isRoot = false),
@@ -111,6 +119,9 @@ private val CARD_COUNTING_ITEMS = listOf(
     Destination.IndexFlashcards to R.drawable.ic_home,
     Destination.Indices to R.drawable.ic_customize_hands,
     Destination.FlashcardStats to R.drawable.ic_accuracy,
+    Destination.TrueCountFlashcards to R.drawable.ic_home,
+    Destination.TrueCountOptions to R.drawable.ic_customize_hands,
+    Destination.TrueCountStats to R.drawable.ic_accuracy,
 )
 
 // Blackjack Ace's Play section also lists its own Table Rules and Strategy Chart, but here the table plays by the trainer's.
@@ -130,6 +141,8 @@ fun AppShell(
     playHistory: List<PlayedHand>,
     flashcards: IndexFlashcardsState,
     flashcardActions: IndexFlashcardsActions,
+    trueCounts: TrueCountState,
+    trueCountActions: TrueCountActions,
     onAnswer: (asked: TrainerHand, move: Move) -> Unit,
     onTableUpdate: ((Table) -> Table?) -> Unit,
     onDeal: () -> Unit,
@@ -210,6 +223,13 @@ fun AppShell(
                 onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenIndices = { open(Destination.Indices) },
             )
+            Destination.TrueCountFlashcards -> TrueCountFlashcardsScreen(
+                state = trueCounts,
+                settings = settings,
+                covered = drawerShowing,
+                actions = trueCountActions,
+                onOpenDrawer = { scope.launch { drawerState.open() } },
+            )
             Destination.Play -> PlayScreen(
                 table = table,
                 settings = settings,
@@ -251,6 +271,8 @@ fun AppShell(
                 onBack = back,
             )
             Destination.FlashcardStats -> FlashcardStatsScreen(flashcards.history, flashcards.presets.active, onBack = back)
+            Destination.TrueCountOptions -> TrueCountOptionsScreen(trueCounts.options, trueCountActions::changeOptions, onBack = back)
+            Destination.TrueCountStats -> TrueCountStatsScreen(trueCounts.history, onBack = back)
             Destination.IndexPresets -> IndexPresetsScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
             Destination.DeckEstimate -> DeckEstimateScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
             Destination.CountRounding -> CountRoundingScreen(flashcards.presets, flashcardActions::changePresets, onBack = back)
@@ -266,6 +288,7 @@ fun AppShell(
                 onClearHistory = onClearHistory,
                 onClearPlayHistory = onClearPlayHistory,
                 onClearFlashcardHistory = flashcardActions::clearHistory,
+                onClearTrueCountHistory = trueCountActions::clearHistory,
                 onBack = back,
             )
             Destination.ColorTheme -> ColorThemeScreen(settings, onSettingsChange, onBack = back)

@@ -35,6 +35,13 @@ enum class CountRounding {
     ROUND,
     ;
 
+    /** [numerator] over a positive [denominator] as the whole number this makes of it, worked out exactly. */
+    fun divide(numerator: Int, denominator: Int): Int = when (this) {
+        FLOOR -> numerator.floorDiv(denominator)
+        TRUNCATE -> numerator / denominator
+        ROUND -> (2 * numerator + denominator).floorDiv(2 * denominator)
+    }
+
     companion object {
         val DEFAULT = FLOOR
     }

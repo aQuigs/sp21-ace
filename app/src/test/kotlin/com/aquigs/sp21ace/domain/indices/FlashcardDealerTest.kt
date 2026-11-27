@@ -8,6 +8,7 @@ import com.aquigs.sp21ace.domain.cards.isBlackjack
 import com.aquigs.sp21ace.domain.cards.isPair
 import com.aquigs.sp21ace.domain.cards.total
 import com.aquigs.sp21ace.domain.cards.totalOf
+import com.aquigs.sp21ace.domain.drill.CardsShown
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.upcard
 import org.junit.Assert.assertEquals
@@ -101,12 +102,12 @@ class FlashcardDealerTest {
         fun index(threshold: Int) = PlayIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 16), Upcard.TEN, DeviationPlay.STAND), threshold)
         fun insurance(threshold: Int) = PlayIndex(Deviation.Insurance, threshold)
 
-        assertEquals(-5..5, preset().flashcardAnswers)
-        assertEquals(-5..5, IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17").flashcardAnswers)
-        assertEquals(-7..7, preset(IndexEntry(index(7)), IndexEntry(insurance(-2))).flashcardAnswers)
-        assertEquals(-10..10, preset(IndexEntry(index(3)), IndexEntry(insurance(-10))).flashcardAnswers)
+        assertEquals(-5..5, preset().flashcardPad.numbers)
+        assertEquals(-5..5, IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17").flashcardPad.numbers)
+        assertEquals(-7..7, preset(IndexEntry(index(7)), IndexEntry(insurance(-2))).flashcardPad.numbers)
+        assertEquals(-10..10, preset(IndexEntry(index(3)), IndexEntry(insurance(-10))).flashcardPad.numbers)
         // A number switched off doesn't widen the pad
-        assertEquals(-5..5, preset(IndexEntry(index(3)), IndexEntry(insurance(-10), enabled = false)).flashcardAnswers)
+        assertEquals(-5..5, preset(IndexEntry(index(3)), IndexEntry(insurance(-10), enabled = false)).flashcardPad.numbers)
     }
 
     private fun answers(index: PlayIndex, correct: Int, incorrect: Int) =

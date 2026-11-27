@@ -1,10 +1,8 @@
 package com.aquigs.sp21ace.domain.indices
 
+import com.aquigs.sp21ace.domain.drill.CardsShown
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.TallyCounter
-
-/** Which index a flashcard asks for next: any of them as often as the next, or the worse answered more often. */
-enum class CardsShown { RANDOM, PRIORITIZE_WORSE }
 
 /**
  * How the flashcards are dealt, whatever the preset. [multiCardHands] starts off, since published index tables give each number

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -38,6 +39,8 @@ import com.aquigs.sp21ace.data.PracticeHistoryStore
 import com.aquigs.sp21ace.data.SettingsStore
 import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.data.TableStore
+import com.aquigs.sp21ace.data.TrueCountHistoryStore
+import com.aquigs.sp21ace.data.TrueCountOptionsStore
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.dealing.HAND_TYPES
@@ -49,6 +52,7 @@ import com.aquigs.sp21ace.domain.game.STARTING_BANKROLL
 import com.aquigs.sp21ace.domain.game.StrategyGrade
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
 import com.aquigs.sp21ace.domain.indices.BuiltInIndexSet
+import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.Flashcard
@@ -66,6 +70,10 @@ import com.aquigs.sp21ace.domain.strategy.RuleSet
 import com.aquigs.sp21ace.domain.strategy.StrategyCharts
 import com.aquigs.sp21ace.domain.strategy.TableRules
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
+import com.aquigs.sp21ace.domain.truecount.Decks
+import com.aquigs.sp21ace.domain.truecount.TrueCountAnswer
+import com.aquigs.sp21ace.domain.truecount.TrueCountCard
+import com.aquigs.sp21ace.domain.truecount.TrueCountOptions
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts
 import com.aquigs.sp21ace.ui.accuracy.square
 import com.aquigs.sp21ace.ui.components.TAP_GUARD_MILLIS
@@ -100,11 +108,15 @@ class AppShellTest {
     private val presetsStore by lazy { IndexPresetsStore(compose.activity, "index_presets_app_shell_test") }
     private val flashcardOptionsStore by lazy { FlashcardOptionsStore(compose.activity, "flashcard_options_app_shell_test") }
     private val flashcardHistoryStore by lazy { FlashcardHistoryStore(File(compose.activity.filesDir, "flashcard_history_app_shell_test.txt")) }
+    private val trueCountOptionsStore by lazy { TrueCountOptionsStore(compose.activity, "true_count_options_app_shell_test") }
+    private val trueCountHistoryStore by lazy { TrueCountHistoryStore(File(compose.activity.filesDir, "true_count_history_app_shell_test.txt")) }
 
     // Shoe H17, the preset a first launch drills, stands on hard 16 vs 10 at 0 or higher and insures at +3 or higher
     private val sixteenVsTen = IndexPresets.seeded().active.entries.first { it.index.deviation.title == "Hard 16 vs 10" }.index
     private val sixteenVsKing = Flashcard(sixteenVsTen, cards("9c 7d"), card("Kh"))
     private val insuranceCard = Flashcard(PlayIndex(Deviation.Insurance, 3), emptyList(), card("As"))
+    private val plusSeven = TrueCountCard(6, Decks(14), CountRounding.FLOOR, 7)
+    private val minusFour = TrueCountCard(6, Decks(8), CountRounding.FLOOR, -4)
     private var flashcardsDealt = 0
     private var lastDealer: FlashcardDealer? = null
 
@@ -141,6 +153,8 @@ class AppShellTest {
         presetsStore.save(IndexPresets.seeded())
         flashcardOptionsStore.save(FlashcardOptions())
         flashcardHistoryStore.clear()
+        trueCountOptionsStore.save(TrueCountOptions())
+        trueCountHistoryStore.clear()
 
         compose.setContent {
             Sp21AceApp(
@@ -153,8 +167,14 @@ class AppShellTest {
                 presetsStore,
                 flashcardOptionsStore,
                 flashcardHistoryStore,
+                trueCountOptionsStore,
+                trueCountHistoryStore,
                 deal = { picker, history -> dealHand(picker, history) },
                 dealFlashcard = ::dealFlashcard,
+                // +7 with 3.5 decks left first, then −4 with 2 and it in turn, while the options allow
+                dealTrueCount = { dealer, previous, history ->
+                    (if (previous == plusSeven) minusFour else plusSeven).takeIf(dealer::couldDeal) ?: dealer.deal(previous, history)
+                },
                 sounds = { played += it },
                 // Its shoe deals 8-J against a 4 first
                 random = Random(2),
@@ -165,7 +185,7 @@ class AppShellTest {
 
     private fun openFromDrawer(title: Int) {
         compose.onNodeWithContentDescription(string(R.string.open_menu)).performClick()
-        drawerItem(title).performClick()
+        drawerItem(title).performScrollTo().performClick()
     }
 
     // A sub-page has no menu button, so Back first
@@ -191,7 +211,7 @@ class AppShellTest {
         compose.onNodeWithContentDescription(string(R.string.open_menu)).performClick()
 
         drawerItem(R.string.strategy_trainer).assertIsSelected()
-        val headings = listOf(R.string.basic_strategy, R.string.card_counting, R.string.play).map { compose.onNodeWithText(string(it)).assertIsDisplayed() }
+        val headings = listOf(R.string.basic_strategy, R.string.card_counting, R.string.play).map { compose.onNodeWithText(string(it)).assertExists() }
         val items = listOf(
             R.string.strategy_trainer,
             R.string.table_rules,
@@ -201,16 +221,66 @@ class AppShellTest {
             R.string.index_flashcards,
             R.string.indices,
             R.string.flashcard_stats,
+            R.string.true_count_flashcards,
+            R.string.true_count_options,
+            R.string.true_count_stats,
             R.string.play_spanish_21,
             R.string.settings,
         )
-            .map { drawerItem(it).assertIsDisplayed().getBoundsInRoot() }
+            // Unclipped, as the drawer is longer than most screens
+            .map { drawerItem(it).getUnclippedBoundsInRoot() }
         items.zipWithNext().forEach { (above, below) -> assertTrue(below.top >= above.bottom) }
         // Card Counting heads its items, between Basic Strategy's last and Play's first
-        val cardCounting = headings[1].getBoundsInRoot()
+        val cardCounting = headings[1].getUnclippedBoundsInRoot()
         assertTrue(items[4].bottom <= cardCounting.top && cardCounting.bottom <= items[5].top)
-        val play = headings[2].getBoundsInRoot()
-        assertTrue(items[7].bottom <= play.top && play.bottom <= items[8].top)
+        val play = headings[2].getUnclippedBoundsInRoot()
+        assertTrue(items[10].bottom <= play.top && play.bottom <= items[11].top)
+    }
+
+    @Test
+    fun theDrawerOpensTrueCountFlashcardsWhoseAnswersJoinTheirOwnHistoryAndStatsUntilCleared() {
+        openFromDrawer(R.string.true_count_flashcards)
+        appBarTitle(R.string.true_count_flashcards).assertIsDisplayed()
+        drawerItem(R.string.true_count_flashcards).assertIsNotDisplayed()
+        now += 2_000
+
+        compose.onNodeWithContentDescription(string(R.string.count_plus, 2)).performClick()
+        compose.onNodeWithText(flashcardBarText("+7 with 3.5 decks left", "True count +2", "2.0 s", "Accuracy 100.0%")).assertIsDisplayed()
+        now += 900
+        compose.onNodeWithContentDescription(string(R.string.count_minus, 1)).performClick()
+
+        val answers = trueCountHistoryStore.history.value.orEmpty()
+        assertEquals(listOf(plusSeven to 2, minusFour to -1), answers.map { it.card to it.answer })
+        assertEquals(listOf(2_000.milliseconds, 900.milliseconds), answers.map { it.time })
+        assertEquals(emptyList<FlashcardAnswer>(), flashcardHistoryStore.history.value)
+
+        openFromDrawer(R.string.true_count_stats)
+        compose.onNodeWithContentDescription("3.5 decks left, true count +2: 100% right").assertExists()
+        compose.onNodeWithContentDescription("2 decks left, true count −2: 0% right").assertExists()
+
+        openFromDrawerOverSubPage(R.string.settings)
+        compose.onNodeWithText(string(R.string.clear_true_count_history)).performScrollTo().performClick()
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.clear)).performClick()
+        openFromDrawerOverSubPage(R.string.true_count_stats)
+
+        compose.onNodeWithText(string(R.string.no_true_count_answers)).assertIsDisplayed()
+        assertEquals(emptyList<TrueCountAnswer>(), trueCountHistoryStore.history.value)
+    }
+
+    @Test
+    fun theDrawerOpensTrueCountOptionsWhoseChangesTheStoreKeepsAndTheFlashcardsFollow() {
+        openFromDrawer(R.string.true_count_flashcards)
+        openFromDrawer(R.string.true_count_options)
+        compose.onNodeWithContentDescription("${string(R.string.shoe_size)}, 2 decks").performClick()
+
+        assertEquals(TrueCountOptions(shoe = 2), trueCountOptionsStore.load())
+
+        // +7 with 3.5 decks left can't come from 2 decks
+        openFromDrawerOverSubPage(R.string.true_count_flashcards)
+        compose.onNodeWithText("3.5").assertDoesNotExist()
+        compose.onNodeWithContentDescription("0").performClick()
+        assertEquals(listOf(2), trueCountHistoryStore.history.value.orEmpty().map { it.card.shoe })
     }
 
     private fun flashcardAccuracyCard() = compose.cardTexts(string(R.string.accuracy), string(R.string.correct))

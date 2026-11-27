@@ -74,50 +74,102 @@ internal fun ChartGrid(
     square: @Composable (square: ChartSquare, play: Play, codes: CodeText, modifier: Modifier) -> Unit,
     footer: @Composable (squareSize: Dp, gap: Dp, codes: CodeText) -> Unit,
 ) {
+    // Every table's, so text keeps one size from tab to tab
+    val codes = remember(chart, footerCodes) { (footerCodes + chart.tables.flatMap(chart::plays).map { it.code }).distinct() }
+    val everyHand = remember(chart) { chart.tables.flatMap { chart.hands(it) }.distinct() }
+
+    LabeledGrid(
+        rows = remember(chart, table, hands) { hands.map { hand -> PrintedRow(chart, ChartRow(table, hand)) } },
+        columns = Upcard.entries,
+        rowLabel = { it.row.hand },
+        columnLabel = { it.label },
+        rowCaption = stringResource(R.string.your_hand),
+        columnCaption = stringResource(R.string.dealers_upcard),
+        widestCodes = codes,
+        widestRowLabels = everyHand,
+        modifier = modifier,
+        square = { printed, upcard, codeText, squareModifier ->
+            square(ChartSquare(printed.row, upcard), printed.plays.getValue(upcard), codeText, squareModifier)
+        },
+        footer = footer,
+    )
+}
+
+/** A chart's [row] with its plays, so a row drawn before the chart changed never asks the new one for a hand it doesn't print. */
+private class PrintedRow(chart: StrategyChart, val row: ChartRow) {
+    val plays: Map<Upcard, Play> = Upcard.entries.associateWith { chart.play(row, it) }
+}
+
+/**
+ * A square for each of [rows] and [columns], drawn by [square] into the modifier that sizes it. [rowCaption] reads up beside the
+ * rows from the first one down, [columnCaption] heads the columns, and [footer] follows the squares, given their size and the gap
+ * between them. Every code gets the one size that fits the widest of [widestCodes] in a square, and every row's label the one that
+ * fits the widest of [widestRowLabels].
+ */
+@Composable
+internal fun <R, C> LabeledGrid(
+    rows: List<R>,
+    columns: List<C>,
+    rowLabel: (R) -> String,
+    columnLabel: (C) -> String,
+    rowCaption: String,
+    columnCaption: String,
+    widestCodes: List<String>,
+    widestRowLabels: List<String>,
+    modifier: Modifier = Modifier,
+    square: @Composable (row: R, column: C, codes: CodeText, modifier: Modifier) -> Unit,
+    footer: @Composable (squareSize: Dp, gap: Dp, codes: CodeText) -> Unit,
+) {
     val codeStyle = MaterialTheme.typography.labelLarge.copy(fontSize = MaxCodeSize)
     val labelStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
     val measurer = rememberTextMeasurer()
-    val widest = rememberWidestText(chart, footerCodes, measurer, codeStyle, labelStyle)
+    val widestCode = rememberWidest(widestCodes, measurer, codeStyle)
+    val widestColumn = rememberWidest(columns.map(columnLabel), measurer, labelStyle)
+    val widestRow = rememberWidest(widestRowLabels, measurer, labelStyle)
     // Kept from one measure to the next, so a grid measured again at the same size hands its squares the same codes, and a
     // square with nothing else changed skips recomposing
     val codeTexts = remember(measurer) { HashMap<Pair<TextStyle, Constraints>, CodeText>() }
 
     SubcomposeLayout(modifier) { constraints ->
         val caption = subcompose(GridPart.Caption) {
-            AxisCaption(stringResource(R.string.your_hand), Modifier.padding(end = 4.dp).readingUp())
+            AxisCaption(rowCaption, Modifier.padding(end = 4.dp).readingUp())
         }.single().measure(Constraints())
         val beside = Constraints(maxWidth = (constraints.maxWidth - caption.width).coerceAtLeast(0))
-        val squareWidth = ((beside.maxWidth - (RowLabelWidth + Gap * Upcard.entries.size).roundToPx()) / Upcard.entries.size).coerceAtLeast(0)
+        val squareWidth = ((beside.maxWidth - (RowLabelWidth + Gap * columns.size).roundToPx()) / columns.size).coerceAtLeast(0)
 
         // Every square is as wide as the next, so one size fits the widest text of each kind. Each square searching for
         // its own size costs a handful of text layouts apiece, and at a minimum size it silently cuts the text short.
         val codeWidth = (squareWidth - (CodePadding * 2).roundToPx()).coerceAtLeast(0)
-        val codeFit = shrunkToFit(measurer, widest.code, codeStyle, codeWidth)
+        val codeFit = shrunkToFit(measurer, widestCode, codeStyle, codeWidth)
         // As tall as a square too, so a code's layout says whether it overflows the square, as a Text's did
         val codeBounds = Constraints(maxWidth = codeWidth, maxHeight = squareWidth)
         val codes = codeTexts.getOrPut(codeFit to codeBounds) { CodeText(measurer, codeFit, codeBounds) }
-        val upcards = shrunkToFit(measurer, widest.upcard, labelStyle, squareWidth)
-        val handLabels = shrunkToFit(measurer, widest.hand, labelStyle, (RowLabelWidth - RowLabelPadding).roundToPx())
+        val columnLabels = shrunkToFit(measurer, widestColumn, labelStyle, squareWidth)
+        val rowLabels = shrunkToFit(measurer, widestRow, labelStyle, (RowLabelWidth - RowLabelPadding).roundToPx())
 
         val (header, body) = subcompose(GridPart.Grid) {
             Column(modifier = Modifier.padding(bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                AxisCaption(stringResource(R.string.dealers_upcard), Modifier.padding(start = RowLabelWidth + Gap))
-                GridRow(label = null, labelStyle = handLabels) {
-                    Upcard.entries.forEach {
-                        Text(text = it.label, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, softWrap = false, maxLines = 1, style = upcards)
+                AxisCaption(columnCaption, Modifier.padding(start = RowLabelWidth + Gap))
+                GridRow(label = null, labelStyle = rowLabels) {
+                    columns.forEach {
+                        Text(
+                            text = columnLabel(it),
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center,
+                            softWrap = false,
+                            maxLines = 1,
+                            style = columnLabels,
+                        )
                     }
                 }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(Gap)) {
-                hands.forEach { hand ->
-                    GridRow(label = hand, labelStyle = handLabels) {
+                rows.forEach { row ->
+                    GridRow(label = rowLabel(row), labelStyle = rowLabels) {
                         // Handed over from this row rather than left to what the slot captures: a changed slot re-runs in the
                         // rows already drawn, which still hold the previous table's hands, before the rows follow the new table
-                        val row = ChartRow(table, hand)
-                        Upcard.entries.forEach { upcard ->
-                            square(ChartSquare(row, upcard), chart.play(row, upcard), codes, Modifier.weight(1f).aspectRatio(1f))
-                        }
+                        columns.forEach { column -> square(row, column, codes, Modifier.weight(1f).aspectRatio(1f)) }
                     }
                 }
                 Box(modifier = Modifier.padding(start = RowLabelWidth + Gap, top = 16.dp)) { footer(squareWidth.toDp(), Gap, codes) }
@@ -132,28 +184,9 @@ internal fun ChartGrid(
     }
 }
 
-/** The widest code, upcard and hand of every table, footer codes included, so text keeps one size from tab to tab. */
-private class WidestText(val code: String, val upcard: String, val hand: String)
-
 @Composable
-private fun rememberWidestText(
-    chart: StrategyChart,
-    footerCodes: List<String>,
-    measurer: TextMeasurer,
-    codeStyle: TextStyle,
-    labelStyle: TextStyle,
-): WidestText = remember(chart, footerCodes, measurer, codeStyle, labelStyle) {
-    fun widest(texts: List<String>, style: TextStyle) =
-        texts.distinct().maxBy { measurer.measureLine(it, style).size.width }
-
-    val codes = footerCodes + chart.tables.flatMap(chart::plays).map { it.code }
-
-    WidestText(
-        code = widest(codes, codeStyle),
-        upcard = widest(Upcard.entries.map { it.label }, labelStyle),
-        hand = widest(chart.tables.flatMap { chart.hands(it) }, labelStyle),
-    )
-}
+private fun rememberWidest(texts: List<String>, measurer: TextMeasurer, style: TextStyle): String =
+    remember(texts, measurer, style) { texts.maxBy { measurer.measureLine(it, style).size.width } }
 
 // Scaled in pixels, because Android enlarges big font sizes less than small ones, and measured again, because glyphs
 // don't narrow in exact proportion to the size
