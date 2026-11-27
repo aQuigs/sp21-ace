@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.aquigs.sp21ace.domain.indices.CardsShown
+import com.aquigs.sp21ace.domain.drill.CardsShown
 import com.aquigs.sp21ace.domain.indices.FlashcardOptions
 import org.junit.Assert.assertEquals
 import org.junit.Rule

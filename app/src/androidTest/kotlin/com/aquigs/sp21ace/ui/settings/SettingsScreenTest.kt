@@ -37,6 +37,7 @@ class SettingsScreenTest {
     private var clears = 0
     private var playClears = 0
     private var flashcardClears = 0
+    private var trueCountClears = 0
 
     private fun string(id: Int) = compose.activity.getString(id)
 
@@ -51,6 +52,7 @@ class SettingsScreenTest {
                     onClearHistory = { clears++ },
                     onClearPlayHistory = { playClears++ },
                     onClearFlashcardHistory = { flashcardClears++ },
+                    onClearTrueCountHistory = { trueCountClears++ },
                     onBack = {},
                 )
             }
@@ -200,7 +202,20 @@ class SettingsScreenTest {
         compose.onNodeWithText(string(R.string.clear)).performClick()
 
         compose.onNodeWithText(string(R.string.clear_flashcard_history_message)).assertDoesNotExist()
-        assertEquals(listOf(0, 0, 1), listOf(clears, playClears, flashcardClears))
+        assertEquals(listOf(0, 0, 1, 0), listOf(clears, playClears, flashcardClears, trueCountClears))
+    }
+
+    @Test
+    fun clearingTheTrueCountHistoryAsksFirstAndClearsOnlyIt() {
+        showSettings()
+
+        compose.onNodeWithText(string(R.string.clear_true_count_history)).performScrollTo().performClick()
+        compose.onNodeWithText(string(R.string.clear_true_count_history_message)).assertIsDisplayed()
+        assertEquals(0, trueCountClears)
+        compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)
+        compose.onNodeWithText(string(R.string.clear)).performClick()
+
+        assertEquals(listOf(0, 0, 0, 1), listOf(clears, playClears, flashcardClears, trueCountClears))
     }
 
     @Test

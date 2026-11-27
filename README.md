@@ -1,6 +1,6 @@
 # sp21-ace
 
-Spanish 21 Ace, a Spanish 21 basic strategy trainer for Android. The goal: set the table rules and the strategy chart adapts, drill hands with instant feedback, choose which hands get dealt, play full games, drill card-counting indices for blackjack as flashcards from presets you can edit, and track your stats over time, including how fast you recall each index. Native Kotlin + Jetpack Compose, CLI-only workflow.
+Spanish 21 Ace, a Spanish 21 basic strategy trainer for Android. The goal: set the table rules and the strategy chart adapts, drill hands with instant feedback, choose which hands get dealt, play full games, drill card-counting indices for blackjack as flashcards from presets you can edit, drill converting a running count to a true count, and track your stats over time, including how fast you recall each index and how accurately you convert each count. Native Kotlin + Jetpack Compose, CLI-only workflow.
 
 ## Local dev
 

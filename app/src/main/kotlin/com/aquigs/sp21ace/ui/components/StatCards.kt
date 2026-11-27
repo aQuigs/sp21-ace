@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.history.Period
 import com.aquigs.sp21ace.domain.history.Tally
+import com.aquigs.sp21ace.domain.history.start
 import kotlinx.coroutines.delay
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
@@ -54,6 +55,22 @@ fun rememberNow(now: () -> Instant): Instant {
         asOf = currentNow()
     }
     return asOf
+}
+
+/**
+ * A page's figures over [period], worked out again when [keys] or the answers the period reaches change: [asOf] alone changes All
+ * Time, which has no start, not at all. A minute moves another period's start but seldom any answer across it, so figures equal to
+ * the last ones are the same object, and what is drawn from them skips rather than redraws.
+ */
+@Composable
+fun <T : Any> rememberStats(period: Period, asOf: Instant, vararg keys: Any?, figures: () -> T): T {
+    val previous = remember { arrayOfNulls<Any>(1) }
+
+    return remember(period, period.start(asOf), *keys) {
+        val fresh = figures()
+        @Suppress("UNCHECKED_CAST")
+        if (previous[0] == fresh) previous[0] as T else fresh.also { previous[0] = it }
+    }
 }
 
 private val TextInset = 32.dp

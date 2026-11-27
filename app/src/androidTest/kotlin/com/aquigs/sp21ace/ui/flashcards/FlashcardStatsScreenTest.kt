@@ -22,6 +22,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.drill.TimeHistogram
+import com.aquigs.sp21ace.domain.drill.TimeSpread
 import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.DeviationPlay
 import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
@@ -31,8 +33,6 @@ import com.aquigs.sp21ace.domain.indices.IndexEntry
 import com.aquigs.sp21ace.domain.indices.IndexHand
 import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.PlayIndex
-import com.aquigs.sp21ace.domain.indices.TimeHistogram
-import com.aquigs.sp21ace.domain.indices.TimeSpread
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.ui.accuracy.accuracyCardTexts

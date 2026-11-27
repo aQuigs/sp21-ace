@@ -4,11 +4,14 @@ import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.FULL_DECK
 import com.aquigs.sp21ace.domain.cards.HandTotal
 import com.aquigs.sp21ace.domain.cards.totalOf
-import com.aquigs.sp21ace.domain.dealing.Weighted
-import com.aquigs.sp21ace.domain.dealing.weight
+import com.aquigs.sp21ace.domain.drill.CardDealer
+import com.aquigs.sp21ace.domain.drill.CardsShown
+import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.upcard
+import java.time.Instant
 import kotlin.random.Random
+import kotlin.time.Duration
 
 // Grouped as a dealer's upcard reads them, so a ten-value card is a 10, J, Q or K, each as often as a deck holds it
 private val DECK_BY_VALUE: Map<Upcard, List<Card>> = FULL_DECK.groupBy { it.upcard }
@@ -34,7 +37,7 @@ internal fun multiCardHands(upcard: Upcard): Map<HandTotal, List<List<List<Int>>
  * or hit index on a total is a hand of 3 or 4 cards half the time a basic strategy player could hold one against its upcard;
  * every other hand is two cards.
  */
-class FlashcardDealer(preset: IndexPreset, private val options: FlashcardOptions = FlashcardOptions()) {
+class FlashcardDealer(preset: IndexPreset, private val options: FlashcardOptions = FlashcardOptions()) : CardDealer<Flashcard, FlashcardAnswer> {
     val game: Game = preset.game
 
     /** The indices dealt, in the preset's order. */
@@ -53,22 +56,25 @@ class FlashcardDealer(preset: IndexPreset, private val options: FlashcardOptions
      * a tap on the last card can't grade this one. Under [CardsShown.PRIORITIZE_WORSE], an index comes up in inverse proportion to
      * the accuracy [history] gives it, as the trainer's hands do. Null while no index is switched on.
      */
-    fun deal(previous: Flashcard?, history: List<FlashcardAnswer> = emptyList(), random: Random = Random.Default): Flashcard? {
+    override fun deal(previous: Flashcard?, history: List<FlashcardAnswer>, random: Random): Flashcard? {
         val candidates = indices.filter { indices.size == 1 || it != previous?.index }.ifEmpty { return null }
-        val index = when (options.cardsShown) {
-            CardsShown.RANDOM -> candidates.random(random)
-            CardsShown.PRIORITIZE_WORSE -> history.tallyByIndex(game).let { tallies -> Weighted(candidates) { weight(tallies[it]) } }.pick(random)
-        }
+        val index = options.cardsShown.pick(candidates, random) { history.tallyByIndex(game) }
 
         // Every hand comes in more than one suit, so a redraw soon finds another
         return generateSequence { cardsFor(index, random) }.first { it != previous }
     }
 
     /** Whether [card] is one this dealer could deal, so a card left from another preset or other options is redealt. */
-    fun couldDeal(card: Flashcard): Boolean {
+    override fun couldDeal(card: Flashcard): Boolean {
         val deviation = card.index.deviation
         return card.index in indices && (card.player.size <= 2 || card.player.map { it.rank.value } in multiCardSets[deviation].orEmpty())
     }
+
+    override fun record(card: Flashcard, number: Int, time: Duration?, answeredAt: Instant): FlashcardAnswer =
+        FlashcardAnswer(answeredAt, game, card.index, number, time, card.player.size)
+
+    override fun tally(card: Flashcard, history: List<FlashcardAnswer>): Tally =
+        history.filter { it.index == card.index }.tallyByIndex(game)[card.index] ?: Tally(correct = 0, incorrect = 0)
 
     private fun cardsFor(index: PlayIndex, random: Random): Flashcard = when (val deviation = index.deviation) {
         Deviation.Insurance -> Flashcard(index, player = emptyList(), upcard = draw(Upcard.ACE, random))

@@ -21,17 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
 import com.aquigs.sp21ace.domain.history.Period
-import com.aquigs.sp21ace.domain.history.start
-import com.aquigs.sp21ace.domain.indices.AnswerTimes
 import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
-import com.aquigs.sp21ace.domain.indices.FlashcardStats
 import com.aquigs.sp21ace.domain.indices.IndexOrder
 import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexStats
@@ -41,11 +36,7 @@ import com.aquigs.sp21ace.domain.indices.inPlainWords
 import com.aquigs.sp21ace.domain.indices.sortedBy
 import com.aquigs.sp21ace.domain.indices.title
 import com.aquigs.sp21ace.ui.components.AccuracyCard
-import com.aquigs.sp21ace.ui.components.Count
-import com.aquigs.sp21ace.ui.components.CountRow
 import com.aquigs.sp21ace.ui.components.ExpandIcon
-import com.aquigs.sp21ace.ui.components.Figure
-import com.aquigs.sp21ace.ui.components.StatCard
 import com.aquigs.sp21ace.ui.components.StatCards
 import com.aquigs.sp21ace.ui.components.StatChips
 import com.aquigs.sp21ace.ui.components.StatPage
@@ -53,6 +44,7 @@ import com.aquigs.sp21ace.ui.components.StatSection
 import com.aquigs.sp21ace.ui.components.SubPage
 import com.aquigs.sp21ace.ui.components.percentText
 import com.aquigs.sp21ace.ui.components.rememberNow
+import com.aquigs.sp21ace.ui.components.rememberStats
 import java.time.Instant
 import kotlin.time.Duration
 
@@ -76,13 +68,7 @@ fun FlashcardStatsScreen(
     // Here rather than with the rows, which a period with no answers takes off the page, so rows opened stay open past it
     var expanded by rememberSaveable { mutableStateOf(emptySet<PlayIndex>()) }
     val asOf = rememberNow(now)
-    // A minute moves a rolling period's start but seldom any answer across it, so the same figures keep the same object, and the
-    // rows and charts drawn from it skip rather than redraw
-    val previous = remember { arrayOfNulls<FlashcardStats>(1) }
-    // Keyed on where the period starts rather than the time, so All Time, which has no start, isn't counted again every minute
-    val stats = remember(history, preset, period, period.start(asOf)) {
-        history.flashcardStats(preset, period, asOf).let { fresh -> previous[0]?.takeIf { it == fresh } ?: fresh.also { previous[0] = it } }
-    }
+    val stats = rememberStats(period, asOf, history, preset) { history.flashcardStats(preset, period, asOf) }
     val rows = remember(stats, order) { stats.indices.sortedBy(order) }
 
     SubPage(title = stringResource(R.string.flashcard_stats), onBack = onBack, modifier = modifier) { padding ->
@@ -92,7 +78,7 @@ fun FlashcardStatsScreen(
                 SpeedCard(stats.times, answered = stats.overall.total > 0)
                 StatSection(title = stringResource(R.string.indices)) {
                     if (stats.overall.total == 0) {
-                        Note(stringResource(R.string.no_answers_in_period))
+                        StatNote(stringResource(R.string.no_answers_in_period))
                     } else {
                         IndexRows(
                             rows,
@@ -105,29 +91,6 @@ fun FlashcardStatsScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun SpeedCard(times: AnswerTimes, answered: Boolean) {
-    val spread = times.spread
-    // Said in plain words, since the figure is where the slowest tenth begins, not how long it took
-    val p90Spoken = spread?.let { stringResource(R.string.percentile_90_spoken, it.p90.inSeconds) }
-
-    StatCard(title = stringResource(R.string.speed)) {
-        Figure(value = spread?.median?.let { secondsText(it) }, label = stringResource(R.string.median_time), color = MaterialTheme.colorScheme.primary)
-        CountRow {
-            Count(
-                value = spread?.p90?.let { secondsText(it) } ?: stringResource(R.string.no_data),
-                label = stringResource(R.string.percentile_90),
-                modifier = Modifier.weight(1f).then(if (p90Spoken == null) Modifier else Modifier.clearAndSetSemantics { contentDescription = p90Spoken }),
-            )
-            Count(value = times.timed.toString(), label = stringResource(R.string.timed_answers), modifier = Modifier.weight(1f))
-        }
-        when {
-            spread != null -> TimeHistogramChart(times.histogram, Modifier.padding(top = 32.dp).fillMaxWidth())
-            answered -> Note(stringResource(R.string.none_timed), Modifier.padding(top = 16.dp))
         }
     }
 }
@@ -180,7 +143,7 @@ private fun IndexRow(row: IndexStats, axisEnd: Duration?, expanded: Boolean, onT
             style = MaterialTheme.typography.bodyMedium,
         )
 
-        if (row.answers == 0) Note(stringResource(R.string.no_answers)) else Figures(row, axisEnd, expanded)
+        if (row.answers == 0) StatNote(stringResource(R.string.no_answers)) else Figures(row, axisEnd, expanded)
     }
 }
 
@@ -195,14 +158,9 @@ private fun Figures(row: IndexStats, axisEnd: Duration?, expanded: Boolean) {
         spread?.let { Text(text = stringResource(R.string.index_median, secondsText(it.median)), style = MaterialTheme.typography.bodyMedium) }
     }
     if (spread == null || axisEnd == null) {
-        Note(stringResource(R.string.no_timed_answers))
+        StatNote(stringResource(R.string.no_timed_answers))
     } else {
         TimeSpreadStrip(spread, axisEnd, Modifier.padding(top = 4.dp))
         if (expanded) TimeHistogramChart(row.times.histogram, Modifier.padding(top = 16.dp).fillMaxWidth())
     }
-}
-
-@Composable
-private fun Note(text: String, modifier: Modifier = Modifier) {
-    Text(text = text, modifier = modifier, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
 }

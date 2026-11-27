@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.indices.CardsShown
+import com.aquigs.sp21ace.domain.drill.CardsShown
 import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.indices.DeckEstimate
 import com.aquigs.sp21ace.domain.indices.Deviation

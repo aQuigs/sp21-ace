@@ -1,5 +1,9 @@
 package com.aquigs.sp21ace.domain.indices
 
+import com.aquigs.sp21ace.domain.drill.AnswerTimes
+import com.aquigs.sp21ace.domain.drill.SpreadOnAxis
+import com.aquigs.sp21ace.domain.drill.TimeHistogram
+import com.aquigs.sp21ace.domain.drill.TimeSpread
 import com.aquigs.sp21ace.domain.history.Period
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.start

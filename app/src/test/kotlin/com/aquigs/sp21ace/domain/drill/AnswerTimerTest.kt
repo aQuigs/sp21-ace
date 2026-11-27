@@ -1,7 +1,9 @@
-package com.aquigs.sp21ace.domain.indices
+package com.aquigs.sp21ace.domain.drill
 
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.domain.indices.FakeIndices
+import com.aquigs.sp21ace.domain.indices.Flashcard
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -9,7 +11,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class AnswerTimerTest {
     private var now = 1_000L
-    private val timer = AnswerTimer { now }
+    private val timer = AnswerTimer<Flashcard> { now }
 
     private val first = Flashcard(FakeIndices.STAND, cards("9c 9d"), card("2h"))
     private val second = Flashcard(FakeIndices.INSURANCE, emptyList(), card("As"))
