@@ -264,6 +264,7 @@
     <string name="percentile_90_spoken">90th percentile, %1$.1f seconds: nine in ten answers took that long or less</string>
     <string name="timed_answers">Timed answers</string>
     <string name="seconds_value">%1$.1f s</string>
+    <string name="seconds_spoken">%1$.1f seconds</string>
     <string name="none_timed">None of these answers was timed. An answer goes untimed when its card was covered or left before you answered.</string>
     <string name="answers_axis">Answers</string>
     <string name="seconds_axis">Seconds per answer</string>
@@ -305,6 +306,7 @@
         <item quantity="other">%1$d seconds on this card</item>
     </plurals>
     <string name="card_untimed">This card isn\'t timed</string>
+    <string name="flashcard_accuracy">Accuracy %1$s</string>
     <string name="clear_flashcard_history">Clear flashcard history</string>
     <string name="clear_flashcard_history_message">Are you sure you want to clear your flashcard history? This resets everything built on it: Flashcard Stats, which indices Prioritize worse indices favors, and the flashcards\' streak.</string>
 </resources>

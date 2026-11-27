@@ -4,6 +4,7 @@ import com.aquigs.sp21ace.domain.drill.Streak
 import com.aquigs.sp21ace.domain.strategy.ChartSquare
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
+import java.io.Serializable
 import java.time.Duration
 import java.time.Instant
 
@@ -48,7 +49,7 @@ enum class HandFilter(val table: ChartTable?, val moves: List<Move>, val doubled
     fun counts(table: ChartTable): Boolean = table.afterDoubling == doubled && (this.table == null || this.table == table)
 }
 
-data class Tally(val correct: Int, val incorrect: Int) {
+data class Tally(val correct: Int, val incorrect: Int) : Serializable {
     val total: Int get() = correct + incorrect
 
     /** In tenths of a percent, rounded down so 100.0% means none wrong. Null with nothing answered, which is no data rather than none right. */

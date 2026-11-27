@@ -2,10 +2,12 @@ package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.drill.Streak
+import com.aquigs.sp21ace.domain.history.Tally
 import java.io.Serializable
 import java.time.Instant
 import kotlin.math.absoluteValue
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 // The pad always offers the published range, so a preset of small numbers doesn't give the answer away by its size
 private const val MIN_PAD_REACH = 5
@@ -17,9 +19,14 @@ val IndexPreset.flashcardAnswers: IntRange
 /** A flashcard: an [index] and the cards that ask for it, the [player]'s hand, none for insurance, against the dealer's [upcard]. */
 data class Flashcard(val index: PlayIndex, val player: List<Card>, val upcard: Card) : Serializable
 
-/** The number given for a card, which is right when it is the card's index. */
-data class FlashcardGrade(val card: Flashcard, val answer: Int) : Serializable {
+/**
+ * The number given for a card, which is right when it is the card's index, the [tally] of every answer to that index, this one
+ * included, or null when the history hadn't loaded, and the [time] it took, or null when it wasn't timed. The time is kept in
+ * milliseconds because a Duration isn't Serializable.
+ */
+data class FlashcardGrade(val card: Flashcard, val answer: Int, val tally: Tally?, val timeMillis: Long?) : Serializable {
     val isCorrect: Boolean get() = answer == card.index.threshold
+    val time: Duration? get() = timeMillis?.milliseconds
 }
 
 /**
@@ -38,6 +45,9 @@ data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = n
         val next = deal(card)
         return copy(card = next, lastGrade = lastGrade.takeIf { next != null })
     }
+
+    /** The run once the history is cleared, with nothing left that counts its answers. */
+    fun historyCleared(): FlashcardRun = copy(lastGrade = null, streak = Streak())
 }
 
 /**
@@ -59,8 +69,8 @@ data class AnsweredFlashcard(val run: FlashcardRun, val answer: FlashcardAnswer)
 
 /**
  * Grades [number] as the answer to [asked] and deals the next card at once, because a run never waits for a continue tap. [deal] is
- * handed [history] with this answer added, which the store holds only once it is recorded, so a deal that weighs answers counts
- * it. A tap on a card no longer showing, such as a second tap before the screen redraws, or on one [dealer] could not deal, grades
+ * handed [history], null until it loads, with this answer added, which the store holds only once it is recorded, so a deal that
+ * weighs answers counts it. A tap on a card no longer showing, such as a second tap before the screen redraws, or on one [dealer] could not deal, grades
  * nothing: null.
  */
 fun FlashcardRun.answer(
@@ -69,12 +79,14 @@ fun FlashcardRun.answer(
     dealer: FlashcardDealer,
     time: Duration?,
     answeredAt: Instant,
-    history: List<FlashcardAnswer> = emptyList(),
+    history: List<FlashcardAnswer>? = emptyList(),
     deal: (previous: Flashcard, history: List<FlashcardAnswer>) -> Flashcard? = { previous, answers -> dealer.deal(previous, answers) },
 ): AnsweredFlashcard? {
     if (asked != card || !dealer.couldDeal(asked)) return null
 
     val recorded = FlashcardAnswer(answeredAt, dealer.game, asked.index, number, time, asked.player.size)
-    val next = FlashcardRun(deal(asked, history + recorded), FlashcardGrade(asked, number), streak.after(recorded.isCorrect))
-    return AnsweredFlashcard(next, recorded)
+    val answers = history.orEmpty() + recorded
+    val tally = history?.let { answers.filter { it.index == asked.index }.tallyByIndex(dealer.game).getValue(asked.index) }
+    val grade = FlashcardGrade(asked, number, tally, time?.inWholeMilliseconds)
+    return AnsweredFlashcard(FlashcardRun(deal(asked, answers), grade, streak.after(grade.isCorrect)), recorded)
 }

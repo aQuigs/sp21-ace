@@ -140,7 +140,7 @@ internal fun Sp21AceApp(
     LaunchedEffect(flashcardDealer) { showRun(flashcardRun.dealtFrom(flashcardDealer) { nextFlashcard(it) }) }
     val flashcardActions = object : IndexFlashcardsActions {
         override fun answer(asked: Flashcard, number: Int) {
-            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now(), flashcardHistory()) { previous, history ->
+            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now(), flashcardHistoryStore.history.value) { previous, history ->
                 dealFlashcard(flashcardDealer, previous, history)
             }
                 ?.let { (next, answer) ->
@@ -165,8 +165,8 @@ internal fun Sp21AceApp(
 
         override fun clearHistory() {
             flashcardHistoryStore.clear()
-            // The streak lives in the run, not in the history, as the trainer's does
-            flashcardRun = flashcardRun.copy(streak = Streak())
+            // The streak and the verdict's accuracy live in the run, not in the history
+            flashcardRun = flashcardRun.historyCleared()
         }
     }
 
