@@ -238,6 +238,7 @@ class AppShellTest {
         compose.onNodeWithText(string(R.string.no_answers_in_period)).assertExists()
 
         openFromDrawerOverSubPage(R.string.index_flashcards)
+        appBarTitle(R.string.index_flashcards).assertIsDisplayed()
         compose.onNodeWithContentDescription(string(R.string.streak_count, 0)).assertIsDisplayed()
     }
 
@@ -249,7 +250,7 @@ class AppShellTest {
         now += 2_000
 
         compose.onNodeWithContentDescription("0").performClick()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "100.0% right")).assertIsDisplayed()
         now += 900
         compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
 
@@ -596,7 +597,7 @@ class AppShellTest {
         compose.onNodeWithContentDescription("0").performClick()
 
         // The card showing kept its index, and the next came from a dealer without insurance
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "100.0% right")).assertIsDisplayed()
         assertTrue(insuranceCard.index !in lastDealer!!.indices)
         assertEquals(IndexPresets.seeded().active.enabledIndices - insuranceCard.index, lastDealer!!.indices.toList())
     }

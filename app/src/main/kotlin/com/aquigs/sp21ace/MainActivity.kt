@@ -164,8 +164,8 @@ internal fun Sp21AceApp(
 
         override fun clearHistory() {
             flashcardHistoryStore.clear()
-            // The streak lives in the run, not in the history, as the trainer's does
-            flashcardRun = flashcardRun.copy(streak = 0)
+            // The streak and the verdict's accuracy live in the run, not in the history
+            flashcardRun = flashcardRun.historyCleared()
         }
     }
 

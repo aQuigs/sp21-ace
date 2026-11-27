@@ -98,7 +98,7 @@ class IndexFlashcardsScreenTest {
         private val next = deals.iterator()
 
         override fun answer(asked: Flashcard, number: Int) {
-            run.answer(asked, number, dealer, timer.elapsed(asked), Instant.EPOCH) { _, _ -> next.next() }?.let {
+            run.answer(asked, number, dealer, timer.elapsed(asked), Instant.EPOCH, answers) { _, _ -> next.next() }?.let {
                 run = it.run
                 timer.dealt(it.run.card)
                 answers += it.answer
@@ -189,8 +189,8 @@ class IndexFlashcardsScreenTest {
 
         button(0).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher. 100.0% right").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "100.0% right")).assertIsDisplayed()
         compose.onNodeWithText("INSURANCE at ? or higher").assertIsDisplayed()
     }
 
@@ -200,8 +200,19 @@ class IndexFlashcardsScreenTest {
 
         button(2).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs 10. Stand at 0 or higher. You answered +2").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs 10. Stand at 0 or higher. You answered +2. 0.0% right").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "0.0% right")).assertIsDisplayed()
+    }
+
+    @Test
+    fun theBarSaysHowOftenTheIndexHasBeenAnsweredRightCountingThisAnswer() {
+        val otherSixteen = sixteenVsKing.copy(player = cards("10s 6h"))
+        show(deals = listOf(insuranceCard, otherSixteen, insuranceCard, sixteenVsKing, insuranceCard))
+
+        // 16 vs 10 right, insurance wrong, then 16 vs 10 wrong
+        for (number in listOf(0, 1, 2)) button(number).performClick()
+
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "50.0% right")).assertIsDisplayed()
     }
 
     @Test
@@ -214,8 +225,8 @@ class IndexFlashcardsScreenTest {
 
         button(-3).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Insurance at +3 or higher. You answered −3").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Insurance at +3 or higher", "You answered −3")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Insurance at +3 or higher. You answered −3. 0.0% right").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Insurance at +3 or higher", "You answered −3", "0.0% right")).assertIsDisplayed()
     }
 
     @Test
@@ -243,7 +254,7 @@ class IndexFlashcardsScreenTest {
         compose.mainClock.autoAdvance = true
 
         assertEquals(listOf(0), fake.answers.map { it.answer })
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "100.0% right")).assertIsDisplayed()
     }
 
     @Test
@@ -510,7 +521,7 @@ class IndexFlashcardsScreenTest {
 
         button(10).performClick()
 
-        val bar = flashcardBarText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10")
+        val bar = flashcardBarText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10", "0.0% right")
         compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
 

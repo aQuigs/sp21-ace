@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
+import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.serializedAndBack
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -28,7 +29,7 @@ class FlashcardRunTest {
     fun gradesTheCardShowingThenDealsTheNextAndRecordsTheAnswer() {
         val answered = FlashcardRun(sixteenCard).answer(sixteenCard, 0, dealer, 2350.milliseconds, at) { _, _ -> insuranceCard }
 
-        assertEquals(FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0), streak = 1), answered?.run)
+        assertEquals(FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0, Tally(1, 0)), streak = 1), answered?.run)
         assertEquals(FlashcardAnswer(at, Game.BLACKJACK, sixteenVsTen, 0, 2350.milliseconds, cards = 2), answered?.answer)
         assertTrue(answered!!.answer.isCorrect && answered.run.lastGrade!!.isCorrect)
     }
@@ -58,7 +59,7 @@ class FlashcardRunTest {
 
     @Test
     fun aTapOnACardNoLongerShowingOrOnAnIndexNoLongerDealtGradesNothing() {
-        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0))
+        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0, Tally(1, 0)))
         assertNull(run.answer(sixteenCard, 0, dealer, null, at) { _, _ -> error("A stale tap must not deal") })
 
         val swapped = FlashcardDealer(preset(sixteenVsTen.copy(threshold = 1)))
@@ -67,7 +68,7 @@ class FlashcardRunTest {
 
     @Test
     fun aCardWhoseIndexIsNoLongerDealtIsRedealtAndOneStillDealtStays() {
-        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3))
+        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0)))
         assertSame(run, run.dealtFrom(dealer) { error("A card still dealt stays") })
 
         // The number edited, so the old card would grade against it
@@ -91,6 +92,24 @@ class FlashcardRunTest {
     }
 
     @Test
+    fun theGradeTalliesEveryAnswerToItsIndexThisOneIncludedWhetherRightOrWrong() {
+        fun earlier(index: PlayIndex, answer: Int) = FlashcardAnswer(at, Game.BLACKJACK, index, answer, null, cards = 2)
+        // Another index, and the same hand under another number, are facts of their own
+        val history = listOf(earlier(sixteenVsTen, 0), earlier(sixteenVsTen, 2), earlier(insurance, 3), earlier(sixteenVsTen.copy(threshold = 1), 1))
+        fun tally(number: Int) = FlashcardRun(sixteenCard).answer(sixteenCard, number, dealer, null, at, history)?.run?.lastGrade?.tally
+
+        assertEquals(Tally(correct = 2, incorrect = 1), tally(0))
+        assertEquals(Tally(correct = 1, incorrect = 2), tally(1))
+    }
+
+    @Test
+    fun aClearedHistoryTakesTheVerdictAndTheStreakAndLeavesTheCard() {
+        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0)), streak = 4)
+
+        assertEquals(FlashcardRun(sixteenCard), run.historyCleared())
+    }
+
+    @Test
     fun rightAnswersClimbTheStreakAndAWrongOneDropsItToZero() {
         fun FlashcardRun.answered(number: Int) = requireNotNull(answer(sixteenCard, number, dealer, null, at) { _, _ -> sixteenCard }).run
 
@@ -101,7 +120,7 @@ class FlashcardRunTest {
 
     @Test
     fun aCardRedealtKeepsTheStreakEvenWithNothingLeftToDeal() {
-        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3), streak = 4)
+        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0)), streak = 4)
 
         assertEquals(4, run.dealtFrom(FlashcardDealer(preset(insurance))).streak)
         assertEquals(FlashcardRun(null, streak = 4), run.dealtFrom(FlashcardDealer(preset())))
@@ -109,7 +128,7 @@ class FlashcardRunTest {
 
     @Test
     fun aRunSurvivesTheActivitysSavedState() {
-        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, -2), streak = 3)
+        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, -2, Tally(2, 1)), streak = 3)
 
         assertEquals(run, run.serializedAndBack())
     }

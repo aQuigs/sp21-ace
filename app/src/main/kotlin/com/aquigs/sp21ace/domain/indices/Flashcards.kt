@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.trainer.nextStreak
 import java.io.Serializable
 import java.time.Instant
@@ -17,8 +18,8 @@ val IndexPreset.flashcardAnswers: IntRange
 /** A flashcard: an [index] and the cards that ask for it, the [player]'s hand, none for insurance, against the dealer's [upcard]. */
 data class Flashcard(val index: PlayIndex, val player: List<Card>, val upcard: Card) : Serializable
 
-/** The number given for a card, which is right when it is the card's index. */
-data class FlashcardGrade(val card: Flashcard, val answer: Int) : Serializable {
+/** The number given for a card, which is right when it is the card's index, and the [tally] of every answer to that index, this one included. */
+data class FlashcardGrade(val card: Flashcard, val answer: Int, val tally: Tally) : Serializable {
     val isCorrect: Boolean get() = answer == card.index.threshold
 }
 
@@ -38,6 +39,9 @@ data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = n
         val next = deal(card)
         return copy(card = next, lastGrade = lastGrade.takeIf { next != null })
     }
+
+    /** The run once the history is cleared, with nothing left that counts its answers. */
+    fun historyCleared(): FlashcardRun = copy(lastGrade = null, streak = 0)
 }
 
 /**
@@ -75,6 +79,7 @@ fun FlashcardRun.answer(
     if (asked != card || !dealer.couldDeal(asked)) return null
 
     val recorded = FlashcardAnswer(answeredAt, dealer.game, asked.index, number, time, asked.player.size)
-    val next = FlashcardRun(deal(asked, history + recorded), FlashcardGrade(asked, number), nextStreak(streak, recorded.isCorrect))
-    return AnsweredFlashcard(next, recorded)
+    val answers = history + recorded
+    val grade = FlashcardGrade(asked, number, answers.tallyByIndex(dealer.game).getValue(asked.index))
+    return AnsweredFlashcard(FlashcardRun(deal(asked, answers), grade, nextStreak(streak, grade.isCorrect)), recorded)
 }
