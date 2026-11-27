@@ -17,6 +17,8 @@ import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.drill.Streak
 import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
+import com.aquigs.sp21ace.domain.strategy.upcard
+import com.aquigs.sp21ace.domain.trainer.totalLabel
 
 /**
  * A drill's [content] beside its streak meter. The meter and the drill's [controls], if any, take opposite edges of the screen,
@@ -54,24 +56,24 @@ fun DrillTable(
     EdgeRow(buttonsOnLeft, listOf(edge, content, controls), modifier)
 }
 
-/** The hands a drill asks about: the dealer's [upcard] and the [player]'s cards, none for insurance, each with its total. */
-data class DrillHands(val upcard: Card, val dealerTotal: String, val player: List<Card>, val playerTotal: String, val doubled: Boolean = false)
-
-/** The dealer's hand over the player's, or with no player's cards the dealer's alone, the player's space left empty so the cards don't move. */
+/**
+ * The dealer's hand over the [player]'s, with their [totals] when on, or with no player's cards, as for insurance, the dealer's alone,
+ * the player's space left empty so the cards don't move.
+ */
 @Composable
-fun RowScope.HandsColumn(hands: DrillHands, totals: Boolean) {
+fun RowScope.HandsColumn(upcard: Card, player: List<Card>, totals: Boolean, doubled: Boolean = false) {
     Column(
         modifier = Modifier.weight(1f).fillMaxHeight().wrapContentWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        HandArea(label = stringResource(R.string.dealer), total = hands.dealerTotal.takeIf { totals }, modifier = Modifier.weight(1f)) { fan ->
-            DealerHand(hands.upcard, fan)
+        HandArea(label = stringResource(R.string.dealer), total = upcard.upcard.label.takeIf { totals }, modifier = Modifier.weight(1f)) { fan ->
+            DealerHand(upcard, fan)
         }
-        if (hands.player.isEmpty()) {
+        if (player.isEmpty()) {
             Spacer(Modifier.weight(1f))
         } else {
-            HandArea(label = stringResource(R.string.you), total = hands.playerTotal.takeIf { totals }, modifier = Modifier.weight(1f)) { fan ->
-                DissolvingHand(hands.player, fan, sideways = hands.doubled)
+            HandArea(label = stringResource(R.string.you), total = totalLabel(player).takeIf { totals }, modifier = Modifier.weight(1f)) { fan ->
+                DissolvingHand(player, fan, sideways = doubled)
             }
         }
     }

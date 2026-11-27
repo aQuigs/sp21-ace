@@ -20,9 +20,6 @@ import com.aquigs.sp21ace.domain.strategy.inPlainWords
 import com.aquigs.sp21ace.domain.trainer.Grade
 import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
-import com.aquigs.sp21ace.domain.trainer.dealerTotal
-import com.aquigs.sp21ace.domain.trainer.playerTotal
-import com.aquigs.sp21ace.ui.components.DrillHands
 import com.aquigs.sp21ace.ui.components.DrillTable
 import com.aquigs.sp21ace.ui.components.EdgeControls
 import com.aquigs.sp21ace.ui.components.FeedbackBar
@@ -66,12 +63,10 @@ fun StrategyTrainerScreen(
                 }
             },
         ) {
-            HandsColumn(state.hand.shown, settings.handTotals)
+            HandsColumn(state.hand.upcard, state.hand.player, settings.handTotals, state.hand.doubled)
         }
     }
 }
-
-private val TrainerHand.shown get() = DrillHands(upcard, dealerTotal, player, playerTotal, doubled)
 
 @Composable
 private fun GradeBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {

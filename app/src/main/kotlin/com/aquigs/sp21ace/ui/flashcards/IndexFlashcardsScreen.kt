@@ -49,11 +49,8 @@ import com.aquigs.sp21ace.domain.indices.playName
 import com.aquigs.sp21ace.domain.indices.signedCount
 import com.aquigs.sp21ace.domain.indices.title
 import com.aquigs.sp21ace.domain.settings.Settings
-import com.aquigs.sp21ace.domain.strategy.upcard
-import com.aquigs.sp21ace.domain.trainer.totalLabel
 import com.aquigs.sp21ace.ui.components.CircleButton
 import com.aquigs.sp21ace.ui.components.Dissolve
-import com.aquigs.sp21ace.ui.components.DrillHands
 import com.aquigs.sp21ace.ui.components.DrillTable
 import com.aquigs.sp21ace.ui.components.FeedbackBar
 import com.aquigs.sp21ace.ui.components.FeedbackText
@@ -132,7 +129,7 @@ fun IndexFlashcardsScreen(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     overMeter = if (settings.flashcardTimer) ({ CardTime(time) }) else null,
                 ) {
-                    HandsColumn(card.shown, settings.handTotals)
+                    HandsColumn(card.upcard, card.player, settings.handTotals)
                 }
                 Prompt(card.index.deviation.playName, card.index.direction)
                 // The card this frame shows, even if a tap lands after the next one is dealt but before it is drawn
@@ -178,8 +175,6 @@ private fun feedbackParts(grade: FlashcardGrade): List<String> {
 private const val SEPARATOR = "\u00A0| "
 
 private fun String.unbroken() = replace(' ', '\u00A0')
-
-private val Flashcard.shown get() = DrillHands(upcard, upcard.upcard.label, player, totalLabel(player))
 
 /**
  * The card's time under its caption, at the default font size, so it takes no more width than the meter under it. Reads [time]
