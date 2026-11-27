@@ -1,5 +1,6 @@
 package com.aquigs.sp21ace.ui.flashcards
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -110,7 +111,7 @@ fun IndexFlashcardsScreen(
         }
     }
 
-    Scaffold(modifier = modifier, topBar = { FlashcardBar(state.run.lastGrade, onOpenDrawer) }) { padding ->
+    Scaffold(modifier = modifier, topBar = { FlashcardBar(state.run.lastGrade, settings.flashcardTimer, onOpenDrawer) }) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -147,18 +148,18 @@ fun IndexFlashcardsScreen(
 }
 
 @Composable
-private fun FlashcardBar(lastGrade: FlashcardGrade?, onOpenDrawer: () -> Unit) {
+private fun FlashcardBar(lastGrade: FlashcardGrade?, showTime: Boolean, onOpenDrawer: () -> Unit) {
     FeedbackBar(
         verdict = lastGrade,
         title = stringResource(R.string.index_flashcards),
         isCorrect = { it.isCorrect },
-        spoken = lastGrade?.let { feedbackParts(it).joinToString(". ") },
+        spoken = lastGrade?.let { feedbackParts(it, showTime, R.string.seconds_spoken).joinToString(". ") },
         onOpenDrawer = onOpenDrawer,
     ) { grade ->
         val deviation = grade.card.index.deviation
         // The hand in bold, or for insurance, which has none, the play
         val bold = (if (deviation is Deviation.OnHand) deviation.title else deviation.playName).unbroken()
-        val text = feedbackParts(grade).joinToString(SEPARATOR) { it.unbroken() }
+        val text = feedbackParts(grade, showTime, R.string.seconds_value).joinToString(SEPARATOR) { it.unbroken() }
 
         FeedbackText(
             buildAnnotatedString {
@@ -170,17 +171,17 @@ private fun FlashcardBar(lastGrade: FlashcardGrade?, onOpenDrawer: () -> Unit) {
 }
 
 /**
- * "Hard 16 vs 10", "Stand at 0 or higher", after a wrong answer "You answered +2", and "Accuracy 66.6%", how often the index has
- * ever been answered right. Insurance names itself as the play, so only once.
+ * "Hard 16 vs 10", "Stand at 0 or higher", after a wrong answer "You answered +2", for a timed card "2.4 s", as [timeFormat] words
+ * it, and "Accuracy 66.6%", how often the index has ever been answered right. Insurance names itself as the play, so only once.
  */
 @Composable
-private fun feedbackParts(grade: FlashcardGrade): List<String> {
+private fun feedbackParts(grade: FlashcardGrade, showTime: Boolean, @StringRes timeFormat: Int): List<String> {
     val index = grade.card.index
     val answered = if (grade.isCorrect) null else stringResource(R.string.you_answered, signedCount(grade.answer))
-
+    val time = grade.time?.takeIf { showTime }?.let { stringResource(timeFormat, it.inSeconds) }
     val accuracy = grade.tally?.percentText()?.let { stringResource(R.string.flashcard_accuracy, it) }
 
-    return listOfNotNull(index.deviation.title.takeIf { index.deviation is Deviation.OnHand }, index.inPlainWords, answered, accuracy)
+    return listOfNotNull(index.deviation.title.takeIf { index.deviation is Deviation.OnHand }, index.inPlainWords, answered, time, accuracy)
 }
 
 // The bar breaks its lines only after the bar between parts, so a part such as "at −1 or higher" never ends one line and starts the next

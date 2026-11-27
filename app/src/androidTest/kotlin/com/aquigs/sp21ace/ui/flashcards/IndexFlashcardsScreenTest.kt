@@ -189,8 +189,8 @@ class IndexFlashcardsScreenTest {
 
         button(0).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher. Accuracy 100.0%").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "Accuracy 100.0%")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher. 0.0 seconds. Accuracy 100.0%").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
         compose.onNodeWithText("INSURANCE at ? or higher").assertIsDisplayed()
     }
 
@@ -200,8 +200,8 @@ class IndexFlashcardsScreenTest {
 
         button(2).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs 10. Stand at 0 or higher. You answered +2. Accuracy 0.0%").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "Accuracy 0.0%")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs 10. Stand at 0 or higher. You answered +2. 0.0 seconds. Accuracy 0.0%").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "0.0 s", "Accuracy 0.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -212,7 +212,44 @@ class IndexFlashcardsScreenTest {
         // 16 vs 10 right, insurance wrong, then 16 vs 10 wrong
         for (number in listOf(0, 1, 2)) button(number).performClick()
 
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "Accuracy 50.0%")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "0.0 s", "Accuracy 50.0%")).assertIsDisplayed()
+    }
+
+    @Test
+    fun theBarSaysHowLongTheAnswerTookAndKeepsItWhileTheNextCardsTimeRuns() {
+        show()
+        compose.waitForIdle()
+        now += 2_400
+
+        button(0).performClick()
+        now += 5_000
+        tick()
+
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "2.4 s", "Accuracy 100.0%")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher. 2.4 seconds. Accuracy 100.0%").assertIsDisplayed()
+    }
+
+    @Test
+    fun theBarLeavesOutTheTimeOfACardThatWasntTimed() {
+        show()
+        covered = true
+        compose.waitForIdle()
+        covered = false
+
+        button(0).performClick()
+
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "Accuracy 100.0%")).assertIsDisplayed()
+    }
+
+    @Test
+    fun switchingTheTimerOffTakesTheTimeOffTheBar() {
+        show()
+        button(0).performClick()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
+
+        settings = Settings(flashcardTimer = false)
+
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "Accuracy 100.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -225,8 +262,8 @@ class IndexFlashcardsScreenTest {
 
         button(-3).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Insurance at +3 or higher. You answered −3. Accuracy 0.0%").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Insurance at +3 or higher", "You answered −3", "Accuracy 0.0%")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Insurance at +3 or higher. You answered −3. 0.0 seconds. Accuracy 0.0%").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Insurance at +3 or higher", "You answered −3", "0.0 s", "Accuracy 0.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -254,7 +291,7 @@ class IndexFlashcardsScreenTest {
         compose.mainClock.autoAdvance = true
 
         assertEquals(listOf(0), fake.answers.map { it.answer })
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "Accuracy 100.0%")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -519,9 +556,12 @@ class IndexFlashcardsScreenTest {
             DeviceConfigurationOverride.FontScale(2f),
         ).answers += List(999) { FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, index, index.threshold, null, cards = 2) }
 
+        compose.waitForIdle()
+        now += 99_900
+
         button(10).performClick()
 
-        val bar = flashcardBarText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10", "Accuracy 99.9%")
+        val bar = flashcardBarText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10", "99.9 s", "Accuracy 99.9%")
         compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
 
