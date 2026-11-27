@@ -51,7 +51,7 @@ class TrueCountFlashcardsScreenTest {
 
     private var now = 0L
 
-    /** The run as the composition root carries it out, timed by the test's clock, with [oneDeck] dealt after every answer. */
+    /** The run as the composition root carries it out, timed by the test's clock, with [oneDeck] dealt after any other card, and [plusSeven] after it. */
     private inner class FakeRun(first: TrueCountCard) : TrueCountActions {
         val answers = mutableListOf<TrueCountAnswer>()
         var options by mutableStateOf(TrueCountOptions())
@@ -60,7 +60,7 @@ class TrueCountFlashcardsScreenTest {
         private val timer = AnswerTimer<TrueCountCard> { now }.also { it.dealt(first) }
 
         override fun answer(asked: TrueCountCard, number: Int) {
-            run.answer(asked, number, dealer, timer.elapsed(asked), Instant.EPOCH, answers) { _, _ -> oneDeck }?.let {
+            run.answer(asked, number, dealer, timer.elapsed(asked), Instant.EPOCH, answers) { previous, _ -> if (previous == oneDeck) plusSeven else oneDeck }?.let {
                 run = it.run
                 timer.dealt(it.run.card)
                 answers += it.answer
@@ -151,6 +151,7 @@ class TrueCountFlashcardsScreenTest {
         button("+6 or higher").performClick()
 
         compose.onNodeWithText(flashcardBarText("−8 with 1 deck left", "True count −8", "You answered +6 or higher", "0.0 s", "Accuracy 0.0%")).assertIsDisplayed()
+        button(string(R.string.count_plus, 2)).performClick()
         button("−6 or lower").performClick()
         compose.onNodeWithText(flashcardBarText("−8 with 1 deck left", "True count −8", "0.0 s", "Accuracy 50.0%")).assertIsDisplayed()
     }
