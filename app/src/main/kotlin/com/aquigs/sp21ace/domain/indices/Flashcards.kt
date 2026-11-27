@@ -24,9 +24,7 @@ data class Flashcard(val index: PlayIndex, val player: List<Card>, val upcard: C
  * included, or null when the history hadn't loaded, and the [time] it took, or null when it wasn't timed. The time is kept in
  * milliseconds because a Duration isn't Serializable.
  */
-data class FlashcardGrade(val card: Flashcard, val answer: Int, val tally: Tally?, private val timeMillis: Long?) : Serializable {
-    constructor(card: Flashcard, answer: Int, tally: Tally?, time: Duration?) : this(card, answer, tally, time?.inWholeMilliseconds)
-
+data class FlashcardGrade(val card: Flashcard, val answer: Int, val tally: Tally?, val timeMillis: Long?) : Serializable {
     val isCorrect: Boolean get() = answer == card.index.threshold
     val time: Duration? get() = timeMillis?.milliseconds
 }
@@ -89,6 +87,6 @@ fun FlashcardRun.answer(
     val recorded = FlashcardAnswer(answeredAt, dealer.game, asked.index, number, time, asked.player.size)
     val answers = history.orEmpty() + recorded
     val tally = history?.let { answers.filter { it.index == asked.index }.tallyByIndex(dealer.game).getValue(asked.index) }
-    val grade = FlashcardGrade(asked, number, tally, time)
+    val grade = FlashcardGrade(asked, number, tally, time?.inWholeMilliseconds)
     return AnsweredFlashcard(FlashcardRun(deal(asked, answers), grade, nextStreak(streak, grade.isCorrect)), recorded)
 }

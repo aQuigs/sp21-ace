@@ -545,9 +545,9 @@ class IndexFlashcardsScreenTest {
     }
 
     // A wrong answer to a surrender, the longest play, at −10, after a card left up for over a quarter of an hour, on a narrow phone
-    private fun assertLongestBarFits(hand: IndexHand, upcard: Upcard, title: String, player: List<Card>, dealt: Card) {
-        val index = PlayIndex(Deviation.OnHand(hand, upcard, DeviationPlay.SURRENDER), -10)
-        val first = Flashcard(index, player, dealt)
+    private fun assertLongestBarFits(hand: IndexHand, title: String, player: List<Card>) {
+        val index = PlayIndex(Deviation.OnHand(hand, Upcard.TEN, DeviationPlay.SURRENDER), -10)
+        val first = Flashcard(index, player, card("Kh"))
         show(oneIndex(index), first, deals = listOf(first), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(2f))
             .answers += List(999) { FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, index, index.threshold, null, cards = 2) }
         compose.waitForIdle()
@@ -561,11 +561,11 @@ class IndexFlashcardsScreenTest {
 
     @Test
     fun onANarrowPhoneAtTheLargestFontSizeTheLongestHardHandsBarFits() =
-        assertLongestBarFits(IndexHand(HandKind.HARD, 15), Upcard.TEN, "Hard 15 vs 10", cards("9c 6d"), card("Kh"))
+        assertLongestBarFits(IndexHand(HandKind.HARD, 15), "Hard 15 vs 10", cards("9c 6d"))
 
     @Test
     fun onANarrowPhoneAtTheLargestFontSizeTheLongestPairsBarFits() =
-        assertLongestBarFits(IndexHand(HandKind.PAIR, 1), Upcard.TEN, "Pair of aces vs 10", cards("Ac Ad"), card("Kh"))
+        assertLongestBarFits(IndexHand(HandKind.PAIR, 1), "Pair of aces vs 10", cards("Ac Ad"))
 
     @Test
     fun onANarrowPhoneThePadOf5EitherSideFits() = assertPadFits(5)
