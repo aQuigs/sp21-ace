@@ -676,6 +676,9 @@ class AppShellTest {
         compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
         assertTrue(insuranceCard.fact !in lastDealer!!.indices)
         assertEquals(IndexPresets.seeded().active.enabledIndices - insuranceCard.fact, lastDealer!!.indices.toList())
+
+        compose.onNodeWithContentDescription(string(R.string.no_index)).performClick()
+        assertEquals(listOf(0, null), flashcardHistoryStore.history.value?.map { it.answer })
     }
 
     @Test

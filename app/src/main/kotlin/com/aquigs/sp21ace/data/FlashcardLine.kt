@@ -8,7 +8,8 @@ import kotlin.time.Duration.Companion.milliseconds
 /**
  * One flashcard history line: named fields, such as
  * `at=1789000000000 index=STAND:16:10:0:AT_OR_ABOVE answer=-1 ms=2350 cards=2 game=BLACKJACK`, the index as [IndexCode] prints it.
- * An answer of no index is `NONE`, and one with no time has no `ms`. The game comes last, so a line cut short anywhere loses or garbles a field and reads as nothing.
+ * An answer of no index is `NONE`, and one with no time has no `ms`. The game comes last, so a line cut short anywhere loses or
+ * garbles a field and reads as nothing.
  */
 internal object FlashcardLine {
     private const val AT = "at"

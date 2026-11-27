@@ -34,27 +34,21 @@ internal fun multiCardHands(upcard: Upcard): Map<HandTotal, List<List<List<Int>>
 }
 
 /**
- * The hands closest to [preset]'s switched-on indices that have none: on either side of each, the nearest upcard that no index the
- * preset lists or a built-in set defines has for its hand, whatever the play. Each asks for that index's play, so it passes for one.
+ * The hands closest to [preset]'s switched-on indices that have none: on either side of each, the nearest upcard its hand
+ * [has none][IndexPreset.hasNone] against. Each asks for that index's play, so it passes for one.
  */
-internal fun nearMisses(preset: IndexPreset): Set<NoIndex> {
-    val builtIn = BuiltInIndexSet.entries.filter { it.game == preset.game }.flatMap { set -> set.indices.map { it.index.deviation } }
-    fun hasIndex(deviation: Deviation.OnHand) = preset.listsHandOf(deviation) || builtIn.any { it.asksSameHandAs(deviation) }
+internal fun nearMisses(preset: IndexPreset): Set<NoIndex> = preset.enabledIndices.flatMap { index ->
+    val deviation = index.deviation as? Deviation.OnHand ?: return@flatMap emptyList()
+    val none = Upcard.entries.map { NoIndex(deviation.copy(upcard = it), index.direction) }.filter(preset::hasNone)
 
-    return preset.enabledIndices.flatMap { index ->
-        val deviation = index.deviation as? Deviation.OnHand ?: return@flatMap emptyList()
-        val undefined = Upcard.entries.map { deviation.copy(upcard = it) }.filterNot(::hasIndex)
-
-        listOfNotNull(undefined.lastOrNull { it.upcard < deviation.upcard }, undefined.firstOrNull { it.upcard > deviation.upcard })
-            .map { NoIndex(it, index.direction) }
-    }.toSet()
-}
+    listOfNotNull(none.lastOrNull { it.deviation.upcard < deviation.upcard }, none.firstOrNull { it.deviation.upcard > deviation.upcard })
+}.toSet()
 
 /**
  * Deals the flashcards of [preset]'s switched-on indices as [options] says, built once per change of either, so a deal only
  * picks. Never the same index twice in a row while more than one is on. With [FlashcardOptions.noIndexCards] on, about 1 card in
- * 8 is one of its [nearMisses]. A two-card hard total is never a pair, a ten-value card
- * is a 10, J, Q or K at random, and insurance shows the dealer's ace alone. With [FlashcardOptions.multiCardHands] on, a stand
+ * 8 is one of its [nearMisses]. A two-card hard total is never a pair, a ten-value card is a 10, J, Q or K at random, and
+ * insurance shows the dealer's ace alone. With [FlashcardOptions.multiCardHands] on, a stand
  * or hit index on a total is a hand of 3 or 4 cards half the time a basic strategy player could hold one against its upcard;
  * every other hand is two cards.
  */
@@ -103,10 +97,10 @@ class FlashcardDealer(private val preset: IndexPreset, private val options: Flas
         FlashcardAnswer(answeredAt, game, card.fact, answer, time, card.player.size)
 
     /** Hands with no index share one tally, as they share a row in the stats. */
-    override fun tally(card: Flashcard, history: List<FlashcardAnswer>): Tally = history
-        .filter { if (card.fact is NoIndex) preset.hasNone(it.fact) else it.fact == card.fact }
-        .tallyByFact(game).values
-        .fold(Tally(correct = 0, incorrect = 0), Tally::plus)
+    override fun tally(card: Flashcard, history: List<FlashcardAnswer>): Tally {
+        val answers = history.filter { it.game == game && if (card.fact is NoIndex) preset.hasNone(it.fact) else it.fact == card.fact }
+        return answers.count { it.isCorrect }.let { Tally(correct = it, incorrect = answers.size - it) }
+    }
 
     private fun cardsFor(fact: IndexFact, random: Random): Flashcard = when (val deviation = fact.deviation) {
         Deviation.Insurance -> Flashcard(fact, player = emptyList(), upcard = draw(Upcard.ACE, random))

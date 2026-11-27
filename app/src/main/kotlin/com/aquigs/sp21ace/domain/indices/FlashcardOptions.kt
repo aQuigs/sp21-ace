@@ -5,8 +5,8 @@ import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.history.TallyCounter
 
 /**
- * How the flashcards are dealt, whatever the preset. [noIndexCards] throws in the odd hand that has no index. [multiCardHands] starts off, since published index tables give each number
- * by hand total without saying how many cards make it.
+ * How the flashcards are dealt, whatever the preset. [noIndexCards] throws in the odd hand that has no index. [multiCardHands]
+ * starts off, since published index tables give each number by hand total without saying how many cards make it.
  */
 data class FlashcardOptions(
     val cardsShown: CardsShown = CardsShown.RANDOM,

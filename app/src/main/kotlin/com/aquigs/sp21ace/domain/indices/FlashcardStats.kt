@@ -10,7 +10,10 @@ import kotlin.math.ceil
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-/** The answers to one [index], or with none to every hand that has no index, over a period: how often they were right, and how long the timed ones took. */
+/**
+ * The answers to one [index], or when null to every hand that has none, over a period: how often they were right, and how long the
+ * timed ones took.
+ */
 data class IndexStats(val index: PlayIndex?, val enabled: Boolean, val tally: Tally, val times: AnswerTimes) {
     val answers: Int get() = tally.total
 }
@@ -23,7 +26,7 @@ private val AXIS_LONGEST: Duration = 10.seconds
 
 /**
  * A period's flashcard figures for a preset: the [overall] tally and [times] of every answer counted, then each index's own, in
- * the preset's order, and last those of the hands with no index.
+ * the preset's order, and those of the hands with none.
  */
 data class FlashcardStats(val overall: Tally, val times: AnswerTimes, val indices: List<IndexStats>) {
     /**
@@ -38,8 +41,8 @@ data class FlashcardStats(val overall: Tally, val times: AnswerTimes, val indice
  * [preset]'s figures over [period] as of [now]. An answer counts when it was to one of the preset's indices, number and direction
  * included, so an index whose number was edited starts afresh, as Prioritize worse counts it. Every answer counts for accuracy,
  * and only a timed one for speed: an untimed one had its card interrupted, so its time says nothing. Each index switched on gets a
- * row, answered or not, and a switched-off one only while it has answers in the period. The hands with no index, where the preset
- * still has none, share a row while they have answers in it. One pass, with times sorted once as plain
+ * row, answered or not, and a switched-off one only while it has answers in the period. The hands with none share one row while they
+ * have answers in it. One pass, with times sorted once as plain
  * numbers, since it runs again on every change of period, preset or history.
  */
 fun List<FlashcardAnswer>.flashcardStats(preset: IndexPreset, period: Period, now: Instant): FlashcardStats {

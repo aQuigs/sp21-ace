@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.cards.HandTotal
+import com.aquigs.sp21ace.domain.cards.totalOf
 import com.aquigs.sp21ace.domain.strategy.ChartRow
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.domain.strategy.pairRow
@@ -33,6 +34,9 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
     val label: String get() = row.hand
 
     internal val total: HandTotal get() = HandTotal(value, soft = kind == HandKind.SOFT)
+
+    /** What the hand adds up to, a pair included. */
+    internal val playedTotal: HandTotal get() = if (kind == HandKind.PAIR) totalOf(listOf(value, value)) else total
 
     internal val pairCard: Upcard get() = Upcard.ofPoints(value)
 
@@ -94,8 +98,8 @@ sealed interface Deviation : Serializable {
         }
     }
 
-    /** Whether this asks about [other]'s hand against its upcard, whichever play either names. */
-    fun asksSameHandAs(other: OnHand): Boolean = this is OnHand && hand == other.hand && upcard == other.upcard
+    /** Whether this asks about [other]'s total against its upcard, whichever play either names. A pair can be played as its total. */
+    fun asksSameHandAs(other: OnHand): Boolean = this is OnHand && hand.playedTotal == other.hand.playedTotal && upcard == other.upcard
 
     /** Insurance is offered only against a dealer ace, and asks for no hand. */
     data object Insurance : Deviation {

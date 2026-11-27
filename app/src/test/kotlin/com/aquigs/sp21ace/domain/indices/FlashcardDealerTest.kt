@@ -262,6 +262,12 @@ class FlashcardDealerTest {
         val surrenderVsEight = PlayIndex(onHand(DeviationPlay.SURRENDER, "16", "8"), 4)
         assertEquals(setOf("Stand Hard 16 vs 7", "Stand Hard 16 vs A"), near(preset(IndexEntry(sixteenVsTen), IndexEntry(surrenderVsEight, enabled = false))))
 
+        // A pair of 5s is hard 10, which the built-in sets index against a 10 and an ace
+        val fivesVsNine = PlayIndex(onHand(DeviationPlay.DOUBLE, "5-5", "9"), 2)
+        assertEquals(setOf("Double Pair of 5s vs 8"), near(preset(IndexEntry(fivesVsNine))))
+        val tenVsTen = PlayIndex(onHand(DeviationPlay.DOUBLE, "10", "10"), 4)
+        assertTrue("Double Hard 10 vs 9" !in near(preset(IndexEntry(tenVsTen), IndexEntry(fivesVsNine))))
+
         // A switched-off index has no near misses of its own, and insurance has none
         assertEquals(emptySet<String>(), near(preset(IndexEntry(sixteenVsTen, enabled = false), IndexEntry(FakeIndices.INSURANCE))))
     }
@@ -278,9 +284,13 @@ class FlashcardDealerTest {
     fun handsWithNoIndexAreDealtOnlyWhenSwitchedOnAndThenAboutOneCardInEight() {
         assertTrue(deals(FlashcardDealer(everyKind)).none { it.fact is NoIndex })
 
-        val cards = deals(FlashcardDealer(everyKind, FlashcardOptions(noIndexCards = true)), count = 8000)
+        // Prioritize worse weighs the indices alone, so the rate is the same
+        val worse = deals(FlashcardDealer(everyKind, FlashcardOptions(CardsShown.PRIORITIZE_WORSE, noIndexCards = true)), count = 40_000)
+        assertEquals(5000.0, worse.count { it.fact is NoIndex }.toDouble(), 250.0)
+
+        val cards = deals(FlashcardDealer(everyKind, FlashcardOptions(noIndexCards = true)), count = 40_000)
         val noIndex = cards.filter { it.fact is NoIndex }
-        assertEquals(1000.0, noIndex.size.toDouble(), 150.0)
+        assertEquals(5000.0, noIndex.size.toDouble(), 250.0)
         assertEquals(nearMisses(everyKind), noIndex.map { it.fact }.toSet())
         for ((previous, next) in cards.zipWithNext()) {
             assertNotEquals(previous.fact, next.fact)
@@ -325,6 +335,8 @@ class FlashcardDealerTest {
             answer(NoIndex(onHand(DeviationPlay.STAND, "12", "7")), 3),
             // Listed in this preset, so no hand without an index here
             answer(NoIndex(onHand(DeviationPlay.STAND, "16", "10")), null),
+            // No hand of this preset's, so it was never asked here
+            answer(NoIndex(onHand(DeviationPlay.DOUBLE, "A-7", "6")), null),
             answer(preset.enabledIndices.first(), null),
         )
         val card = Flashcard(sixteenVsEight, emptyList(), Card(Rank.EIGHT, Suit.HEARTS))

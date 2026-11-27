@@ -82,11 +82,11 @@ interface DrillActions<C : DrillCard<N>, N> {
  * focus, or the drawer [covered] over it, interrupts the card showing, so its answer records no time.
  */
 @Composable
-internal fun <C : DrillCard<N>, N> FlashcardPage(
-    run: DrillRun<C, N>,
+internal fun <C : DrillCard<*>> FlashcardPage(
+    run: DrillRun<C, *>,
     settings: Settings,
     covered: Boolean,
-    actions: DrillActions<C, N>,
+    actions: DrillActions<C, *>,
     topBar: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     empty: @Composable ColumnScope.() -> Unit = {},
