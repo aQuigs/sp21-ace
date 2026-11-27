@@ -11,6 +11,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class FlashcardRunTest {
@@ -29,9 +30,17 @@ class FlashcardRunTest {
     fun gradesTheCardShowingThenDealsTheNextAndRecordsTheAnswer() {
         val answered = FlashcardRun(sixteenCard).answer(sixteenCard, 0, dealer, 2350.milliseconds, at) { _, _ -> insuranceCard }
 
-        assertEquals(FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0, Tally(1, 0)), streak = 1), answered?.run)
+        assertEquals(FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0, Tally(1, 0), timeMillis = 2350), streak = 1), answered?.run)
         assertEquals(FlashcardAnswer(at, Game.BLACKJACK, sixteenVsTen, 0, 2350.milliseconds, cards = 2), answered?.answer)
         assertTrue(answered!!.answer.isCorrect && answered.run.lastGrade!!.isCorrect)
+    }
+
+    @Test
+    fun theGradeKeepsTheTimeTheAnswerTookOrNoneWhenItWasntTimed() {
+        fun time(took: Duration?) = FlashcardRun(sixteenCard).answer(sixteenCard, 0, dealer, took, at)?.run?.lastGrade?.time
+
+        assertEquals(2350.milliseconds, time(2350.milliseconds))
+        assertNull(time(null))
     }
 
     @Test
@@ -59,7 +68,7 @@ class FlashcardRunTest {
 
     @Test
     fun aTapOnACardNoLongerShowingOrOnAnIndexNoLongerDealtGradesNothing() {
-        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0, Tally(1, 0)))
+        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0, Tally(1, 0), timeMillis = null))
         assertNull(run.answer(sixteenCard, 0, dealer, null, at) { _, _ -> error("A stale tap must not deal") })
 
         val swapped = FlashcardDealer(preset(sixteenVsTen.copy(threshold = 1)))
@@ -68,7 +77,7 @@ class FlashcardRunTest {
 
     @Test
     fun aCardWhoseIndexIsNoLongerDealtIsRedealtAndOneStillDealtStays() {
-        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0)))
+        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0), timeMillis = null))
         assertSame(run, run.dealtFrom(dealer) { error("A card still dealt stays") })
 
         // The number edited, so the old card would grade against it
@@ -106,12 +115,12 @@ class FlashcardRunTest {
     fun anAnswerGivenBeforeTheHistoryLoadsHasNoTally() {
         val grade = FlashcardRun(sixteenCard).answer(sixteenCard, 0, dealer, null, at, history = null)?.run?.lastGrade
 
-        assertEquals(FlashcardGrade(sixteenCard, 0, tally = null), grade)
+        assertEquals(FlashcardGrade(sixteenCard, 0, tally = null, timeMillis = null), grade)
     }
 
     @Test
     fun aClearedHistoryTakesTheVerdictAndTheStreakAndLeavesTheCard() {
-        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0)), streak = 4)
+        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0), timeMillis = null), streak = 4)
 
         assertEquals(FlashcardRun(sixteenCard), run.historyCleared())
     }
@@ -127,7 +136,7 @@ class FlashcardRunTest {
 
     @Test
     fun aCardRedealtKeepsTheStreakEvenWithNothingLeftToDeal() {
-        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0)), streak = 4)
+        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0), timeMillis = null), streak = 4)
 
         assertEquals(4, run.dealtFrom(FlashcardDealer(preset(insurance))).streak)
         assertEquals(FlashcardRun(null, streak = 4), run.dealtFrom(FlashcardDealer(preset())))
@@ -135,7 +144,7 @@ class FlashcardRunTest {
 
     @Test
     fun aRunSurvivesTheActivitysSavedState() {
-        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, -2, Tally(2, 1)), streak = 3)
+        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, -2, Tally(2, 1), timeMillis = 2350), streak = 3)
 
         assertEquals(run, run.serializedAndBack())
     }

@@ -250,7 +250,7 @@ class AppShellTest {
         now += 2_000
 
         compose.onNodeWithContentDescription("0").performClick()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "Accuracy 100.0%")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "2.0 s", "Accuracy 100.0%")).assertIsDisplayed()
         now += 900
         compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
 
@@ -261,7 +261,7 @@ class AppShellTest {
 
         // 16 vs 10 again, whose first answer the store holds
         compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +1", "Accuracy 50.0%")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +1", "0.0 s", "Accuracy 50.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -601,7 +601,7 @@ class AppShellTest {
         compose.onNodeWithContentDescription("0").performClick()
 
         // The card showing kept its index, and the next came from a dealer without insurance
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "Accuracy 100.0%")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
         assertTrue(insuranceCard.index !in lastDealer!!.indices)
         assertEquals(IndexPresets.seeded().active.enabledIndices - insuranceCard.index, lastDealer!!.indices.toList())
     }

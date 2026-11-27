@@ -264,6 +264,7 @@
     <string name="percentile_90_spoken">90th percentile, %1$.1f seconds: nine in ten answers took that long or less</string>
     <string name="timed_answers">Timed answers</string>
     <string name="seconds_value">%1$.1f s</string>
+    <string name="seconds_spoken">%1$.1f seconds</string>
     <string name="none_timed">None of these answers was timed. An answer goes untimed when its card was covered or left before you answered.</string>
     <string name="answers_axis">Answers</string>
     <string name="seconds_axis">Seconds per answer</string>

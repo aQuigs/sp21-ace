@@ -97,9 +97,10 @@ fun <T : Any> FeedbackBar(
 fun FeedbackText(text: AnnotatedString) {
     Text(
         text = text,
-        // The longest squares need three lines, and an em line height keeps them inside the bar as autoSize shrinks the text
+        // The longest squares need three lines, and an em line height and letter spacing, bodyLarge's own, keep them inside the bar
+        // as autoSize shrinks the text
         autoSize = autoSizeDownTo(minSize = 10.dp, maxFontSize = 16.sp),
         maxLines = 3,
-        style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 1.2.em),
+        style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 1.2.em, letterSpacing = (0.5 / 16).em),
     )
 }
