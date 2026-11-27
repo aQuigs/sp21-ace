@@ -64,7 +64,7 @@ class FlashcardRunTest {
         }
 
         assertEquals(listOf(earlier, answered!!.answer), handed)
-        assertEquals(insurance, FlashcardRun(sixteenCard).answer(sixteenCard, 1, dealer, null, at)?.run?.card?.index)
+        assertEquals(insurance, FlashcardRun(sixteenCard).answer(sixteenCard, 1, dealer, null, at)?.run?.card?.fact)
     }
 
     @Test
@@ -85,11 +85,11 @@ class FlashcardRunTest {
         val edited = FlashcardDealer(preset(sixteenVsTen.copy(threshold = 1), insurance))
         val redealt = run.dealtFrom(edited) { insuranceCard }
         assertEquals(FlashcardRun(insuranceCard, run.lastGrade), redealt)
-        repeat(50) { assertTrue(run.dealtFrom(edited).card?.index in edited.indices) }
+        repeat(50) { assertTrue(run.dealtFrom(edited).card?.fact in edited.indices) }
 
         // Nothing to deal, so no verdict on an index perhaps no longer drilled either
         assertEquals(FlashcardRun(null), run.dealtFrom(FlashcardDealer(preset())))
-        assertEquals(sixteenVsTen, FlashcardRun(null).dealtFrom(FlashcardDealer(preset(sixteenVsTen))).card?.index)
+        assertEquals(sixteenVsTen, FlashcardRun(null).dealtFrom(FlashcardDealer(preset(sixteenVsTen))).card?.fact)
     }
 
     @Test
@@ -144,9 +144,30 @@ class FlashcardRunTest {
     }
 
     @Test
+    fun noIndexIsRightOnlyForAHandThatHasNone() {
+        val withNoIndex = FlashcardDealer(preset(sixteenVsTen), FlashcardOptions(noIndexCards = true))
+        val noIndex = Flashcard(NoIndex(Deviation.parse("STAND", "16", "8") as Deviation.OnHand), cards("9c 7d"), card("8h"))
+        fun answered(card: Flashcard, answer: Int?) = requireNotNull(FlashcardRun(card).answer(card, answer, withNoIndex, null, at) { _, _ -> sixteenCard })
+
+        val right = answered(noIndex, null)
+        assertTrue(right.run.lastGrade!!.isCorrect && right.answer.isCorrect)
+        assertEquals(FlashcardAnswer(at, Game.BLACKJACK, noIndex.fact, null, null, cards = 2), right.answer)
+        assertEquals(Streak(1), right.run.streak)
+
+        for (wrong in listOf(answered(noIndex, 0), answered(sixteenCard, null))) {
+            assertFalse(wrong.run.lastGrade!!.isCorrect || wrong.answer.isCorrect)
+            assertEquals(Streak(), wrong.run.streak)
+        }
+    }
+
+    @Test
     fun aRunSurvivesTheActivitysSavedState() {
         val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, -2, Tally(2, 1), timeMillis = 2350), streak = Streak(3))
 
         assertEquals(run, run.serializedAndBack())
+
+        val noIndex = Flashcard(NoIndex(Deviation.parse("STAND", "16", "8") as Deviation.OnHand), cards("9c 7d"), card("8h"))
+        val noIndexRun = FlashcardRun(noIndex, FlashcardGrade(noIndex, null, tally = null, timeMillis = null))
+        assertEquals(noIndexRun, noIndexRun.serializedAndBack())
     }
 }

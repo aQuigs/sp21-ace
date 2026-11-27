@@ -8,7 +8,7 @@ import kotlin.time.Duration.Companion.milliseconds
 /**
  * One flashcard history line: named fields, such as
  * `at=1789000000000 index=STAND:16:10:0:AT_OR_ABOVE answer=-1 ms=2350 cards=2 game=BLACKJACK`, the index as [IndexCode] prints it.
- * An answer with no time has no `ms`. The game comes last, so a line cut short anywhere loses or garbles a field and reads as nothing.
+ * An answer of no index is `NONE`, and one with no time has no `ms`. The game comes last, so a line cut short anywhere loses or garbles a field and reads as nothing.
  */
 internal object FlashcardLine {
     private const val AT = "at"
@@ -21,8 +21,8 @@ internal object FlashcardLine {
     fun print(answer: FlashcardAnswer): String {
         val fields = listOfNotNull(
             AT to answer.answeredAt.toEpochMilli(),
-            INDEX to IndexCode.print(answer.index),
-            ANSWER to answer.answer,
+            INDEX to IndexCode.print(answer.fact),
+            ANSWER to (answer.answer ?: IndexCode.NONE),
             answer.time?.let { MS to it.inWholeMilliseconds },
             CARDS to answer.cards,
             GAME to answer.game.name,
@@ -37,8 +37,8 @@ internal object FlashcardLine {
         FlashcardAnswer(
             answeredAt = Instant.ofEpochMilli(fields[AT].toLong()),
             game = Game.valueOf(fields[GAME]),
-            index = IndexCode.parse(fields[INDEX]),
-            answer = fields[ANSWER].toInt(),
+            fact = IndexCode.parseFact(fields[INDEX]),
+            answer = fields[ANSWER].let { if (it == IndexCode.NONE) null else it.toInt() },
             time = fields.ifSaved(MS)?.toLong()?.milliseconds,
             cards = fields[CARDS].toInt(),
         )

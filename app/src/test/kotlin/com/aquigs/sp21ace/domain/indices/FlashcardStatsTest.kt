@@ -79,6 +79,27 @@ class FlashcardStatsTest {
     }
 
     @Test
+    fun handsWithNoIndexShareALastRowWhileAnsweredAndCountOverall() {
+        fun noIndex(play: String, hand: String, upcard: String) = NoIndex(Deviation.parse(play, hand, upcard) as Deviation.OnHand)
+        fun answer(fact: IndexFact, answer: Int?) = FlashcardAnswer(now, Game.BLACKJACK, fact, answer, 1.seconds, cards = 2)
+        val stats = listOf(
+            answer(noIndex("STAND", "18", "3"), null),
+            answer(noIndex("SPLIT", "A-A", "4"), 2),
+            // The preset lists an index on this hand for another play, so it isn't one without
+            answer(noIndex("HIT", "18", "2"), null),
+            answer(stand, null),
+        ).stats()
+
+        assertEquals(listOf(stand, split, double, null), stats.indices.map { it.index })
+        assertEquals(Tally(correct = 1, incorrect = 1), stats.indices.last().tally)
+        assertEquals(2, stats.indices.last().times.timed)
+        assertEquals(Tally(correct = 0, incorrect = 1), stats.row(stand).tally)
+        assertEquals(Tally(correct = 1, incorrect = 2), stats.overall)
+
+        assertEquals(listOf(stand, split, double), listOf(answer(stand)).stats().indices.map { it.index })
+    }
+
+    @Test
     fun anUntimedAnswerCountsForAccuracyButNeverForSpeed() {
         val stats = listOf(answer(stand, time = 2.seconds), answer(stand, right = false, time = null)).stats()
 

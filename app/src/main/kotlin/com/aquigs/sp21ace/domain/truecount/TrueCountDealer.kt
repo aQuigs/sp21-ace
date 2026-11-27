@@ -26,7 +26,7 @@ private const val HIGHEST_PER_DECK_DEALT = 10
  * never the same card twice in a row, nor the same decks while there are more than two. Under [CardsShown.PRIORITIZE_WORSE], the decks left come up in
  * inverse proportion to their accuracy with this shoe.
  */
-class TrueCountDealer(private val options: TrueCountOptions) : CardDealer<TrueCountCard, TrueCountAnswer> {
+class TrueCountDealer(private val options: TrueCountOptions) : CardDealer<TrueCountCard, Int, TrueCountAnswer> {
     private val shoe = Decks.whole(options.shoe)
     private val step = options.precision.step
 
@@ -53,8 +53,8 @@ class TrueCountDealer(private val options: TrueCountOptions) : CardDealer<TrueCo
 
     override fun couldDeal(card: TrueCountCard): Boolean = card in cardsByDecks[card.decksLeft].orEmpty()
 
-    override fun record(card: TrueCountCard, number: Int, time: Duration?, answeredAt: Instant): TrueCountAnswer =
-        TrueCountAnswer(answeredAt, card, number, time)
+    override fun record(card: TrueCountCard, answer: Int, time: Duration?, answeredAt: Instant): TrueCountAnswer =
+        TrueCountAnswer(answeredAt, card, answer, time)
 
     /** What was answered with [card]'s decks left, which is also what Prioritize worse weighs. */
     override fun tally(card: TrueCountCard, history: List<TrueCountAnswer>): Tally =

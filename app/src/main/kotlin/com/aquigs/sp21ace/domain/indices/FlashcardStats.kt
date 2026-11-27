@@ -10,8 +10,8 @@ import kotlin.math.ceil
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-/** One index's answers over a period: how often they were right, and how long the timed ones took. */
-data class IndexStats(val index: PlayIndex, val enabled: Boolean, val tally: Tally, val times: AnswerTimes) {
+/** The answers to one [index], or with none to every hand that has no index, over a period: how often they were right, and how long the timed ones took. */
+data class IndexStats(val index: PlayIndex?, val enabled: Boolean, val tally: Tally, val times: AnswerTimes) {
     val answers: Int get() = tally.total
 }
 
@@ -23,7 +23,7 @@ private val AXIS_LONGEST: Duration = 10.seconds
 
 /**
  * A period's flashcard figures for a preset: the [overall] tally and [times] of every answer counted, then each index's own, in
- * the preset's order.
+ * the preset's order, and last those of the hands with no index.
  */
 data class FlashcardStats(val overall: Tally, val times: AnswerTimes, val indices: List<IndexStats>) {
     /**
@@ -38,17 +38,19 @@ data class FlashcardStats(val overall: Tally, val times: AnswerTimes, val indice
  * [preset]'s figures over [period] as of [now]. An answer counts when it was to one of the preset's indices, number and direction
  * included, so an index whose number was edited starts afresh, as Prioritize worse counts it. Every answer counts for accuracy,
  * and only a timed one for speed: an untimed one had its card interrupted, so its time says nothing. Each index switched on gets a
- * row, answered or not, and a switched-off one only while it has answers in the period. One pass, with times sorted once as plain
+ * row, answered or not, and a switched-off one only while it has answers in the period. The hands with no index, where the preset
+ * still has none, share a row while they have answers in it. One pass, with times sorted once as plain
  * numbers, since it runs again on every change of period, preset or history.
  */
 fun List<FlashcardAnswer>.flashcardStats(preset: IndexPreset, period: Period, now: Instant): FlashcardStats {
     val counts = period.counter(now)
-    val byIndex = HashMap<PlayIndex, AnswerCounter>()
+    val byIndex = HashMap<IndexFact, AnswerCounter>()
     for (entry in preset.entries) byIndex[entry.index] = AnswerCounter()
+    val noIndex = AnswerCounter()
 
     for (answer in this) {
         if (answer.game != preset.game) continue
-        val answers = byIndex[answer.index] ?: continue
+        val answers = byIndex[answer.fact] ?: noIndex.takeIf { preset.hasNone(answer.fact) } ?: continue
         if (counts(answer.answeredAt)) answers.add(answer.isCorrect, answer.time)
     }
 
@@ -56,9 +58,10 @@ fun List<FlashcardAnswer>.flashcardStats(preset: IndexPreset, period: Period, no
         val answers = byIndex.getValue(entry.index)
         if (!entry.enabled && answers.tally.total == 0) null else IndexStats(entry.index, entry.enabled, answers.tally, answers.times)
     }
-    val every = byIndex.values
+    val noIndexRow = IndexStats(index = null, enabled = true, noIndex.tally, noIndex.times).takeIf { it.answers > 0 }
+    val every = byIndex.values + noIndex
     val overall = every.map { it.tally }.fold(Tally(correct = 0, incorrect = 0), Tally::plus)
-    return FlashcardStats(overall, AnswerTimes.of(mergeSorted(every.map { it.sortedTimes })), rows)
+    return FlashcardStats(overall, AnswerTimes.of(mergeSorted(every.map { it.sortedTimes })), rows + listOfNotNull(noIndexRow))
 }
 
 /** [sorted] arrays merged into one sorted array, two at a time, so the times sorted for each index aren't sorted again. */

@@ -94,6 +94,9 @@ sealed interface Deviation : Serializable {
         }
     }
 
+    /** Whether this asks about [other]'s hand against its upcard, whichever play either names. */
+    fun asksSameHandAs(other: OnHand): Boolean = this is OnHand && hand == other.hand && upcard == other.upcard
+
     /** Insurance is offered only against a dealer ace, and asks for no hand. */
     data object Insurance : Deviation {
         override val upcard: Upcard get() = Upcard.ACE
@@ -103,16 +106,28 @@ sealed interface Deviation : Serializable {
 /** Which side of its number an index makes its play on. Published charts print both forms, such as "hit at −1 or lower". */
 enum class IndexDirection { AT_OR_ABOVE, AT_OR_BELOW }
 
+/** What a flashcard asks for and its answer: the [threshold] of the play on [deviation], or null where there is no such index. */
+sealed interface IndexFact : Serializable {
+    val deviation: Deviation
+    val direction: IndexDirection
+    val threshold: Int?
+}
+
+/** That no index is defined for the [deviation]'s hand against its upcard, asked for as the index it passes for would be. */
+data class NoIndex(override val deviation: Deviation.OnHand, override val direction: IndexDirection = IndexDirection.AT_OR_ABOVE) : IndexFact {
+    override val threshold: Int? get() = null
+}
+
 /**
- * An index, the fact a flashcard asks for: make the [deviation]'s play at a true count of [threshold] or higher, or at
+ * An index: make the [deviation]'s play at a true count of [threshold] or higher, or at
  * [threshold] or lower for [IndexDirection.AT_OR_BELOW], and play basic strategy on the other side. The same deviation with
  * another threshold or direction, as under other rules or after an edit, is another fact.
  */
 data class PlayIndex(
-    val deviation: Deviation,
-    val threshold: Int,
-    val direction: IndexDirection = IndexDirection.AT_OR_ABOVE,
-) : Serializable
+    override val deviation: Deviation,
+    override val threshold: Int,
+    override val direction: IndexDirection = IndexDirection.AT_OR_ABOVE,
+) : IndexFact
 
 /** An index in a preset, which is drilled while [enabled]. */
 data class IndexEntry(val index: PlayIndex, val enabled: Boolean = true)

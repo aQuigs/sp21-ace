@@ -1,8 +1,10 @@
 package com.aquigs.sp21ace.data
 
+import com.aquigs.sp21ace.domain.indices.Deviation
 import com.aquigs.sp21ace.domain.indices.FakeIndices
 import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
 import com.aquigs.sp21ace.domain.indices.Game
+import com.aquigs.sp21ace.domain.indices.NoIndex
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -30,6 +32,16 @@ class FlashcardLineTest {
 
         assertEquals(answers, answers.map { FlashcardLine.parse(FlashcardLine.print(it)) })
         assertEquals("at=1789000005000 index=INSURANCE:-98:AT_OR_ABOVE answer=-98 cards=0 game=BLACKJACK", FlashcardLine.print(answers[1]))
+    }
+
+    @Test
+    fun readsBackAHandWithNoIndexAndAnAnswerOfNoIndex() {
+        val noIndex = FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, NoIndex(Deviation.parse("STAND", "16", "8") as Deviation.OnHand), null, null, cards = 2)
+        val answers = listOf(noIndex, noIndex.copy(answer = 3), wrongStand.copy(answer = null))
+
+        assertEquals(answers, answers.map { FlashcardLine.parse(FlashcardLine.print(it)) })
+        assertEquals("at=0 index=STAND:16:8:NONE:AT_OR_ABOVE answer=NONE cards=2 game=BLACKJACK", FlashcardLine.print(noIndex))
+        assertNull(FlashcardLine.parse("at=0 index=INSURANCE:NONE:AT_OR_ABOVE answer=NONE cards=0 game=BLACKJACK"))
     }
 
     @Test

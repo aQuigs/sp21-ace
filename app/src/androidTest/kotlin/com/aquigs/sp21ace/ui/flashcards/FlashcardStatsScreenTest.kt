@@ -32,6 +32,7 @@ import com.aquigs.sp21ace.domain.indices.HandKind
 import com.aquigs.sp21ace.domain.indices.IndexEntry
 import com.aquigs.sp21ace.domain.indices.IndexHand
 import com.aquigs.sp21ace.domain.indices.IndexPreset
+import com.aquigs.sp21ace.domain.indices.NoIndex
 import com.aquigs.sp21ace.domain.indices.PlayIndex
 import com.aquigs.sp21ace.domain.settings.ColorTheme
 import com.aquigs.sp21ace.domain.strategy.Upcard
@@ -194,6 +195,21 @@ class FlashcardStatsScreenTest {
                 listOf(plural(R.plurals.bucket_between, 1, 4.0, 4.5), plural(R.plurals.bucket_overflow, 1, 5.0)).joinToString(", "),
             ),
         )
+
+    @Test
+    fun theHandsWithNoIndexShareARowThatOpensItsOwnHistogram() {
+        val noIndex = NoIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 16), Upcard.EIGHT, DeviationPlay.STAND))
+        val other = noIndex.copy(deviation = Deviation.OnHand(IndexHand(HandKind.HARD, 12), Upcard.SEVEN, DeviationPlay.STAND))
+        show(history + listOf(noIndex to null, other to 2).map { (fact, answer) -> FlashcardAnswer(now, Game.BLACKJACK, fact, answer, 1_200.milliseconds, cards = 2) })
+
+        val row = compose.onNode(hasText(string(R.string.no_index)) and hasClickAction()).performScrollTo()
+        row.assert(hasText(string(R.string.hands_with_no_index)) and hasText(string(R.string.index_accuracy, "50.0%")) and hasText("2 answers"))
+        row.performClick()
+
+        val histogram = plural(R.plurals.histogram_description, 2, plural(R.plurals.bucket_between, 2, 1.0, 1.5))
+        compose.onNode(hasContentDescription(histogram)).assertExists()
+        assertEquals(compose.activity.accuracyCardTexts(R.string.accuracy, "60.0%", correct = 6, incorrect = 4), accuracyCard())
+    }
 
     private fun twelveVsThreeRow() = compose.onNode(hasText("Hard 12 vs 3") and hasClickAction()).performScrollTo()
 

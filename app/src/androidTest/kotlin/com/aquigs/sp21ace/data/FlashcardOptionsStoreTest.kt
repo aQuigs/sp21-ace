@@ -21,15 +21,16 @@ class FlashcardOptionsStoreTest {
 
     @Test
     fun loadsRandomTwoCardHandsWhenNothingIsSaved() {
-        assertEquals(FlashcardOptions(CardsShown.RANDOM, multiCardHands = false), FlashcardOptionsStore(context, name).load())
+        assertEquals(FlashcardOptions(CardsShown.RANDOM, noIndexCards = false, multiCardHands = false), FlashcardOptionsStore(context, name).load())
     }
 
     @Test
     fun loadsEachOptionAsSaved() {
-        // Both away from their defaults, then each on its own, so no field can pass by matching its default
+        // All away from their defaults, then each on its own, so no field can pass by matching its default
         val options = listOf(
-            FlashcardOptions(CardsShown.PRIORITIZE_WORSE, multiCardHands = true),
+            FlashcardOptions(CardsShown.PRIORITIZE_WORSE, noIndexCards = true, multiCardHands = true),
             FlashcardOptions(CardsShown.PRIORITIZE_WORSE),
+            FlashcardOptions(noIndexCards = true),
             FlashcardOptions(multiCardHands = true),
             FlashcardOptions(),
         )

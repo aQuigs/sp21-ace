@@ -169,7 +169,7 @@ internal fun Sp21AceApp(
         presetsStore.save(next)
     }
 
-    val flashcardActions = object : IndexFlashcardsActions, DrillActions<Flashcard> by flashcards {
+    val flashcardActions = object : IndexFlashcardsActions, DrillActions<Flashcard, Int?> by flashcards {
         override fun changePresets(presets: IndexPresets) = savePresets(presets)
 
         override fun changeOptions(options: FlashcardOptions) {
@@ -177,7 +177,7 @@ internal fun Sp21AceApp(
             flashcardOptionsStore.save(options)
         }
     }
-    val trueCountActions = object : TrueCountActions, DrillActions<TrueCountCard> by trueCounts {
+    val trueCountActions = object : TrueCountActions, DrillActions<TrueCountCard, Int> by trueCounts {
         override fun changeOptions(options: TrueCountOptions) {
             trueCountOptions = options
             trueCountOptionsStore.save(options)

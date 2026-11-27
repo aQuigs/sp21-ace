@@ -47,6 +47,12 @@ data class IndexPreset(
 
     fun has(deviation: Deviation): Boolean = find(deviation) != null
 
+    /** Whether an index for any play on [deviation]'s hand against its upcard is listed, switched on or off. */
+    internal fun listsHandOf(deviation: Deviation.OnHand): Boolean = entries.any { it.index.deviation.asksSameHandAs(deviation) }
+
+    /** Whether [fact] is that a hand has no index, and still holds here: an index added on the hand makes it another question. */
+    internal fun hasNone(fact: IndexFact): Boolean = fact is NoIndex && !listsHandOf(fact.deviation)
+
     /** Adds [index], switched on, at the end. Its deviation mustn't be listed yet. */
     fun add(index: PlayIndex): IndexPreset = copy(entries = entries + IndexEntry(index))
 

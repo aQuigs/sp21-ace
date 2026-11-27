@@ -63,6 +63,12 @@ fun IndicesScreen(
         SettingsHeader(stringResource(R.string.flashcards))
         ChoiceRow(title = stringResource(R.string.cards_shown), value = stringResource(options.cardsShown.title), onClick = onOpenCardsShown)
         SwitchRow(
+            title = stringResource(R.string.hands_with_no_index),
+            summary = stringResource(if (options.noIndexCards) R.string.no_index_cards_on else R.string.no_index_cards_off),
+            checked = options.noIndexCards,
+            onCheckedChange = { onOptionsChange(options.copy(noIndexCards = it)) },
+        )
+        SwitchRow(
             title = stringResource(R.string.multi_card_hands),
             summary = stringResource(if (options.multiCardHands) R.string.multi_card_flashcards_on else R.string.multi_card_flashcards_off),
             checked = options.multiCardHands,
