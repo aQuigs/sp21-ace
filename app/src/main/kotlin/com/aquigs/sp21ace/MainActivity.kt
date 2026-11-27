@@ -139,7 +139,7 @@ internal fun Sp21AceApp(
     LaunchedEffect(flashcardDealer) { showRun(flashcardRun.dealtFrom(flashcardDealer) { nextFlashcard(it) }) }
     val flashcardActions = object : IndexFlashcardsActions {
         override fun answer(asked: Flashcard, number: Int) {
-            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now(), flashcardHistory()) { previous, history ->
+            flashcardRun.answer(asked, number, flashcardDealer, answerTimer.elapsed(asked), Instant.now(), flashcardHistoryStore.history.value) { previous, history ->
                 dealFlashcard(flashcardDealer, previous, history)
             }
                 ?.let { (next, answer) ->

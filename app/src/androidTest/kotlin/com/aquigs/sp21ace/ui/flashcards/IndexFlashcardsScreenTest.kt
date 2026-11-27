@@ -189,8 +189,8 @@ class IndexFlashcardsScreenTest {
 
         button(0).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher. 100.0% right").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "100.0% right")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. Hard 16 vs 10. Stand at 0 or higher. Accuracy 100.0%").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "Accuracy 100.0%")).assertIsDisplayed()
         compose.onNodeWithText("INSURANCE at ? or higher").assertIsDisplayed()
     }
 
@@ -200,19 +200,19 @@ class IndexFlashcardsScreenTest {
 
         button(2).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs 10. Stand at 0 or higher. You answered +2. 0.0% right").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "0.0% right")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Hard 16 vs 10. Stand at 0 or higher. You answered +2. Accuracy 0.0%").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "Accuracy 0.0%")).assertIsDisplayed()
     }
 
     @Test
     fun theBarSaysHowOftenTheIndexHasBeenAnsweredRightCountingThisAnswer() {
         val otherSixteen = sixteenVsKing.copy(player = cards("10s 6h"))
-        show(deals = listOf(insuranceCard, otherSixteen, insuranceCard, sixteenVsKing, insuranceCard))
+        show(deals = listOf(insuranceCard, otherSixteen, insuranceCard))
 
         // 16 vs 10 right, insurance wrong, then 16 vs 10 wrong
         for (number in listOf(0, 1, 2)) button(number).performClick()
 
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "50.0% right")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "You answered +2", "Accuracy 50.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -225,8 +225,8 @@ class IndexFlashcardsScreenTest {
 
         button(-3).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Insurance at +3 or higher. You answered −3. 0.0% right").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("Insurance at +3 or higher", "You answered −3", "0.0% right")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.wrong_answer)}. Insurance at +3 or higher. You answered −3. Accuracy 0.0%").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Insurance at +3 or higher", "You answered −3", "Accuracy 0.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -254,7 +254,7 @@ class IndexFlashcardsScreenTest {
         compose.mainClock.autoAdvance = true
 
         assertEquals(listOf(0), fake.answers.map { it.answer })
-        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "100.0% right")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("Hard 16 vs 10", "Stand at 0 or higher", "Accuracy 100.0%")).assertIsDisplayed()
     }
 
     @Test
@@ -517,11 +517,11 @@ class IndexFlashcardsScreenTest {
             deals = listOf(first.copy(player = cards("10s 5h"))),
             Modifier.size(360.dp, 640.dp),
             DeviceConfigurationOverride.FontScale(2f),
-        )
+        ).answers += List(999) { FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, index, index.threshold, null, cards = 2) }
 
         button(10).performClick()
 
-        val bar = flashcardBarText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10", "0.0% right")
+        val bar = flashcardBarText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10", "Accuracy 99.9%")
         compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
 

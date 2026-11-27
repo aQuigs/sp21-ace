@@ -306,6 +306,7 @@
         <item quantity="other">%1$d seconds on this card</item>
     </plurals>
     <string name="card_untimed">This card isn\'t timed</string>
+    <string name="flashcard_accuracy">Accuracy %1$s</string>
     <string name="clear_flashcard_history">Clear flashcard history</string>
     <string name="clear_flashcard_history_message">Are you sure you want to clear your flashcard history? This resets everything built on it: Flashcard Stats, which indices Prioritize worse indices favors, and the flashcard streak.</string>
 </resources>

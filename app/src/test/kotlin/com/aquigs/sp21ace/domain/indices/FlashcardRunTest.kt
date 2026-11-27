@@ -103,6 +103,13 @@ class FlashcardRunTest {
     }
 
     @Test
+    fun anAnswerGivenBeforeTheHistoryLoadsHasNoTally() {
+        val grade = FlashcardRun(sixteenCard).answer(sixteenCard, 0, dealer, null, at, history = null)?.run?.lastGrade
+
+        assertEquals(FlashcardGrade(sixteenCard, 0, tally = null), grade)
+    }
+
+    @Test
     fun aClearedHistoryTakesTheVerdictAndTheStreakAndLeavesTheCard() {
         val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3, Tally(1, 0)), streak = 4)
 

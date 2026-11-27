@@ -170,15 +170,15 @@ private fun FlashcardBar(lastGrade: FlashcardGrade?, onOpenDrawer: () -> Unit) {
 }
 
 /**
- * "Hard 16 vs 10", "Stand at 0 or higher", after a wrong answer "You answered +2", and "66.6% right", how often the index has been
- * answered right. Insurance names itself as the play, so only once.
+ * "Hard 16 vs 10", "Stand at 0 or higher", after a wrong answer "You answered +2", and "Accuracy 66.6%", how often the index has
+ * ever been answered right. Insurance names itself as the play, so only once.
  */
 @Composable
 private fun feedbackParts(grade: FlashcardGrade): List<String> {
     val index = grade.card.index
     val answered = if (grade.isCorrect) null else stringResource(R.string.you_answered, signedCount(grade.answer))
 
-    val accuracy = grade.tally.percentText()?.let { stringResource(R.string.index_accuracy, it) }
+    val accuracy = grade.tally?.percentText()?.let { stringResource(R.string.flashcard_accuracy, it) }
 
     return listOfNotNull(index.deviation.title.takeIf { index.deviation is Deviation.OnHand }, index.inPlainWords, answered, accuracy)
 }
