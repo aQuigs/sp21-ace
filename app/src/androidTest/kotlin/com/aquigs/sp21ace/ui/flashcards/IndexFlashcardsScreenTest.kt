@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.width
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.card
 import com.aquigs.sp21ace.domain.cards.cards
 import com.aquigs.sp21ace.domain.indices.AnswerTimer
@@ -543,27 +544,28 @@ class IndexFlashcardsScreenTest {
         assertEquals(buttons, numbers.map { button(it).getBoundsInRoot() })
     }
 
-    @Test
-    fun onANarrowPhoneAtTheLargestFontSizeTheLongestBarFitsWithEachPartOnOneLine() {
-        // Surrender, the longest play, on a 15 against an ace at −10, answered +10
-        val index = PlayIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 15), Upcard.ACE, DeviationPlay.SURRENDER), -10)
-        val first = Flashcard(index, cards("9c 6d"), card("Ah"))
-        show(
-            oneIndex(index),
-            first,
-            deals = listOf(first.copy(player = cards("10s 5h"))),
-            Modifier.size(360.dp, 640.dp),
-            DeviceConfigurationOverride.FontScale(2f),
-        ).answers += List(999) { FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, index, index.threshold, null, cards = 2) }
-
+    // A wrong answer to a surrender, the longest play, at −10, after a card left up for over a quarter of an hour, on a narrow phone
+    private fun assertLongestBarFits(hand: IndexHand, upcard: Upcard, title: String, player: List<Card>, dealt: Card) {
+        val index = PlayIndex(Deviation.OnHand(hand, upcard, DeviationPlay.SURRENDER), -10)
+        val first = Flashcard(index, player, dealt)
+        show(oneIndex(index), first, deals = listOf(first), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(2f))
+            .answers += List(999) { FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, index, index.threshold, null, cards = 2) }
         compose.waitForIdle()
-        now += 99_900
+        now += 999_900
 
         button(10).performClick()
 
-        val bar = flashcardBarText("Hard 15 vs A", "Surrender at −10 or higher", "You answered +10", "99.9 s", "Accuracy 99.9%")
+        val bar = flashcardBarText(title, "Surrender at −10 or higher", "You answered +10", "999.9 s", "Accuracy 99.9%")
         compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeTheLongestHardHandsBarFits() =
+        assertLongestBarFits(IndexHand(HandKind.HARD, 15), Upcard.TEN, "Hard 15 vs 10", cards("9c 6d"), card("Kh"))
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeTheLongestPairsBarFits() =
+        assertLongestBarFits(IndexHand(HandKind.PAIR, 1), Upcard.TEN, "Pair of aces vs 10", cards("Ac Ad"), card("Kh"))
 
     @Test
     fun onANarrowPhoneThePadOf5EitherSideFits() = assertPadFits(5)
