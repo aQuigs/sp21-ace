@@ -13,7 +13,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.aquigs.sp21ace.R
-import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
 import com.aquigs.sp21ace.domain.strategy.inPlainWords
@@ -41,8 +40,6 @@ fun StrategyTrainerScreen(
     onOpenChart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val buttonsOnLeft = settings.buttonLocation == ButtonLocation.LEFT
-
     Scaffold(
         modifier = modifier,
         topBar = { GradeBar(state.lastGrade, onOpenDrawer) },
@@ -53,7 +50,7 @@ fun StrategyTrainerScreen(
             settings = settings,
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             controls = {
-                EdgeControls(buttonsOnLeft, settings.chartButton, onOpenChart) {
+                EdgeControls(settings.buttonsOnLeft, settings.chartButton, onOpenChart) {
                     AnswerButtons(
                         buttons = if (state.hand.doubled) AFTER_DOUBLING_BUTTONS else BUTTONS,
                         moves = state.hand.moves(redoubling),

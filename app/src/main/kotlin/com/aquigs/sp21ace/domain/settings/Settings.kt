@@ -18,4 +18,6 @@ data class Settings(
     val flashcardTimer: Boolean = true,
     val warnOnIncorrectMove: Boolean = true,
     val hintButton: Boolean = true,
-)
+) {
+    val buttonsOnLeft: Boolean get() = buttonLocation == ButtonLocation.LEFT
+}

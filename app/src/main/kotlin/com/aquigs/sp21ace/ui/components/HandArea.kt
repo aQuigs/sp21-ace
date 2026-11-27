@@ -12,9 +12,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import com.aquigs.sp21ace.R
+import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.strategy.totalLabel
 
 /**
  * A hand's label over its [cards], with its [total], when given, on the label's line at the cards' right edge, as in Blackjack Ace.
@@ -54,5 +58,13 @@ fun HandArea(label: String, total: String?, modifier: Modifier = Modifier, cards
             }
             cards(Modifier.weight(1f, fill = false).widthIn(max = cardsMaxWidth))
         }
+    }
+}
+
+/** The player's hand, as the drills and the table both show it. A [doubled] hand's last card lies sideways. */
+@Composable
+fun PlayerArea(cards: List<Card>, doubled: Boolean, totals: Boolean, modifier: Modifier = Modifier) {
+    HandArea(label = stringResource(R.string.you), total = totalLabel(cards).takeIf { totals }, modifier = modifier) { fan ->
+        DissolvingHand(cards, fan, sideways = doubled)
     }
 }

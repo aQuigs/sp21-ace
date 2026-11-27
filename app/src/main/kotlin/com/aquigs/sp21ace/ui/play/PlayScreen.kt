@@ -62,11 +62,10 @@ import com.aquigs.sp21ace.domain.game.Round
 import com.aquigs.sp21ace.domain.game.TOP_UPS
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.game.correctMove
-import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Move
+import com.aquigs.sp21ace.domain.strategy.totalLabel
 import com.aquigs.sp21ace.domain.strategy.upcard
-import com.aquigs.sp21ace.domain.trainer.totalLabel
 import com.aquigs.sp21ace.ui.components.CardBack
 import com.aquigs.sp21ace.ui.components.CircleButton
 import com.aquigs.sp21ace.ui.components.CircleButtonSize
@@ -77,6 +76,7 @@ import com.aquigs.sp21ace.ui.components.EdgeRow
 import com.aquigs.sp21ace.ui.components.HandArea
 import com.aquigs.sp21ace.ui.components.MoveButton
 import com.aquigs.sp21ace.ui.components.OverlappingCards
+import com.aquigs.sp21ace.ui.components.PlayerArea
 import com.aquigs.sp21ace.ui.components.PlayingCard
 import com.aquigs.sp21ace.ui.components.appBarColors
 import com.aquigs.sp21ace.ui.components.chipsText
@@ -107,7 +107,6 @@ fun PlayScreen(
     modifier: Modifier = Modifier,
 ) {
     val round = table.round
-    val buttonsOnLeft = settings.buttonLocation == ButtonLocation.LEFT
     var addingChips by rememberSaveable { mutableStateOf(false) }
     var questioned by rememberSaveable { mutableStateOf<Move?>(null) }
     val play: (Move) -> Unit = { move ->
@@ -145,7 +144,7 @@ fun PlayScreen(
                 }
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     when {
-                        round != null -> table.shownHand?.let { PlayerArea(it, settings.handTotals) }
+                        round != null -> table.shownHand?.let { PlayerArea(it.cards, it.doubled, settings.handTotals) }
                         table.bet > 0 -> BetStack(table.bet, onTakeBack = { onUpdate { it.clearBet() } })
                     }
                 }
@@ -153,7 +152,7 @@ fun PlayScreen(
         }
         val controls: @Composable RowScope.() -> Unit = {
             EdgeControls(
-                buttonsOnLeft,
+                settings.buttonsOnLeft,
                 settings.chartButton,
                 onOpenChart,
                 underTile = {
@@ -166,7 +165,7 @@ fun PlayScreen(
         }
 
         Box(Modifier.fillMaxSize().padding(padding)) {
-            EdgeRow(buttonsOnLeft, listOf(cards, controls), Modifier.fillMaxSize().padding(16.dp))
+            EdgeRow(settings.buttonsOnLeft, listOf(cards, controls), Modifier.fillMaxSize().padding(16.dp))
             Band(table, Modifier.align(Alignment.Center))
         }
     }
@@ -270,13 +269,6 @@ private fun DealerArea(round: Round, shown: Int, handTotals: Boolean) {
                 CardBack()
             }
         }
-    }
-}
-
-@Composable
-private fun PlayerArea(hand: PlayerHand, handTotals: Boolean) {
-    HandArea(label = stringResource(R.string.you), total = totalLabel(hand.cards).takeIf { handTotals }) { fan ->
-        DissolvingHand(hand.cards, fan, sideways = hand.doubled)
     }
 }
 

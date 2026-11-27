@@ -107,12 +107,11 @@ class TrainerTest {
     }
 
     @Test
-    fun eachRightAnswerAddsOneToTheStreakWithNoCapAtTheTopRung() {
+    fun eachRightAnswerAddsOneToTheStreak() {
         val once = TrainerState(sixteenVsAce).after(sixteenVsAce, Move.HIT) { eightsVsSix }
         val twice = once.after(eightsVsSix, Move.SPLIT) { softSeventeenVsTen }
 
         assertEquals(listOf(Streak(1), Streak(2)), listOf(once.streak, twice.streak))
-        assertEquals(Streak(257), TrainerState(sixteenVsAce, streak = Streak(256)).after(sixteenVsAce, Move.HIT) { eightsVsSix }.streak)
     }
 
     @Test

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -188,11 +187,7 @@ private fun CardTime(time: State<Duration?>) {
     val color = MaterialTheme.colorScheme.onSurfaceVariant
 
     ProvideDefaultFontScale {
-        // As wide as the meter at least, so a longer time doesn't move the cards
-        Column(
-            modifier = Modifier.widthIn(min = 64.dp).clearAndSetSemantics { contentDescription = spoken },
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        Column(modifier = Modifier.clearAndSetSemantics { contentDescription = spoken }, horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = stringResource(R.string.card_time), color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
             Text(
                 text = shown?.let { secondsText(it) } ?: stringResource(R.string.no_data),

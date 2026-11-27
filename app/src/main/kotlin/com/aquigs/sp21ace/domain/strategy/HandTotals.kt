@@ -1,8 +1,7 @@
-package com.aquigs.sp21ace.domain.trainer
+package com.aquigs.sp21ace.domain.strategy
 
 import com.aquigs.sp21ace.domain.cards.Card
 import com.aquigs.sp21ace.domain.cards.total
-import com.aquigs.sp21ace.domain.strategy.row
 
 /**
  * A hand's total as the chart's rows write it: "16" for a hard hand or any pair but aces, "A-7" for soft 18 and "A-A" for the soft

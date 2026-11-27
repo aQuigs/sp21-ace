@@ -93,8 +93,9 @@ fun StreakMeter(streak: Streak, modifier: Modifier = Modifier, numbersOnRight: B
 
         val fitsEveryLabel = circleSize + labels.maxOf { it.height } * Streak.RUNGS.lastIndex + gap + caption.height
         val height = fitsEveryLabel.coerceIn(constraints.minHeight, constraints.maxHeight)
-        // A window squeezed shorter than the meter would otherwise hand the rail a negative height, which throws
-        val ladderHeight = (height - gap - caption.height).coerceAtLeast(circleSize)
+        // A window squeezed shorter than the meter drops the caption, then the ladder, rather than draw over what is below them
+        val captionFits = height >= circleSize + gap + caption.height
+        val ladderHeight = (if (captionFits) height - gap - caption.height else height).coerceAtLeast(circleSize)
         val rail = railMeasurables.single().measure(Constraints.fixed(circleSize, ladderHeight))
         val circle = circleMeasurables.single().measure(Constraints.fixed(circleSize, circleSize))
 
@@ -105,6 +106,8 @@ fun StreakMeter(streak: Streak, modifier: Modifier = Modifier, numbersOnRight: B
         fun centre(index: Float) = rungCentre(index, ladderHeight.toFloat(), circleSize.toFloat()).roundToInt()
 
         layout(meterWidth, height) {
+            if (height < circleSize) return@layout
+
             // Laid out with the labels on the left, then turned around for the right, rather than mirrored by the language
             fun Placeable.placeOnSide(x: Int, y: Int) = place(if (numbersOnRight) meterWidth - x - width else x, y)
 
@@ -119,7 +122,7 @@ fun StreakMeter(streak: Streak, modifier: Modifier = Modifier, numbersOnRight: B
             }
             rail.placeOnSide(railX - circleSize / 2, 0)
             circle.placeOnSide(railX - circleSize / 2, centre(rung) - circleSize / 2)
-            caption.placeOnSide(railX - caption.width / 2, ladderHeight + gap)
+            if (captionFits) caption.placeOnSide(railX - caption.width / 2, ladderHeight + gap)
         }
     }
 }

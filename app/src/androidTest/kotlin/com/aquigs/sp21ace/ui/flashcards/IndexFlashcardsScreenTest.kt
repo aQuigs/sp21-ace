@@ -543,6 +543,10 @@ class IndexFlashcardsScreenTest {
     @Test
     fun onANarrowPhoneThePadOf10EitherSideFits() = assertPadFits(10)
 
+    // The tallest pad there is
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeThePadOf9EitherSideStillFits() = assertPadFits(9, fontScale = 2f)
+
     @Test
     fun onANarrowPhoneAtTheLargestFontSizeThePadOf10EitherSideStillFits() = assertPadFits(10, fontScale = 2f)
 

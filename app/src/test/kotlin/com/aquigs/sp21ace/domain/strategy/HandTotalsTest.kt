@@ -1,4 +1,4 @@
-package com.aquigs.sp21ace.domain.trainer
+package com.aquigs.sp21ace.domain.strategy
 
 import com.aquigs.sp21ace.domain.cards.cards
 import org.junit.Assert.assertEquals
