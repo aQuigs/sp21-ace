@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.ui.flashcards
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,12 +18,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -55,15 +62,20 @@ import com.aquigs.sp21ace.ui.components.FeedbackBar
 import com.aquigs.sp21ace.ui.components.FeedbackText
 import com.aquigs.sp21ace.ui.components.HandArea
 import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
+import kotlinx.coroutines.delay
+import kotlin.time.Duration
+
+// The time shows tenths of a second
+private const val TICK_MILLIS = 100L
 
 private val PadGap = 6.dp
 private val MinButton = 40.dp
 private val MaxButton = 56.dp
 
 /**
- * A flashcard of an index: the cards, the play it asks about, and a pad of true counts to answer with, or with no index switched
- * on, a way to the Indices page. Leaving the page or the app, the window losing focus, or the drawer [covered] over it, interrupts
- * the card showing, so its answer records no time.
+ * A flashcard of an index: the cards, the play it asks about, a pad of true counts to answer with and, as [settings] choose, the
+ * streak and the card's time, or with no index switched on, a way to the Indices page. Leaving the page or the app, the window
+ * losing focus, or the drawer [covered] over it, interrupts the card showing, so its answer records no time.
  */
 @Composable
 fun IndexFlashcardsScreen(
@@ -82,8 +94,20 @@ fun IndexFlashcardsScreen(
     val hidden = covered || !LocalWindowInfo.current.isWindowFocused
 
     LifecycleResumeEffect(Unit) { onPauseOrDispose { currentActions.interrupted() } }
-    LaunchedEffect(hidden) { if (hidden) currentActions.interrupted() }
-    LaunchedEffect(card, hidden) { if (card != null && !hidden) currentActions.shown(card) }
+    val time = remember(card) { mutableStateOf(card?.let(actions::time)) }
+    LaunchedEffect(card, hidden, settings.flashcardTimer) {
+        if (hidden) currentActions.interrupted()
+        if (card != null && !hidden) currentActions.shown(card)
+        if (card == null || !settings.flashcardTimer) return@LaunchedEffect
+
+        while (true) {
+            val shown = currentActions.time(card)
+            time.value = shown
+            // Once untimed a card stays so, and a hidden one's time stands still
+            if (hidden || shown == null) break
+            delay(TICK_MILLIS - shown.inWholeMilliseconds % TICK_MILLIS)
+        }
+    }
 
     Scaffold(modifier = modifier, topBar = { FlashcardBar(state.run.lastGrade, onOpenDrawer) }) { padding ->
         Column(
@@ -105,7 +129,14 @@ fun IndexFlashcardsScreen(
                     Button(onClick = onOpenIndices) { Text(stringResource(R.string.choose_indices)) }
                 }
             } else {
-                Hands(card, settings.handTotals, Modifier.weight(1f))
+                Box(Modifier.weight(1f)) {
+                    Hands(card, settings.handTotals, Modifier.fillMaxSize())
+                    // In the space either side of the dealer's two cards, at the default font size, which always leaves room
+                    ProvideDefaultFontScale {
+                        if (settings.flashcardStreak) Streak(state.run.streak, Modifier.align(Alignment.TopStart))
+                        if (settings.flashcardTimer) CardTime(time, Modifier.align(Alignment.TopEnd))
+                    }
+                }
                 Prompt(card.index.deviation.playName, card.index.direction)
                 // The card this frame shows, even if a tap lands after the next one is dealt but before it is drawn
                 NumberPad(state.presets.active.flashcardAnswers) { number -> actions.answer(card, number) }
@@ -150,6 +181,50 @@ private fun feedbackParts(grade: FlashcardGrade): List<String> {
 private const val SEPARATOR = "\u00A0| "
 
 private fun String.unbroken() = replace(' ', '\u00A0')
+
+@Composable
+private fun Streak(streak: Int, modifier: Modifier = Modifier) {
+    Readout(
+        caption = stringResource(R.string.streak),
+        value = "$streak",
+        spoken = stringResource(R.string.streak_count, streak),
+        // Muted until the first right answer, as the streak meter is
+        color = if (streak > 0) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+        alignment = Alignment.Start,
+        modifier = modifier,
+    )
+}
+
+/** Reads [time] itself, so each tick redraws only this. A screen reader hears whole seconds, which change less often. */
+@Composable
+private fun CardTime(time: State<Duration?>, modifier: Modifier = Modifier) {
+    val shown = time.value
+    val seconds = shown?.inWholeSeconds?.toInt()
+
+    Readout(
+        caption = stringResource(R.string.card_time),
+        value = shown?.let { secondsText(it) } ?: stringResource(R.string.no_data),
+        spoken = seconds?.let { pluralStringResource(R.plurals.card_time_spoken, it, it) } ?: stringResource(R.string.card_untimed),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        alignment = Alignment.End,
+        modifier = modifier,
+    )
+}
+
+/** A [value] under its [caption], lined up on the edge it sits at, and one item for a screen reader. */
+@Composable
+private fun Readout(caption: String, value: String, spoken: String, color: Color, alignment: Alignment.Horizontal, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.clearAndSetSemantics { contentDescription = spoken }, horizontalAlignment = alignment) {
+        Text(text = caption, color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+        Text(
+            text = value,
+            color = color,
+            fontWeight = FontWeight.Bold,
+            // Digits of one width, so a time doesn't shake as it counts
+            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+        )
+    }
+}
 
 /** The dealer's hand over the player's, or for insurance the dealer's alone, with the player's space left empty so the cards don't move. */
 @Composable

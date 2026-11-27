@@ -6,6 +6,7 @@ import com.aquigs.sp21ace.domain.indices.FlashcardAnswer
 import com.aquigs.sp21ace.domain.indices.FlashcardOptions
 import com.aquigs.sp21ace.domain.indices.FlashcardRun
 import com.aquigs.sp21ace.domain.indices.IndexPresets
+import kotlin.time.Duration
 
 /** What the card-counting screens show: the flashcard run, the index presets, the flashcard options and every answer given. */
 @Immutable
@@ -26,6 +27,9 @@ interface IndexFlashcardsActions {
 
     /** The card on screen was covered or left, so its answer will have no time. */
     fun interrupted()
+
+    /** The time on [card] so far, which its answer would record: zero until it first shows, or null when it isn't timed. */
+    fun time(card: Flashcard): Duration?
 
     /** The presets as an edit on the Indices or Index Presets page leaves them. */
     fun changePresets(presets: IndexPresets)

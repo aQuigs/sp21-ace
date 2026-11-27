@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -183,10 +184,10 @@ class SettingsScreenTest {
     fun clearingTheFlashcardHistorySitsUnderCardCountingBetweenPracticeAndPlayAsksFirstAndClearsOnlyIt() {
         showSettings()
         val row = compose.onNodeWithText(string(R.string.clear_flashcard_history)).performScrollTo()
-        val bounds = row.getBoundsInRoot()
-        assertTrue(compose.onNodeWithText(string(R.string.card_counting)).getBoundsInRoot().bottom <= bounds.top)
-        assertTrue(compose.onNodeWithText(string(R.string.clear_practice_history)).getBoundsInRoot().bottom <= bounds.top)
-        assertTrue(bounds.bottom <= compose.onNodeWithText(string(R.string.play)).getBoundsInRoot().top)
+        val bounds = row.getUnclippedBoundsInRoot()
+        assertTrue(compose.onNodeWithText(string(R.string.card_counting)).getUnclippedBoundsInRoot().bottom <= bounds.top)
+        assertTrue(compose.onNodeWithText(string(R.string.clear_practice_history)).getUnclippedBoundsInRoot().bottom <= bounds.top)
+        assertTrue(bounds.bottom <= compose.onNodeWithText(string(R.string.play)).getUnclippedBoundsInRoot().top)
 
         row.performClick()
         compose.onNodeWithText(string(R.string.clear_flashcard_history_message)).assertIsDisplayed()
@@ -200,6 +201,21 @@ class SettingsScreenTest {
 
         compose.onNodeWithText(string(R.string.clear_flashcard_history_message)).assertDoesNotExist()
         assertEquals(listOf(0, 0, 1), listOf(clears, playClears, flashcardClears))
+    }
+
+    @Test
+    fun theFlashcardTimerAndStreakCounterStartVisibleUnderCardCountingAndHideOnTheirOwn() {
+        showSettings()
+
+        val timer = switch(R.string.flashcard_timer).performScrollTo().assertIsOn()
+        assertTrue(compose.onNodeWithText(string(R.string.card_counting)).getUnclippedBoundsInRoot().bottom <= timer.getUnclippedBoundsInRoot().top)
+        timer.performClick()
+        assertEquals(Settings(flashcardTimer = false), settings)
+        summary(R.string.flashcard_timer, R.string.hidden).assertIsDisplayed()
+
+        switch(R.string.flashcard_streak).performScrollTo().assertIsOn().performClick()
+        assertEquals(Settings(flashcardTimer = false, flashcardStreak = false), settings)
+        summary(R.string.flashcard_streak, R.string.hidden).assertIsDisplayed()
     }
 
     @Test

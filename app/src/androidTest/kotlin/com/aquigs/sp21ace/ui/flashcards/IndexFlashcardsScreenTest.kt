@@ -20,6 +20,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -107,6 +108,8 @@ class IndexFlashcardsScreenTest {
         override fun shown(card: Flashcard) = timer.shown(card)
 
         override fun interrupted() = timer.interrupted()
+
+        override fun time(card: Flashcard) = timer.display(card)
 
         override fun changePresets(presets: IndexPresets) = Unit
 
@@ -337,12 +340,132 @@ class IndexFlashcardsScreenTest {
         assertEquals(700.milliseconds, fake.answers.single().time)
     }
 
+    private fun cardTime(seconds: Int) = compose.onNodeWithContentDescription(compose.activity.resources.getQuantityString(R.plurals.card_time_spoken, seconds, seconds))
+
+    private fun untimed() = compose.onNodeWithContentDescription(string(R.string.card_untimed))
+
+    private fun streak(count: Int) = compose.onNodeWithContentDescription(string(R.string.streak_count, count))
+
+    // Long enough for the time to be read again
+    private fun tick() {
+        compose.mainClock.advanceTimeBy(200)
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun theTimerShowsTheTimeTheAnswerRecordsAndStartsOverWithTheNextCard() {
+        val fake = show()
+        cardTime(0).assertIsDisplayed()
+
+        now += 2_300
+        tick()
+        cardTime(2).assertIsDisplayed()
+
+        button(0).performClick()
+        cardTime(0).assertIsDisplayed()
+        assertEquals(2_300.milliseconds, fake.answers.single().time)
+
+        now += 1_000
+        tick()
+        cardTime(1).assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimerSaysAnInterruptedCardIsNotTimedAndTimesTheNext() {
+        show()
+        now += 1_000
+        tick()
+        covered = true
+        tick()
+        untimed().assertIsDisplayed()
+        covered = false
+        tick()
+        untimed().assertIsDisplayed()
+
+        button(0).performClick()
+        compose.waitForIdle()
+        now += 1_000
+        tick()
+        cardTime(1).assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimerWaitsAtZeroForTheDrawerToClose() {
+        covered = true
+        show()
+        now += 1_000
+        tick()
+        cardTime(0).assertIsDisplayed()
+
+        covered = false
+        compose.waitForIdle()
+        now += 1_000
+        tick()
+        cardTime(1).assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimerSaysACardIsNotTimedAsTheDrawerClosesOverThePageReopened() {
+        show()
+        onScreen = false
+        compose.waitForIdle()
+        covered = true
+        onScreen = true
+        compose.waitForIdle()
+
+        untimed().assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimerSaysACardIsNotTimedWhileAnotherWindowHasFocus() {
+        show()
+        now += 1_000
+        windowFocused = false
+        tick()
+
+        untimed().assertIsDisplayed()
+    }
+
+    @Test
+    fun rightAnswersClimbTheStreakAndAWrongOneDropsItToZero() {
+        show(deals = listOf(insuranceCard, sixteenVsKing, insuranceCard))
+        streak(0).assertIsDisplayed()
+
+        button(0).performClick()
+        button(3).performClick()
+        streak(2).assertIsDisplayed()
+
+        button(1).performClick()
+        streak(0).assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimerAndTheStreakHideOnTheirOwnAndAHiddenTimerStillTimesTheAnswer() {
+        settings = Settings(flashcardTimer = false)
+        val fake = show()
+        cardTime(0).assertDoesNotExist()
+        streak(0).assertIsDisplayed()
+
+        settings = Settings(flashcardStreak = false)
+        tick()
+        cardTime(0).assertIsDisplayed()
+        streak(0).assertDoesNotExist()
+
+        settings = Settings(flashcardTimer = false, flashcardStreak = false)
+        compose.waitForIdle()
+        cardTime(0).assertDoesNotExist()
+        now += 900
+        button(0).performClick()
+        assertEquals(900.milliseconds, fake.answers.single().time)
+    }
+
     // The pad as a 360dp-wide phone lays it out: a button for every number, the negatives above zero and the positives, every
     // button at least 40dp across and clear of the cards, the prompt and each other, each label on one line, and none moving
     // as the next card is dealt
     private fun assertPadFits(reach: Int, fontScale: Float = 1f) {
         // Stand on hard 16 vs 10 at the far end of the pad, or at 0 for the pad's least reach
         val first = sixteenVsKing.copy(index = sixteenVsTen.copy(threshold = if (reach > 5) -reach else 0))
+        settings = Settings(handTotals = true)
         show(oneIndex(first.index), first, deals = listOf(first.copy(player = cards("10s 6h"))), Modifier.size(360.dp, 640.dp), DeviceConfigurationOverride.FontScale(fontScale))
 
         val numbers = -reach..reach
@@ -358,6 +481,10 @@ class IndexFlashcardsScreenTest {
             for (b in buttons.drop(i + 1)) assertFalse("$a overlaps $b", a.overlaps(b))
         }
         assertTrue(buttons.take(reach).maxOf { it.bottom } <= buttons.drop(reach).minOf { it.top })
+        val dealer = listOf(string(R.string.dealer), "10").map { compose.onNodeWithText(it).getBoundsInRoot() }
+        for (readout in listOf(streak(0), cardTime(0)).map { it.getBoundsInRoot() }) {
+            for (other in others + buttons + dealer) assertFalse("$readout overlaps $other", readout.overlaps(other))
+        }
         for (number in numbers) {
             val name = button(number).fetchSemanticsNode().config[SemanticsProperties.ContentDescription].single()
             compose.onAllNodes(hasAnyAncestor(hasContentDescription(name)) and SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)
@@ -405,7 +532,8 @@ class IndexFlashcardsScreenTest {
 
         compose.onNodeWithText("+3", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("−2", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithText("0", useUnmergedTree = true).assertIsDisplayed()
+        // The streak is a 0 too
+        compose.onNode(hasText("0") and hasAnyAncestor(hasContentDescription("0")), useUnmergedTree = true).assertIsDisplayed()
         button(3).assertIsDisplayed()
         button(-2).assertIsDisplayed()
     }

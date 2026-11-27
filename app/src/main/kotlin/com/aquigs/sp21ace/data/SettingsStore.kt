@@ -16,6 +16,8 @@ class SettingsStore(context: Context, name: String = "settings") {
         chartButton = prefs.getBoolean(CHART_BUTTON, defaults.chartButton),
         soundEffects = prefs.getBoolean(SOUND_EFFECTS, defaults.soundEffects),
         streakMeter = prefs.getBoolean(STREAK_METER, defaults.streakMeter),
+        flashcardTimer = prefs.getBoolean(FLASHCARD_TIMER, defaults.flashcardTimer),
+        flashcardStreak = prefs.getBoolean(FLASHCARD_STREAK, defaults.flashcardStreak),
         warnOnIncorrectMove = prefs.getBoolean(WARN_ON_INCORRECT_MOVE, defaults.warnOnIncorrectMove),
         hintButton = prefs.getBoolean(HINT_BUTTON, defaults.hintButton),
     )
@@ -28,6 +30,8 @@ class SettingsStore(context: Context, name: String = "settings") {
             putBoolean(CHART_BUTTON, settings.chartButton)
             putBoolean(SOUND_EFFECTS, settings.soundEffects)
             putBoolean(STREAK_METER, settings.streakMeter)
+            putBoolean(FLASHCARD_TIMER, settings.flashcardTimer)
+            putBoolean(FLASHCARD_STREAK, settings.flashcardStreak)
             putBoolean(WARN_ON_INCORRECT_MOVE, settings.warnOnIncorrectMove)
             putBoolean(HINT_BUTTON, settings.hintButton)
         }
@@ -40,6 +44,8 @@ class SettingsStore(context: Context, name: String = "settings") {
         const val CHART_BUTTON = "chart_button"
         const val SOUND_EFFECTS = "sound_effects"
         const val STREAK_METER = "streak_meter"
+        const val FLASHCARD_TIMER = "flashcard_timer"
+        const val FLASHCARD_STREAK = "flashcard_streak"
         const val WARN_ON_INCORRECT_MOVE = "warn_on_incorrect_move"
         const val HINT_BUTTON = "hint_button"
     }

@@ -79,11 +79,12 @@ class MainActivityTest {
         val history = FlashcardHistoryStore.forApp(compose.activity).history
         openFromDrawer(R.string.index_flashcards)
         compose.onNodeWithContentDescription("0").performClick()
-        val answered = everythingOnScreen()
+        val answered = everythingOnScreenButTheTime()
 
         compose.activityRule.scenario.recreate()
 
-        assertEquals(answered, everythingOnScreen())
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.card_untimed)).assertExists()
+        assertEquals(answered, everythingOnScreenButTheTime())
         compose.onNodeWithContentDescription("0").performClick()
         // The card was on screen before the activity was recreated, so its time is unknown
         val (before, after) = history.value.orEmpty().takeLast(2)
@@ -180,6 +181,13 @@ class MainActivityTest {
 
         // Each count sits before its label
         return listOf(correct, incorrect).sumOf { overall[overall.indexOf(it) - 1].toInt() }
+    }
+
+    // The flashcard's time counts on, so what it says, its caption and its value are left out
+    private fun everythingOnScreenButTheTime(): List<String> {
+        val everything = everythingOnScreen()
+        val caption = everything.indexOf(compose.activity.getString(R.string.card_time))
+        return everything.filterIndexed { i, _ -> i !in caption - 1..caption + 1 }
     }
 
     // Hands are dealt at random, so compare every card, bar and recap word rather than expected values
