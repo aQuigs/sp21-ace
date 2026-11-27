@@ -220,7 +220,7 @@ class AppShellTest {
         openFromDrawer(R.string.index_flashcards)
         compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
         compose.onNodeWithContentDescription(string(R.string.count_plus, 3)).performClick()
-        compose.onNodeWithText(string(R.string.streak_count, 1)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(string(R.string.streak_count, 1)).assertIsDisplayed()
 
         openFromDrawer(R.string.flashcard_stats)
         appBarTitle(R.string.flashcard_stats).assertIsDisplayed()
@@ -238,7 +238,7 @@ class AppShellTest {
         compose.onNodeWithText(string(R.string.no_answers_in_period)).assertExists()
 
         openFromDrawerOverSubPage(R.string.index_flashcards)
-        compose.onNodeWithText(string(R.string.streak_count, 0)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(string(R.string.streak_count, 0)).assertIsDisplayed()
     }
 
     @Test

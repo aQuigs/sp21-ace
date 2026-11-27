@@ -153,7 +153,7 @@ internal fun Sp21AceApp(
 
         override fun interrupted() = answerTimer.interrupted()
 
-        override fun elapsed(card: Flashcard) = answerTimer.elapsed(card)
+        override fun time(card: Flashcard) = answerTimer.display(card)
 
         override fun changePresets(presets: IndexPresets) = savePresets(presets)
 

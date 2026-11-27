@@ -54,6 +54,24 @@ class AnswerTimerTest {
     }
 
     @Test
+    fun displaysZeroUntilTheCardFirstShowsThenItsTimeAndNothingOnceItIsUntimed() {
+        assertNull(timer.display(first))
+
+        timer.dealt(first)
+        timer.interrupted()
+        now += 900
+        assertEquals(0.milliseconds, timer.display(first))
+        assertNull(timer.display(second))
+
+        timer.shown(first)
+        now += 400
+        assertEquals(400.milliseconds, timer.display(first))
+
+        timer.interrupted()
+        assertNull(timer.display(first))
+    }
+
+    @Test
     fun aCardItDidntSeeDealtIsNeverTimed() {
         // As a card restored in a recreated activity, shown before the timer was made
         timer.shown(first)

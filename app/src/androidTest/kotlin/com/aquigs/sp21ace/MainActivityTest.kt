@@ -79,14 +79,12 @@ class MainActivityTest {
         val history = FlashcardHistoryStore.forApp(compose.activity).history
         openFromDrawer(R.string.index_flashcards)
         compose.onNodeWithContentDescription("0").performClick()
-        val secondsOnCard = compose.activity.getString(R.string.card_time_spoken, 0.0).substringAfter("0.0")
-        val untimed = compose.activity.getString(R.string.card_untimed)
-        val answered = everythingOnScreen().filterNot { it.endsWith(secondsOnCard) }
+        val answered = everythingOnScreenButTheTime()
 
         compose.activityRule.scenario.recreate()
 
-        compose.onNodeWithContentDescription(untimed).assertExists()
-        assertEquals(answered, everythingOnScreen() - untimed)
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.card_untimed)).assertExists()
+        assertEquals(answered, everythingOnScreenButTheTime())
         compose.onNodeWithContentDescription("0").performClick()
         // The card was on screen before the activity was recreated, so its time is unknown
         val (before, after) = history.value.orEmpty().takeLast(2)
@@ -186,6 +184,13 @@ class MainActivityTest {
     }
 
     // Hands are dealt at random, so compare every card, bar and recap word rather than expected values
+    // The flashcard's time counts on, so what it says, its caption and its value are left out
+    private fun everythingOnScreenButTheTime(): List<String> {
+        val everything = everythingOnScreen()
+        val caption = everything.indexOf(compose.activity.getString(R.string.card_time))
+        return everything.filterIndexed { i, _ -> i !in caption - 1..caption + 1 }
+    }
+
     private fun everythingOnScreen(): List<String> =
         compose.onAllNodes(SemanticsMatcher("any node") { true }, useUnmergedTree = true).fetchSemanticsNodes().flatMap { node ->
             node.config.getOrElse(SemanticsProperties.ContentDescription) { emptyList() } +

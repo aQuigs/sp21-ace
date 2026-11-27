@@ -300,7 +300,11 @@
     <string name="index_switched_off">%1$s\u00A0·\u00A0Off</string>
     <string name="flashcard_timer">Flashcard timer</string>
     <string name="flashcard_streak">Flashcard streak counter</string>
-    <string name="card_time_spoken">%1$.1f seconds on this card</string>
+    <string name="card_time">Time</string>
+    <plurals name="card_time_spoken">
+        <item quantity="one">%1$d second on this card</item>
+        <item quantity="other">%1$d seconds on this card</item>
+    </plurals>
     <string name="card_untimed">This card isn\'t timed</string>
     <string name="clear_flashcard_history">Clear flashcard history</string>
     <string name="clear_flashcard_history_message">Are you sure you want to clear your flashcard history? This resets everything built on it: Flashcard Stats, which indices Prioritize worse indices favors, and the flashcard streak.</string>

@@ -33,6 +33,9 @@ class AnswerTimer(private val clock: () -> Long) {
         shownAt = null
     }
 
+    /** The time to show on [card]: zero until it first shows, then its time, or null when it isn't timed. */
+    fun display(card: Flashcard): Duration? = if (waiting && card == this.card) Duration.ZERO else elapsed(card)
+
     /** How long [card] has been showing, or null when it isn't timed. */
     fun elapsed(card: Flashcard): Duration? = shownAt?.takeIf { card == this.card }?.let { (clock() - it).coerceAtLeast(0).milliseconds }
 }
