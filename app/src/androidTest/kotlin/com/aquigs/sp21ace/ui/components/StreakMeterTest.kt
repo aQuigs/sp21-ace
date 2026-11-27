@@ -1,4 +1,4 @@
-package com.aquigs.sp21ace.ui.trainer
+package com.aquigs.sp21ace.ui.components
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.height
@@ -12,7 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.aquigs.sp21ace.domain.trainer.STREAK_RUNGS
+import com.aquigs.sp21ace.domain.drill.Streak
 import com.aquigs.sp21ace.ui.assertFitsOnOneLine
 import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
@@ -28,7 +28,7 @@ class StreakMeterTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private fun showMeter(streak: Int, height: Dp = 480.dp, configuration: DeviceConfigurationOverride = DeviceConfigurationOverride { content -> content() }) {
-        compose.setContent { DeviceConfigurationOverride(configuration) { Sp21AceTheme { StreakMeter(streak, Modifier.height(height)) } } }
+        compose.setContent { DeviceConfigurationOverride(configuration) { Sp21AceTheme { StreakMeter(Streak(streak), Modifier.height(height)) } } }
     }
 
     // A screen reader hears the meter as one item, so its numbers are only in the unmerged tree
@@ -54,7 +54,7 @@ class StreakMeterTest {
         // Rungs closer together than a label is tall, as on a short phone at a large font size
         showMeter(300, height = 160.dp)
 
-        val placed = STREAK_RUNGS.flatMap { compose.onAllNodesWithText("$it", useUnmergedTree = true).fetchSemanticsNodes() }
+        val placed = Streak.RUNGS.flatMap { compose.onAllNodesWithText("$it", useUnmergedTree = true).fetchSemanticsNodes() }
             .filter { it.layoutInfo.isPlaced }
             .map { it.boundsInRoot }
 

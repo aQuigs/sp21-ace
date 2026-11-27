@@ -41,6 +41,8 @@ fun SettingsScreen(
         ChoiceRow(title = stringResource(R.string.button_location), value = stringResource(settings.buttonLocation.title), onClick = onOpenButtonLocation)
         VisibilityRow(R.string.hand_totals, settings.handTotals) { onChange(settings.copy(handTotals = it)) }
         VisibilityRow(R.string.strategy_chart_button, settings.chartButton) { onChange(settings.copy(chartButton = it)) }
+        // Blackjack Ace lists it under Practice, but here every drill has it
+        VisibilityRow(R.string.streak_meter, settings.streakMeter) { onChange(settings.copy(streakMeter = it)) }
         SwitchRow(
             title = stringResource(R.string.sound_effects),
             summary = stringResource(if (settings.soundEffects) R.string.on else R.string.muted),
@@ -50,13 +52,11 @@ fun SettingsScreen(
         HorizontalDivider()
 
         SettingsHeader(stringResource(R.string.practice))
-        VisibilityRow(R.string.streak_meter, settings.streakMeter) { onChange(settings.copy(streakMeter = it)) }
         ActionRow(title = stringResource(R.string.clear_practice_history), onClick = { confirmingClear = History.PRACTICE })
         HorizontalDivider()
 
         SettingsHeader(stringResource(R.string.card_counting))
         VisibilityRow(R.string.flashcard_timer, settings.flashcardTimer) { onChange(settings.copy(flashcardTimer = it)) }
-        VisibilityRow(R.string.flashcard_streak, settings.flashcardStreak) { onChange(settings.copy(flashcardStreak = it)) }
         ActionRow(title = stringResource(R.string.clear_flashcard_history), onClick = { confirmingClear = History.FLASHCARDS })
         HorizontalDivider()
 

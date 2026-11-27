@@ -1,15 +1,8 @@
 package com.aquigs.sp21ace.ui.trainer
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -29,13 +22,12 @@ import com.aquigs.sp21ace.domain.trainer.TrainerHand
 import com.aquigs.sp21ace.domain.trainer.TrainerState
 import com.aquigs.sp21ace.domain.trainer.dealerTotal
 import com.aquigs.sp21ace.domain.trainer.playerTotal
-import com.aquigs.sp21ace.ui.components.DealerHand
-import com.aquigs.sp21ace.ui.components.DissolvingHand
+import com.aquigs.sp21ace.ui.components.DrillHands
+import com.aquigs.sp21ace.ui.components.DrillTable
 import com.aquigs.sp21ace.ui.components.EdgeControls
-import com.aquigs.sp21ace.ui.components.EdgeRow
 import com.aquigs.sp21ace.ui.components.FeedbackBar
 import com.aquigs.sp21ace.ui.components.FeedbackText
-import com.aquigs.sp21ace.ui.components.HandArea
+import com.aquigs.sp21ace.ui.components.HandsColumn
 import com.aquigs.sp21ace.ui.components.MoveButton
 
 /**
@@ -59,49 +51,27 @@ fun StrategyTrainerScreen(
         topBar = { GradeBar(state.lastGrade, onOpenDrawer) },
         bottomBar = { PreviousHandPanel(state.lastGrade) },
     ) { padding ->
-        val meter: @Composable RowScope.() -> Unit = {
-            // As in Blackjack Ace, the numbers face the screen's edge
-            if (settings.streakMeter) StreakMeter(state.streak, modifier = Modifier.fillMaxHeight(), numbersOnRight = buttonsOnLeft)
-        }
-        val meterGap: @Composable RowScope.() -> Unit = {
-            if (settings.streakMeter) Spacer(Modifier.width(8.dp))
-        }
-        val cards: @Composable RowScope.() -> Unit = {
-            Column(
-                modifier = Modifier.weight(1f).fillMaxHeight().wrapContentWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                HandArea(
-                    label = stringResource(R.string.dealer),
-                    total = state.hand.dealerTotal.takeIf { settings.handTotals },
-                    modifier = Modifier.weight(1f),
-                ) { fan ->
-                    DealerHand(state.hand.upcard, fan)
+        DrillTable(
+            streak = state.streak,
+            settings = settings,
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            controls = {
+                EdgeControls(buttonsOnLeft, settings.chartButton, onOpenChart) {
+                    AnswerButtons(
+                        buttons = if (state.hand.doubled) AFTER_DOUBLING_BUTTONS else BUTTONS,
+                        moves = state.hand.moves(redoubling),
+                        // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
+                        onAnswer = { move -> onAnswer(state.hand, move) },
+                    )
                 }
-                HandArea(
-                    label = stringResource(R.string.you),
-                    total = state.hand.playerTotal.takeIf { settings.handTotals },
-                    modifier = Modifier.weight(1f),
-                ) { fan ->
-                    DissolvingHand(state.hand.player, fan, sideways = state.hand.doubled)
-                }
-            }
+            },
+        ) {
+            HandsColumn(state.hand.shown, settings.handTotals)
         }
-        val controls: @Composable RowScope.() -> Unit = {
-            EdgeControls(buttonsOnLeft, settings.chartButton, onOpenChart) {
-                AnswerButtons(
-                    buttons = if (state.hand.doubled) AFTER_DOUBLING_BUTTONS else BUTTONS,
-                    moves = state.hand.moves(redoubling),
-                    // The hand this frame shows, even if a tap lands after the next one is dealt but before it is drawn
-                    onAnswer = { move -> onAnswer(state.hand, move) },
-                )
-            }
-        }
-
-        // The meter trades edges with the buttons
-        EdgeRow(buttonsOnLeft, listOf(meter, meterGap, cards, controls), Modifier.fillMaxSize().padding(padding).padding(16.dp))
     }
 }
+
+private val TrainerHand.shown get() = DrillHands(upcard, dealerTotal, player, playerTotal, doubled)
 
 @Composable
 private fun GradeBar(lastGrade: Grade?, onOpenDrawer: () -> Unit) {

@@ -51,6 +51,7 @@ import com.aquigs.sp21ace.domain.indices.IndexPreset
 import com.aquigs.sp21ace.domain.indices.IndexPresets
 import com.aquigs.sp21ace.domain.indices.PlayIndex
 import com.aquigs.sp21ace.domain.indices.answer
+import com.aquigs.sp21ace.domain.settings.ButtonLocation
 import com.aquigs.sp21ace.domain.settings.Settings
 import com.aquigs.sp21ace.domain.strategy.Upcard
 import com.aquigs.sp21ace.ui.assertFits
@@ -440,23 +441,41 @@ class IndexFlashcardsScreenTest {
     }
 
     @Test
-    fun theTimerAndTheStreakHideOnTheirOwnAndAHiddenTimerStillTimesTheAnswer() {
+    fun theTimerAndTheStreakMeterHideOnTheirOwnAndAHiddenTimerStillTimesTheAnswer() {
         settings = Settings(flashcardTimer = false)
         val fake = show()
         cardTime(0).assertDoesNotExist()
         streak(0).assertIsDisplayed()
 
-        settings = Settings(flashcardStreak = false)
+        settings = Settings(streakMeter = false)
         tick()
         cardTime(0).assertIsDisplayed()
         streak(0).assertDoesNotExist()
 
-        settings = Settings(flashcardTimer = false, flashcardStreak = false)
+        settings = Settings(flashcardTimer = false, streakMeter = false)
         compose.waitForIdle()
         cardTime(0).assertDoesNotExist()
         now += 900
         button(0).performClick()
         assertEquals(900.milliseconds, fake.answers.single().time)
+    }
+
+    @Test
+    fun theStreakMeterKeepsTheTrainersEdgeWithTheTimeAboveIt() {
+        show()
+        fun assertMeterIs(leftOfTheCards: Boolean) {
+            val meter = streak(0).getBoundsInRoot()
+            val time = cardTime(0).getBoundsInRoot()
+            val cards = listOf(string(R.string.face_down_card), "King of hearts", "9 of clubs", "7 of diamonds").map(::bounds)
+
+            for (card in cards) assertTrue("$meter, $card", if (leftOfTheCards) meter.right <= card.left else meter.left >= card.right)
+            assertTrue("$time, $meter", time.bottom <= meter.top && time.left < meter.right && meter.left < time.right)
+        }
+
+        assertMeterIs(leftOfTheCards = true)
+        settings = Settings(buttonLocation = ButtonLocation.LEFT)
+        compose.waitForIdle()
+        assertMeterIs(leftOfTheCards = false)
     }
 
     // The pad as a 360dp-wide phone lays it out: a button for every number, the negatives above zero and the positives, every
@@ -485,6 +504,7 @@ class IndexFlashcardsScreenTest {
         for (readout in listOf(streak(0), cardTime(0)).map { it.getBoundsInRoot() }) {
             for (other in others + buttons + dealer) assertFalse("$readout overlaps $other", readout.overlaps(other))
         }
+        assertFalse(streak(0).getBoundsInRoot().overlaps(cardTime(0).getBoundsInRoot()))
         for (number in numbers) {
             val name = button(number).fetchSemanticsNode().config[SemanticsProperties.ContentDescription].single()
             compose.onAllNodes(hasAnyAncestor(hasContentDescription(name)) and SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)

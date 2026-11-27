@@ -37,7 +37,6 @@ class SettingsStoreTest {
             defaults.copy(soundEffects = true),
             defaults.copy(streakMeter = false),
             defaults.copy(flashcardTimer = false),
-            defaults.copy(flashcardStreak = false),
             defaults.copy(warnOnIncorrectMove = false),
             defaults.copy(hintButton = false),
         )

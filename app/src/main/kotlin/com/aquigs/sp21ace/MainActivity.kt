@@ -31,6 +31,7 @@ import com.aquigs.sp21ace.data.TableRulesStore
 import com.aquigs.sp21ace.data.TableStore
 import com.aquigs.sp21ace.domain.dealing.HandPicker
 import com.aquigs.sp21ace.domain.dealing.record
+import com.aquigs.sp21ace.domain.drill.Streak
 import com.aquigs.sp21ace.domain.game.Shoe
 import com.aquigs.sp21ace.domain.game.Table
 import com.aquigs.sp21ace.domain.history.PracticeAnswer
@@ -165,7 +166,7 @@ internal fun Sp21AceApp(
         override fun clearHistory() {
             flashcardHistoryStore.clear()
             // The streak lives in the run, not in the history, as the trainer's does
-            flashcardRun = flashcardRun.copy(streak = 0)
+            flashcardRun = flashcardRun.copy(streak = Streak())
         }
     }
 
@@ -224,7 +225,7 @@ internal fun Sp21AceApp(
             onClearHistory = {
                 historyStore.clear()
                 // The meter's streak lives in the trainer, not in the history, so the clear has to reach it too
-                trainer = trainer.copy(streak = 0)
+                trainer = trainer.copy(streak = Streak())
             },
             onClearPlayHistory = { playHistoryStore.clear() },
         )

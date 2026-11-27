@@ -48,7 +48,7 @@
     <string name="no">No</string>
     <string name="hint_button">Hint button</string>
     <string name="clear_history_title">Clear history</string>
-    <string name="clear_history_message">Are you sure you want to clear your practice history? This resets everything built on it: Accuracy and its heatmap, the accuracy shown in Customize Hands, which hands Prioritize worse hands favors, and the streak meter.</string>
+    <string name="clear_history_message">Are you sure you want to clear your practice history? This resets everything built on it: Accuracy and its heatmap, the accuracy shown in Customize Hands, which hands Prioritize worse hands favors, and the trainer\'s streak.</string>
     <string name="cancel">Cancel</string>
     <string name="clear">Clear</string>
 
@@ -299,7 +299,6 @@
     <string name="collapsed">Collapsed</string>
     <string name="index_switched_off">%1$s\u00A0·\u00A0Off</string>
     <string name="flashcard_timer">Flashcard timer</string>
-    <string name="flashcard_streak">Flashcard streak counter</string>
     <string name="card_time">Time</string>
     <plurals name="card_time_spoken">
         <item quantity="one">%1$d second on this card</item>
@@ -307,5 +306,5 @@
     </plurals>
     <string name="card_untimed">This card isn\'t timed</string>
     <string name="clear_flashcard_history">Clear flashcard history</string>
-    <string name="clear_flashcard_history_message">Are you sure you want to clear your flashcard history? This resets everything built on it: Flashcard Stats, which indices Prioritize worse indices favors, and the flashcard streak.</string>
+    <string name="clear_flashcard_history_message">Are you sure you want to clear your flashcard history? This resets everything built on it: Flashcard Stats, which indices Prioritize worse indices favors, and the flashcards\' streak.</string>
 </resources>

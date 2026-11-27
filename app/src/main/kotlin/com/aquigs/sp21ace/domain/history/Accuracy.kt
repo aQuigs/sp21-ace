@@ -1,9 +1,9 @@
 package com.aquigs.sp21ace.domain.history
 
+import com.aquigs.sp21ace.domain.drill.Streak
 import com.aquigs.sp21ace.domain.strategy.ChartSquare
 import com.aquigs.sp21ace.domain.strategy.ChartTable
 import com.aquigs.sp21ace.domain.strategy.Move
-import com.aquigs.sp21ace.domain.trainer.nextStreak
 import java.time.Duration
 import java.time.Instant
 
@@ -84,12 +84,12 @@ fun List<PracticeAnswer>.accuracy(period: Period, hands: HandFilter, now: Instan
     val counts = period.counter(now)
     val byMove = TallyCounter<Move>()
     val bySquare = TallyCounter<ChartSquare>()
-    var streak = 0
+    var streak = Streak()
     var longestStreak = 0
 
     for (answer in this) {
-        streak = nextStreak(streak, answer.isCorrect)
-        longestStreak = maxOf(longestStreak, streak)
+        streak = streak.after(answer.isCorrect)
+        longestStreak = maxOf(longestStreak, streak.count)
 
         if (!counts(answer.answeredAt)) continue
         if (!hands.counts(answer.square.row.table)) continue
