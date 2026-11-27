@@ -23,7 +23,7 @@ internal object FlashcardLine {
         val fields = listOfNotNull(
             AT to answer.answeredAt.toEpochMilli(),
             INDEX to IndexCode.print(answer.fact),
-            ANSWER to (answer.answer ?: IndexCode.NONE),
+            ANSWER to IndexCode.printNumber(answer.answer),
             answer.time?.let { MS to it.inWholeMilliseconds },
             CARDS to answer.cards,
             GAME to answer.game.name,
@@ -39,7 +39,7 @@ internal object FlashcardLine {
             answeredAt = Instant.ofEpochMilli(fields[AT].toLong()),
             game = Game.valueOf(fields[GAME]),
             fact = IndexCode.parseFact(fields[INDEX]),
-            answer = fields[ANSWER].let { if (it == IndexCode.NONE) null else it.toInt() },
+            answer = IndexCode.parseNumber(fields[ANSWER]),
             time = fields.ifSaved(MS)?.toLong()?.milliseconds,
             cards = fields[CARDS].toInt(),
         )

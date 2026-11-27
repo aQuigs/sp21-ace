@@ -1,13 +1,10 @@
 package com.aquigs.sp21ace.ui.flashcards
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,6 +34,7 @@ import com.aquigs.sp21ace.domain.strategy.upcard
 import com.aquigs.sp21ace.ui.components.Dissolve
 import com.aquigs.sp21ace.ui.components.HandsColumn
 import com.aquigs.sp21ace.ui.components.ProvideDefaultFontScale
+import com.aquigs.sp21ace.ui.components.RingButton
 
 /**
  * A flashcard of an index: the cards, the play it asks about and a pad of true counts to answer with, or with no index switched
@@ -108,20 +106,13 @@ private fun feedbackParts(grade: FlashcardGrade): List<String> {
     return listOfNotNull(fact.deviation.title.takeIf { fact.deviation is Deviation.OnHand }, right, answered.takeIf { !grade.isCorrect })
 }
 
-/** Ringed like the pad's numbers, as wide as its words, and at their fixed size. */
+/** Ringed and at a fixed size like the pad's numbers. */
 @Composable
 private fun NoIndexButton(onClick: () -> Unit) {
     val name = stringResource(R.string.no_index)
 
     ProvideDefaultFontScale {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = Modifier.semantics { contentDescription = name },
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-            border = BorderStroke(3.dp, MaterialTheme.colorScheme.primary),
-        ) {
-            Text(text = name.uppercase(), fontWeight = FontWeight.Bold)
-        }
+        RingButton(name = name, onClick = onClick) { Text(text = name.uppercase(), fontWeight = FontWeight.Bold) }
     }
 }
 

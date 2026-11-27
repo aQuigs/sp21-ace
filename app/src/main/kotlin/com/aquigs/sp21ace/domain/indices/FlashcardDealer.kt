@@ -39,9 +39,11 @@ internal fun multiCardHands(upcard: Upcard): Map<HandTotal, List<List<List<Int>>
  */
 internal fun nearMisses(preset: IndexPreset): Set<NoIndex> = preset.enabledIndices.flatMap { index ->
     val deviation = index.deviation as? Deviation.OnHand ?: return@flatMap emptyList()
-    val none = Upcard.entries.map { NoIndex(deviation.copy(upcard = it), index.direction) }.filter(preset::hasNone)
+    val (below, above) = Upcard.entries.map { NoIndex(deviation.copy(upcard = it), index.direction) }
+        .filter(preset::hasNone)
+        .partition { it.deviation.upcard < deviation.upcard }
 
-    listOfNotNull(none.lastOrNull { it.deviation.upcard < deviation.upcard }, none.firstOrNull { it.deviation.upcard > deviation.upcard })
+    listOfNotNull(below.lastOrNull(), above.firstOrNull())
 }.toSet()
 
 /**
@@ -60,10 +62,11 @@ class FlashcardDealer(private val preset: IndexPreset, private val options: Flas
     val indices: Set<PlayIndex> = preset.enabledIndices.toSet()
 
     private val nearMisses: Set<NoIndex> = if (options.noIndexCards) nearMisses(preset) else emptySet()
+    private val facts: Set<IndexFact> = indices + nearMisses
 
     // Only for the facts dealt, since every upcard's hands would hold thousands of lists
     private val multiCardHands: Map<Deviation.OnHand, List<List<List<Int>>>> = if (!options.multiCardHands) emptyMap() else {
-        val drawsOn = (indices + nearMisses).map { it.deviation }.filterIsInstance<Deviation.OnHand>().filter { it.play in ANY_SIZE_PLAYS && it.hand.kind != HandKind.PAIR }
+        val drawsOn = facts.map { it.deviation }.filterIsInstance<Deviation.OnHand>().filter { it.play in ANY_SIZE_PLAYS && it.hand.kind != HandKind.PAIR }
         val byUpcard = drawsOn.map { it.upcard }.distinct().associateWith(::multiCardHands)
         drawsOn.associateWith { byUpcard.getValue(it.upcard)[it.hand.total].orEmpty() }.filterValues { it.isNotEmpty() }
     }
@@ -90,7 +93,7 @@ class FlashcardDealer(private val preset: IndexPreset, private val options: Flas
     /** Whether [card] is one this dealer could deal, so a card left from another preset or other options is redealt. */
     override fun couldDeal(card: Flashcard): Boolean {
         val deviation = card.fact.deviation
-        return (card.fact in indices || card.fact in nearMisses) && (card.player.size <= 2 || card.player.map { it.rank.value } in multiCardSets[deviation].orEmpty())
+        return card.fact in facts && (card.player.size <= 2 || card.player.map { it.rank.value } in multiCardSets[deviation].orEmpty())
     }
 
     override fun record(card: Flashcard, answer: Int?, time: Duration?, answeredAt: Instant): FlashcardAnswer =

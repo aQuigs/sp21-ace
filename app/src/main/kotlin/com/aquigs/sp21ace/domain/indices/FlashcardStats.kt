@@ -41,9 +41,9 @@ data class FlashcardStats(val overall: Tally, val times: AnswerTimes, val indice
  * [preset]'s figures over [period] as of [now]. An answer counts when it was to one of the preset's indices, number and direction
  * included, so an index whose number was edited starts afresh, as Prioritize worse counts it. Every answer counts for accuracy,
  * and only a timed one for speed: an untimed one had its card interrupted, so its time says nothing. Each index switched on gets a
- * row, answered or not, and a switched-off one only while it has answers in the period. The hands with none share one row while they
- * have answers in it. One pass, with times sorted once as plain
- * numbers, since it runs again on every change of period, preset or history.
+ * row, answered or not, and a switched-off one only while it has answers in the period. The hands with none share one row while
+ * they have answers in it. One pass, with times sorted once as plain numbers, since it runs again on every change of period, preset
+ * or history.
  */
 fun List<FlashcardAnswer>.flashcardStats(preset: IndexPreset, period: Period, now: Instant): FlashcardStats {
     val counts = period.counter(now)
@@ -52,9 +52,9 @@ fun List<FlashcardAnswer>.flashcardStats(preset: IndexPreset, period: Period, no
     val noIndex = AnswerCounter()
 
     for (answer in this) {
-        if (answer.game != preset.game) continue
+        if (answer.game != preset.game || !counts(answer.answeredAt)) continue
         val answers = byIndex[answer.fact] ?: noIndex.takeIf { preset.hasNone(answer.fact) } ?: continue
-        if (counts(answer.answeredAt)) answers.add(answer.isCorrect, answer.time)
+        answers.add(answer.isCorrect, answer.time)
     }
 
     val rows = preset.entries.mapNotNull { entry ->

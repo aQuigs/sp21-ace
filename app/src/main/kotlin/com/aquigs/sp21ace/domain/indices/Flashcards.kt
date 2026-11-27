@@ -30,8 +30,8 @@ typealias FlashcardRun = DrillRun<Flashcard, Int?>
 
 /**
  * A flashcard answer as the history keeps it, [answer] null for no index. Stats key on the [fact] itself, an index's number and
- * direction included, so the same fact shares its record across presets. [time] is how long the card was on screen before the answer, or null when its display was
- * interrupted. [cards] is how many the player's hand held, none for insurance.
+ * direction included, so the same fact shares its record across presets. [time] is how long the card was on screen before the
+ * answer, or null when its display was interrupted. [cards] is how many the player's hand held, none for insurance.
  */
 data class FlashcardAnswer(val answeredAt: Instant, val game: Game, val fact: IndexFact, val answer: Int?, val time: Duration?, val cards: Int) {
     init {

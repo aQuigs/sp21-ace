@@ -12,13 +12,17 @@ import com.aquigs.sp21ace.domain.indices.PlayIndex
  * `STAND:16:8:NONE:AT_OR_ABOVE` for no index.
  */
 internal object IndexCode {
-    /** The threshold where there is no index. */
-    const val NONE = "NONE"
+    private const val NONE = "NONE"
+
+    /** A threshold or an answer, null where there is no index. */
+    fun printNumber(number: Int?): String = number?.toString() ?: NONE
+
+    fun parseNumber(text: String): Int? = if (text == NONE) null else text.toInt()
 
     fun print(fact: IndexFact): String = when (val deviation = fact.deviation) {
         is Deviation.OnHand -> listOf(deviation.play.name, deviation.hand.label, deviation.upcard.label)
         Deviation.Insurance -> listOf(Deviation.INSURANCE)
-    }.plus(listOf(fact.threshold?.toString() ?: NONE, fact.direction.name)).joinToString(":")
+    }.plus(listOf(printNumber(fact.threshold), fact.direction.name)).joinToString(":")
 
     /** The index [code] is for. Throws on a code it can't read. */
     fun parse(code: String): PlayIndex = requireNotNull(parseFact(code) as? PlayIndex) { "No index: $code" }
@@ -33,14 +37,10 @@ internal object IndexCode {
         }
         requireNotNull(deviation) { "Unknown index: $code" }
 
-        val threshold = parts[parts.size - 2]
+        val threshold = parseNumber(parts[parts.size - 2])
         val direction = IndexDirection.valueOf(parts.last())
-        if (threshold == NONE && deviation is Deviation.OnHand) return NoIndex(deviation, direction)
 
-        return PlayIndex(
-            deviation,
-            requireNotNull(threshold.toIntOrNull()) { "Unknown index: $code" },
-            direction,
-        )
+        return if (threshold != null) PlayIndex(deviation, threshold, direction)
+        else NoIndex(requireNotNull(deviation as? Deviation.OnHand) { "Unknown index: $code" }, direction)
     }
 }

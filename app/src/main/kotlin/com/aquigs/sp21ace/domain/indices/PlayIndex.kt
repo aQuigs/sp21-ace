@@ -33,10 +33,9 @@ data class IndexHand(val kind: HandKind, val value: Int) : Serializable {
     /** The hand as the strategy charts key their rows: "16" for hard 16, "A-7" for soft 18, "8-8" and "A-A" for pairs. */
     val label: String get() = row.hand
 
-    internal val total: HandTotal get() = HandTotal(value, soft = kind == HandKind.SOFT)
-
     /** What the hand adds up to, a pair included. */
-    internal val playedTotal: HandTotal get() = if (kind == HandKind.PAIR) totalOf(listOf(value, value)) else total
+    internal val total: HandTotal
+        get() = if (kind == HandKind.PAIR) totalOf(listOf(value, value)) else HandTotal(value, soft = kind == HandKind.SOFT)
 
     internal val pairCard: Upcard get() = Upcard.ofPoints(value)
 
@@ -96,10 +95,10 @@ sealed interface Deviation : Serializable {
         init {
             require(play in hand.kind.plays) { "No $play index on ${hand.label}" }
         }
-    }
 
-    /** Whether this asks about [other]'s total against its upcard, whichever play either names. A pair can be played as its total. */
-    fun asksSameHandAs(other: OnHand): Boolean = this is OnHand && hand.playedTotal == other.hand.playedTotal && upcard == other.upcard
+        /** The total and upcard asked about, whichever play is named. A pair can be played as its total. */
+        internal val square: Pair<HandTotal, Upcard> get() = hand.total to upcard
+    }
 
     /** Insurance is offered only against a dealer ace, and asks for no hand. */
     data object Insurance : Deviation {

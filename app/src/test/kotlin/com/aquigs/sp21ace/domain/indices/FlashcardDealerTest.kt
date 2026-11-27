@@ -315,7 +315,7 @@ class FlashcardDealerTest {
     @Test
     fun aHandWithNoIndexCouldBeDealtOnlyWhileSwitchedOnAndWithNone() {
         val preset = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17")
-        val noIndex = NoIndex(onHand(DeviationPlay.STAND, "16", "8"))
+        val noIndex = FakeIndices.noIndex("STAND", "16", "8")
         val card = Flashcard(noIndex, listOf(Card(Rank.TEN, Suit.SPADES), Card(Rank.SIX, Suit.SPADES)), Card(Rank.EIGHT, Suit.HEARTS))
         val on = FlashcardOptions(noIndexCards = true)
 
@@ -328,15 +328,15 @@ class FlashcardDealerTest {
     fun handsWithNoIndexShareATallyOfThoseThePresetStillHasNoneFor() {
         val preset = IndexPreset.from(BuiltInIndexSet.BJ_SHOE_H17, "h17")
         val dealer = FlashcardDealer(preset, FlashcardOptions(noIndexCards = true))
-        val sixteenVsEight = NoIndex(onHand(DeviationPlay.STAND, "16", "8"))
+        val sixteenVsEight = FakeIndices.noIndex("STAND", "16", "8")
         fun answer(fact: IndexFact, answer: Int?) = FlashcardAnswer(Instant.EPOCH, Game.BLACKJACK, fact, answer, null, 2)
         val history = listOf(
             answer(sixteenVsEight, null),
-            answer(NoIndex(onHand(DeviationPlay.STAND, "12", "7")), 3),
+            answer(FakeIndices.noIndex("STAND", "12", "7"), 3),
             // Listed in this preset, so no hand without an index here
-            answer(NoIndex(onHand(DeviationPlay.STAND, "16", "10")), null),
+            answer(FakeIndices.noIndex("STAND", "16", "10"), null),
             // No hand of this preset's, so it was never asked here
-            answer(NoIndex(onHand(DeviationPlay.DOUBLE, "A-7", "6")), null),
+            answer(FakeIndices.noIndex("DOUBLE", "A-7", "6"), null),
             answer(preset.enabledIndices.first(), null),
         )
         val card = Flashcard(sixteenVsEight, emptyList(), Card(Rank.EIGHT, Suit.HEARTS))

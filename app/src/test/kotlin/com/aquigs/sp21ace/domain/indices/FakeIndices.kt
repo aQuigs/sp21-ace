@@ -21,5 +21,7 @@ object FakeIndices {
     val HIT = PlayIndex(Deviation.OnHand(IndexHand(HandKind.HARD, 19), Upcard.FOUR, DeviationPlay.HIT), -97, IndexDirection.AT_OR_BELOW)
     val INSURANCE = PlayIndex(Deviation.Insurance, -98)
 
+    fun noIndex(play: String, hand: String, upcard: String) = NoIndex(Deviation.parse(play, hand, upcard) as Deviation.OnHand)
+
     val ALL = listOf(STAND, SPLIT, DOUBLE, SURRENDER, HIT, INSURANCE)
 }

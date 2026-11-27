@@ -25,6 +25,7 @@ class FlashcardRunTest {
     private val dealer = FlashcardDealer(preset(sixteenVsTen, insurance))
     private val sixteenCard = Flashcard(sixteenVsTen, cards("9c 7d"), card("Kh"))
     private val insuranceCard = Flashcard(insurance, emptyList(), card("As"))
+    private val noIndex = Flashcard(FakeIndices.noIndex("STAND", "16", "8"), cards("9c 7d"), card("8h"))
     private val at = Instant.ofEpochMilli(1_789_000_000_000)
 
     @Test
@@ -146,7 +147,6 @@ class FlashcardRunTest {
     @Test
     fun noIndexIsRightOnlyForAHandThatHasNone() {
         val withNoIndex = FlashcardDealer(preset(sixteenVsTen), FlashcardOptions(noIndexCards = true))
-        val noIndex = Flashcard(NoIndex(Deviation.parse("STAND", "16", "8") as Deviation.OnHand), cards("9c 7d"), card("8h"))
         fun answered(card: Flashcard, answer: Int?) = requireNotNull(FlashcardRun(card).answer(card, answer, withNoIndex, null, at) { _, _ -> sixteenCard })
 
         val right = answered(noIndex, null)
@@ -166,7 +166,6 @@ class FlashcardRunTest {
 
         assertEquals(run, run.serializedAndBack())
 
-        val noIndex = Flashcard(NoIndex(Deviation.parse("STAND", "16", "8") as Deviation.OnHand), cards("9c 7d"), card("8h"))
         val noIndexRun = FlashcardRun(noIndex, FlashcardGrade(noIndex, null, tally = null, timeMillis = null))
         assertEquals(noIndexRun, noIndexRun.serializedAndBack())
     }

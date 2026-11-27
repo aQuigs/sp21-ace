@@ -1,5 +1,7 @@
 package com.aquigs.sp21ace.domain.indices
 
+import com.aquigs.sp21ace.domain.cards.HandTotal
+import com.aquigs.sp21ace.domain.strategy.Upcard
 import java.util.UUID
 
 /**
@@ -51,11 +53,15 @@ data class IndexPreset(
      * Whether [fact] is that one of this preset's hands has no index against some other upcard. An index on it for any play, listed
      * here, even switched off, or in a built-in set, makes it untrue.
      */
-    internal fun hasNone(fact: IndexFact): Boolean {
-        if (fact !is NoIndex || entries.none { (it.index.deviation as? Deviation.OnHand)?.hand == fact.deviation.hand }) return false
+    internal fun hasNone(fact: IndexFact): Boolean =
+        fact is NoIndex && fact.deviation.hand in hands && fact.deviation.square !in indexedSquares
 
+    // Worked out once, since the stats ask of every answer in a history
+    private val hands: Set<IndexHand> by lazy { entries.mapNotNull { (it.index.deviation as? Deviation.OnHand)?.hand }.toSet() }
+
+    private val indexedSquares: Set<Pair<HandTotal, Upcard>> by lazy {
         val builtIn = BuiltInIndexSet.entries.filter { it.game == game }.flatMap { set -> set.indices.map { it.index } }
-        return (entries.map { it.index } + builtIn).none { it.deviation.asksSameHandAs(fact.deviation) }
+        (entries.map { it.index } + builtIn).mapNotNull { (it.deviation as? Deviation.OnHand)?.square }.toSet()
     }
 
     /** Adds [index], switched on, at the end. Its deviation mustn't be listed yet. */

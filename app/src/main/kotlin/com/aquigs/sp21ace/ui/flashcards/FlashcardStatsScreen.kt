@@ -116,8 +116,9 @@ private fun IndexRows(
 }
 
 /**
- * An index's name and number, or that the hands have none, its accuracy, answers and median time, and its spread of times on the axis every row shares. A row
- * with timed answers opens and closes its own histogram, shown by its chevron, and a screen reader hears it as one item.
+ * An index's name and number, or that the hands have none, its accuracy, answers and median time, and its spread of times on the
+ * axis every row shares. A row with timed answers opens and closes its own histogram, shown by its chevron, and a screen reader
+ * hears it as one item.
  */
 @Composable
 private fun IndexRow(row: IndexStats, axisEnd: Duration?, expanded: Boolean, onToggle: () -> Unit) {

@@ -80,14 +80,13 @@ class FlashcardStatsTest {
 
     @Test
     fun handsWithNoIndexShareARowWhileAnsweredWhichSortsAsTheRestDoAndCountOverall() {
-        fun noIndex(play: String, hand: String, upcard: String) = NoIndex(Deviation.parse(play, hand, upcard) as Deviation.OnHand)
         fun answer(fact: IndexFact, answer: Int?) = FlashcardAnswer(now, Game.BLACKJACK, fact, answer, 1.seconds, cards = 2)
         val stats = listOf(
-            answer(noIndex("STAND", "18", "3"), null),
-            answer(noIndex("SPLIT", "A-A", "4"), 2),
+            answer(FakeIndices.noIndex("STAND", "18", "3"), null),
+            answer(FakeIndices.noIndex("SPLIT", "A-A", "4"), 2),
             // The preset lists an index on this hand for another play, so it isn't one without, and none on hard 12 at all
-            answer(noIndex("HIT", "18", "2"), null),
-            answer(noIndex("STAND", "12", "7"), null),
+            answer(FakeIndices.noIndex("HIT", "18", "2"), null),
+            answer(FakeIndices.noIndex("STAND", "12", "7"), null),
             answer(stand, null),
         ).stats()
 
