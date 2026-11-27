@@ -1,6 +1,7 @@
 package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.cards.Card
+import com.aquigs.sp21ace.domain.trainer.nextStreak
 import java.io.Serializable
 import java.time.Instant
 import kotlin.math.absoluteValue
@@ -22,10 +23,10 @@ data class FlashcardGrade(val card: Flashcard, val answer: Int) : Serializable {
 }
 
 /**
- * An endless flashcard run: the [card] showing, or none while no index is switched on, and the verdict on the last one. Serializable
- * so the activity saves it as it is through recreation and process death.
+ * An endless flashcard run: the [card] showing, or none while no index is switched on, the verdict on the last one, and the
+ * [streak] of right answers. Serializable so the activity saves it as it is through recreation and process death.
  */
-data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = null) : Serializable {
+data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = null, val streak: Int = 0) : Serializable {
     /**
      * The run with a card from [dealer] in place of one it could not deal, such as after a preset swap or an edit, so a card is
      * never graded against a stale number, or a hand of 3 or more cards left up once they're switched off. A card it could deal
@@ -35,7 +36,7 @@ data class FlashcardRun(val card: Flashcard?, val lastGrade: FlashcardGrade? = n
         if (card != null && dealer.couldDeal(card)) return this
 
         val next = deal(card)
-        return FlashcardRun(next, lastGrade.takeIf { next != null })
+        return copy(card = next, lastGrade = lastGrade.takeIf { next != null })
     }
 }
 
@@ -74,5 +75,6 @@ fun FlashcardRun.answer(
     if (asked != card || !dealer.couldDeal(asked)) return null
 
     val recorded = FlashcardAnswer(answeredAt, dealer.game, asked.index, number, time, asked.player.size)
-    return AnsweredFlashcard(FlashcardRun(deal(asked, history + recorded), FlashcardGrade(asked, number)), recorded)
+    val next = FlashcardRun(deal(asked, history + recorded), FlashcardGrade(asked, number), nextStreak(streak, recorded.isCorrect))
+    return AnsweredFlashcard(next, recorded)
 }

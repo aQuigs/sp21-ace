@@ -55,6 +55,8 @@ fun SettingsScreen(
         HorizontalDivider()
 
         SettingsHeader(stringResource(R.string.card_counting))
+        VisibilityRow(R.string.flashcard_timer, settings.flashcardTimer) { onChange(settings.copy(flashcardTimer = it)) }
+        VisibilityRow(R.string.flashcard_streak, settings.flashcardStreak) { onChange(settings.copy(flashcardStreak = it)) }
         ActionRow(title = stringResource(R.string.clear_flashcard_history), onClick = { confirmingClear = History.FLASHCARDS })
         HorizontalDivider()
 

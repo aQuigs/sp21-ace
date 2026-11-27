@@ -108,6 +108,8 @@ class IndexFlashcardsScreenTest {
 
         override fun interrupted() = timer.interrupted()
 
+        override fun elapsed(card: Flashcard) = timer.elapsed(card)
+
         override fun changePresets(presets: IndexPresets) = Unit
 
         override fun changeOptions(options: FlashcardOptions) = Unit
@@ -335,6 +337,97 @@ class IndexFlashcardsScreenTest {
         button(0).performClick()
 
         assertEquals(700.milliseconds, fake.answers.single().time)
+    }
+
+    private fun cardTime(seconds: Double) = compose.onNodeWithContentDescription(string(R.string.card_time_spoken, seconds))
+
+    // Long enough for the time to be read again
+    private fun tick() {
+        compose.mainClock.advanceTimeBy(200)
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun theTimerShowsTheTimeTheAnswerRecordsAndStartsOverWithTheNextCard() {
+        val fake = show()
+        cardTime(0.0).assertIsDisplayed()
+
+        now += 2_300
+        tick()
+        cardTime(2.3).assertIsDisplayed()
+
+        button(0).performClick()
+        cardTime(0.0).assertIsDisplayed()
+        assertEquals(2_300.milliseconds, fake.answers.single().time)
+
+        now += 400
+        tick()
+        cardTime(0.4).assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimerSaysAnInterruptedCardIsNotTimedAndTimesTheNext() {
+        show()
+        now += 1_000
+        tick()
+        covered = true
+        compose.waitForIdle()
+        covered = false
+        tick()
+        compose.onNodeWithContentDescription(string(R.string.card_untimed)).assertIsDisplayed()
+
+        button(0).performClick()
+        now += 500
+        tick()
+        cardTime(0.5).assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimerWaitsAtZeroForTheDrawerToClose() {
+        covered = true
+        show()
+        now += 1_000
+        tick()
+        cardTime(0.0).assertIsDisplayed()
+
+        covered = false
+        compose.waitForIdle()
+        now += 700
+        tick()
+        cardTime(0.7).assertIsDisplayed()
+    }
+
+    @Test
+    fun rightAnswersClimbTheStreakAndAWrongOneDropsItToZero() {
+        show(deals = listOf(insuranceCard, sixteenVsKing, insuranceCard))
+        compose.onNodeWithText(string(R.string.streak_count, 0)).assertIsDisplayed()
+
+        button(0).performClick()
+        button(3).performClick()
+        compose.onNodeWithText(string(R.string.streak_count, 2)).assertIsDisplayed()
+
+        button(1).performClick()
+        compose.onNodeWithText(string(R.string.streak_count, 0)).assertIsDisplayed()
+    }
+
+    @Test
+    fun theTimerAndTheStreakHideOnTheirOwnAndAHiddenTimerStillTimesTheAnswer() {
+        settings = Settings(flashcardTimer = false)
+        val fake = show()
+        cardTime(0.0).assertDoesNotExist()
+        compose.onNodeWithText(string(R.string.streak_count, 0)).assertIsDisplayed()
+
+        settings = Settings(flashcardStreak = false)
+        tick()
+        cardTime(0.0).assertIsDisplayed()
+        compose.onNodeWithText(string(R.string.streak_count, 0)).assertDoesNotExist()
+
+        settings = Settings(flashcardTimer = false, flashcardStreak = false)
+        compose.waitForIdle()
+        cardTime(0.0).assertDoesNotExist()
+        now += 900
+        button(0).performClick()
+        assertEquals(900.milliseconds, fake.answers.single().time)
     }
 
     // The pad as a 360dp-wide phone lays it out: a button for every number, the negatives above zero and the positives, every

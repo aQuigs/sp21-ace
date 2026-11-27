@@ -216,10 +216,11 @@ class AppShellTest {
     private fun flashcardAccuracyCard() = compose.cardTexts(string(R.string.accuracy), string(R.string.correct))
 
     @Test
-    fun theDrawerOpensFlashcardStatsOverTheFlashcardsAndAClearInSettingsEmptiesIt() {
+    fun theDrawerOpensFlashcardStatsOverTheFlashcardsAndAClearInSettingsEmptiesItAndTheStreak() {
         openFromDrawer(R.string.index_flashcards)
-        compose.onNodeWithContentDescription("0").performClick()
         compose.onNodeWithContentDescription(string(R.string.count_plus, 1)).performClick()
+        compose.onNodeWithContentDescription(string(R.string.count_plus, 3)).performClick()
+        compose.onNodeWithText(string(R.string.streak_count, 1)).assertIsDisplayed()
 
         openFromDrawer(R.string.flashcard_stats)
         appBarTitle(R.string.flashcard_stats).assertIsDisplayed()
@@ -235,6 +236,9 @@ class AppShellTest {
         assertEquals(emptyList<FlashcardAnswer>(), flashcardHistoryStore.history.value)
         assertEquals(compose.activity.accuracyCardTexts(R.string.accuracy, string(R.string.no_data), correct = 0, incorrect = 0), flashcardAccuracyCard())
         compose.onNodeWithText(string(R.string.no_answers_in_period)).assertExists()
+
+        openFromDrawerOverSubPage(R.string.index_flashcards)
+        compose.onNodeWithText(string(R.string.streak_count, 0)).assertIsDisplayed()
     }
 
     @Test

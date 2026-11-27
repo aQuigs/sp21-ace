@@ -153,6 +153,8 @@ internal fun Sp21AceApp(
 
         override fun interrupted() = answerTimer.interrupted()
 
+        override fun elapsed(card: Flashcard) = answerTimer.elapsed(card)
+
         override fun changePresets(presets: IndexPresets) = savePresets(presets)
 
         override fun changeOptions(options: FlashcardOptions) {
@@ -160,7 +162,11 @@ internal fun Sp21AceApp(
             flashcardOptionsStore.save(options)
         }
 
-        override fun clearHistory() = flashcardHistoryStore.clear()
+        override fun clearHistory() {
+            flashcardHistoryStore.clear()
+            // The streak lives in the run, not in the history, as the trainer's does
+            flashcardRun = flashcardRun.copy(streak = 0)
+        }
     }
 
     fun seat(next: Table) {

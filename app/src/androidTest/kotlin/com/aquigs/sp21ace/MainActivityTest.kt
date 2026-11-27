@@ -79,11 +79,14 @@ class MainActivityTest {
         val history = FlashcardHistoryStore.forApp(compose.activity).history
         openFromDrawer(R.string.index_flashcards)
         compose.onNodeWithContentDescription("0").performClick()
-        val answered = everythingOnScreen()
+        val secondsOnCard = compose.activity.getString(R.string.card_time_spoken, 0.0).substringAfter("0.0")
+        val untimed = compose.activity.getString(R.string.card_untimed)
+        val answered = everythingOnScreen().filterNot { it.endsWith(secondsOnCard) }
 
         compose.activityRule.scenario.recreate()
 
-        assertEquals(answered, everythingOnScreen())
+        compose.onNodeWithContentDescription(untimed).assertExists()
+        assertEquals(answered, everythingOnScreen() - untimed)
         compose.onNodeWithContentDescription("0").performClick()
         // The card was on screen before the activity was recreated, so its time is unknown
         val (before, after) = history.value.orEmpty().takeLast(2)

@@ -4,7 +4,7 @@ enum class ColorTheme { SYSTEM, LIGHT, DARK }
 
 enum class ButtonLocation { LEFT, RIGHT }
 
-/** How the app looks, what the trainer and the table show, and whether answers make a sound, each starting as Blackjack Ace's does. */
+/** How the app looks, what the trainer, the flashcards and the table show, and whether answers make a sound, each starting as Blackjack Ace's does. */
 data class Settings(
     val colorTheme: ColorTheme = ColorTheme.SYSTEM,
     val buttonLocation: ButtonLocation = ButtonLocation.RIGHT,
@@ -12,6 +12,8 @@ data class Settings(
     val chartButton: Boolean = true,
     val soundEffects: Boolean = false,
     val streakMeter: Boolean = true,
+    val flashcardTimer: Boolean = true,
+    val flashcardStreak: Boolean = true,
     val warnOnIncorrectMove: Boolean = true,
     val hintButton: Boolean = true,
 )

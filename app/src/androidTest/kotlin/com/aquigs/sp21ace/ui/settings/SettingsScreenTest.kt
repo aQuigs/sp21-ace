@@ -203,6 +203,21 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun theFlashcardTimerAndStreakCounterStartVisibleUnderCardCountingAndHideOnTheirOwn() {
+        showSettings()
+
+        val timer = switch(R.string.flashcard_timer).performScrollTo().assertIsOn()
+        assertTrue(compose.onNodeWithText(string(R.string.card_counting)).getBoundsInRoot().bottom <= timer.getBoundsInRoot().top)
+        timer.performClick()
+        assertEquals(Settings(flashcardTimer = false), settings)
+        summary(R.string.flashcard_timer, R.string.hidden).assertIsDisplayed()
+
+        switch(R.string.flashcard_streak).performScrollTo().assertIsOn().performClick()
+        assertEquals(Settings(flashcardTimer = false, flashcardStreak = false), settings)
+        summary(R.string.flashcard_streak, R.string.hidden).assertIsDisplayed()
+    }
+
+    @Test
     fun confirmingClearsTheHistoryAndClosesTheDialog() {
         openClearDialog()
         compose.mainClock.advanceTimeBy(TAP_GUARD_MILLIS)

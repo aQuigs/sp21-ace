@@ -28,7 +28,7 @@ class FlashcardRunTest {
     fun gradesTheCardShowingThenDealsTheNextAndRecordsTheAnswer() {
         val answered = FlashcardRun(sixteenCard).answer(sixteenCard, 0, dealer, 2350.milliseconds, at) { _, _ -> insuranceCard }
 
-        assertEquals(FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0)), answered?.run)
+        assertEquals(FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, 0), streak = 1), answered?.run)
         assertEquals(FlashcardAnswer(at, Game.BLACKJACK, sixteenVsTen, 0, 2350.milliseconds, cards = 2), answered?.answer)
         assertTrue(answered!!.answer.isCorrect && answered.run.lastGrade!!.isCorrect)
     }
@@ -91,8 +91,25 @@ class FlashcardRunTest {
     }
 
     @Test
+    fun rightAnswersClimbTheStreakAndAWrongOneDropsItToZero() {
+        fun FlashcardRun.answered(number: Int) = requireNotNull(answer(sixteenCard, number, dealer, null, at) { _, _ -> sixteenCard }).run
+
+        val two = FlashcardRun(sixteenCard).answered(0).answered(0)
+        assertEquals(2, two.streak)
+        assertEquals(0, two.answered(1).streak)
+    }
+
+    @Test
+    fun aCardRedealtKeepsTheStreakEvenWithNothingLeftToDeal() {
+        val run = FlashcardRun(sixteenCard, FlashcardGrade(insuranceCard, 3), streak = 4)
+
+        assertEquals(4, run.dealtFrom(FlashcardDealer(preset(insurance))).streak)
+        assertEquals(FlashcardRun(null, streak = 4), run.dealtFrom(FlashcardDealer(preset())))
+    }
+
+    @Test
     fun aRunSurvivesTheActivitysSavedState() {
-        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, -2))
+        val run = FlashcardRun(insuranceCard, FlashcardGrade(sixteenCard, -2), streak = 3)
 
         assertEquals(run, run.serializedAndBack())
     }
