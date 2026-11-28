@@ -5,6 +5,7 @@ import com.aquigs.sp21ace.domain.drill.DrillRun
 import com.aquigs.sp21ace.domain.drill.Streak
 import com.aquigs.sp21ace.domain.history.Tally
 import com.aquigs.sp21ace.domain.indices.CountRounding
+import com.aquigs.sp21ace.domain.indices.signedCount
 import com.aquigs.sp21ace.serializedAndBack
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,6 +34,19 @@ class TrueCountCardTest {
 
         assertEquals(listOf(2, -1), halves)
         assertEquals(listOf(2, -2, 3, -3), others)
+    }
+
+    @Test
+    fun theUnroundedTrueCountReadsToTwoDecimalsUnderAnyRounding() {
+        fun read(runningCount: Int, quarters: Int) =
+            CountRounding.entries.map { signedCount(TrueCountCard(8, Decks(quarters), it, runningCount).unroundedTrueCount) }.distinct().single()
+
+        // 6 / 3.5, −6 / 4, 1 / 5.75, −8 / 1, and 1 / 8 = 0.125 and its negative, a half going away from zero
+        assertEquals(
+            listOf("+1.71", "−1.50", "+0.17", "−8.00", "+0.13", "−0.13"),
+            listOf(read(6, 14), read(-6, 16), read(1, 23), read(-8, 4), read(1, 32), read(-1, 32)),
+        )
+        assertEquals("0.00", signedCount(0.0))
     }
 
     @Test

@@ -319,7 +319,7 @@
         <item quantity="other">%1$d decks</item>
     </plurals>
     <string name="count_with_decks">%1$s with %2$s</string>
-    <string name="true_count_is">True count %1$s</string>
+    <string name="true_count_is">True count %1$s (%2$s)</string>
     <string name="true_count_prompt_spoken">What is the true count?</string>
     <string name="true_count_options_intro">Divide the running count by the decks left to get the true count, then round it to a whole number.</string>
     <string name="shoe_size">Shoe size</string>

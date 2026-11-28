@@ -30,8 +30,10 @@ import com.aquigs.sp21ace.domain.truecount.TrueCountAnswer
 import com.aquigs.sp21ace.domain.truecount.TrueCountCard
 import com.aquigs.sp21ace.domain.truecount.TrueCountDealer
 import com.aquigs.sp21ace.domain.truecount.TrueCountOptions
+import com.aquigs.sp21ace.ui.assertFits
 import com.aquigs.sp21ace.ui.flashcardBarText
 import com.aquigs.sp21ace.ui.overlaps
+import com.aquigs.sp21ace.ui.textLayout
 import com.aquigs.sp21ace.ui.theme.Sp21AceTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,9 +54,9 @@ class TrueCountFlashcardsScreenTest {
     private var now = 0L
 
     /** The run as the composition root carries it out, timed by the test's clock, with [oneDeck] dealt after any other card, and [plusSeven] after it. */
-    private inner class FakeRun(first: TrueCountCard) : TrueCountActions {
+    private inner class FakeRun(first: TrueCountCard, dealtBy: TrueCountOptions) : TrueCountActions {
         val answers = mutableListOf<TrueCountAnswer>()
-        var options by mutableStateOf(TrueCountOptions())
+        var options by mutableStateOf(dealtBy)
         var run by mutableStateOf(DrillRun(first))
         private val dealer = TrueCountDealer(options)
         private val timer = AnswerTimer<TrueCountCard> { now }.also { it.dealt(first) }
@@ -87,8 +89,9 @@ class TrueCountFlashcardsScreenTest {
     private fun show(
         first: TrueCountCard = plusSeven,
         configuration: DeviceConfigurationOverride = DeviceConfigurationOverride { content -> content() },
+        options: TrueCountOptions = TrueCountOptions(),
     ): FakeRun {
-        val fake = FakeRun(first)
+        val fake = FakeRun(first, options)
 
         compose.setContent {
             DeviceConfigurationOverride(configuration) {
@@ -136,8 +139,8 @@ class TrueCountFlashcardsScreenTest {
 
         button(string(R.string.count_plus, 2)).performClick()
 
-        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. +7 with 3.5 decks left. True count +2. 1.2 seconds. Accuracy 100.0%").assertIsDisplayed()
-        compose.onNodeWithText(flashcardBarText("+7 with 3.5 decks left", "True count +2", "1.2 s", "Accuracy 100.0%")).assertIsDisplayed()
+        compose.onNodeWithContentDescription("${string(R.string.right_answer)}. +7 with 3.5 decks left. True count +2 (+2.00). 1.2 seconds. Accuracy 100.0%").assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("+7 with 3.5 decks left", "True count +2 (+2.00)", "1.2 s", "Accuracy 100.0%")).assertIsDisplayed()
         compose.onNodeWithContentDescription(string(R.string.streak_count, 1)).assertIsDisplayed()
         figure(R.string.running_count, "−8").assertIsDisplayed()
         assertEquals(listOf(TrueCountAnswer(Instant.EPOCH, plusSeven, 2, 1_200.milliseconds)), fake.answers)
@@ -150,10 +153,33 @@ class TrueCountFlashcardsScreenTest {
         button("−6 or lower").assertIsDisplayed()
         button("+6 or higher").performClick()
 
-        compose.onNodeWithText(flashcardBarText("−8 with 1 deck left", "True count −8", "You answered +6 or higher", "0.0 s", "Accuracy 0.0%")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("−8 with 1 deck left", "True count −8 (−8.00)", "You answered +6 or higher", "0.0 s", "Accuracy 0.0%")).assertIsDisplayed()
         button(string(R.string.count_plus, 2)).performClick()
         button("−6 or lower").performClick()
-        compose.onNodeWithText(flashcardBarText("−8 with 1 deck left", "True count −8", "0.0 s", "Accuracy 50.0%")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("−8 with 1 deck left", "True count −8 (−8.00)", "0.0 s", "Accuracy 50.0%")).assertIsDisplayed()
+    }
+
+    @Test
+    fun theBarGivesTheTrueCountBeforeRoundingAfterTheRoundedOne() {
+        show(first = plusSeven.copy(runningCount = -6))
+
+        button(string(R.string.count_minus, 2)).performClick()
+
+        compose.onNodeWithText(flashcardBarText("−6 with 3.5 decks left", "True count −2 (−1.71)", "0.0 s", "Accuracy 100.0%")).assertIsDisplayed()
+    }
+
+    @Test
+    fun onANarrowPhoneAtTheLargestFontSizeTheLongestBarFits() {
+        val longest = TrueCountCard(8, Decks(17), CountRounding.FLOOR, -33)
+        val fake = show(longest, DeviceConfigurationOverride.ForcedSize(DpSize(360.dp, 640.dp)) then DeviceConfigurationOverride.FontScale(2f), TrueCountOptions(shoe = 8))
+        fake.answers += List(999) { TrueCountAnswer(Instant.EPOCH, longest, longest.answer, null) }
+        compose.waitForIdle()
+        now += 999_900
+
+        button("+6 or higher").performClick()
+
+        val bar = flashcardBarText("−33 with 4.25 decks left", "True count −8 (−7.76)", "You answered +6 or higher", "999.9 s", "Accuracy 99.9%")
+        compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
 
     // Split screen leaves the streak meter no room

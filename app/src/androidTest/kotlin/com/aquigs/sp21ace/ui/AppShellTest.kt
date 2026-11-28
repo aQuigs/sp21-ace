@@ -245,7 +245,7 @@ class AppShellTest {
         now += 2_000
 
         compose.onNodeWithContentDescription(string(R.string.count_plus, 2)).performClick()
-        compose.onNodeWithText(flashcardBarText("+7 with 3.5 decks left", "True count +2", "2.0 s", "Accuracy 100.0%")).assertIsDisplayed()
+        compose.onNodeWithText(flashcardBarText("+7 with 3.5 decks left", "True count +2 (+2.00)", "2.0 s", "Accuracy 100.0%")).assertIsDisplayed()
         now += 900
         compose.onNodeWithContentDescription(string(R.string.count_minus, 1)).performClick()
 

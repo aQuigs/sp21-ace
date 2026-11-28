@@ -36,6 +36,9 @@ val TRUE_COUNT_PAD = AnswerPad(-6..6, openEnded = true)
 data class TrueCountCard(val shoe: Int, val decksLeft: Decks, val rounding: CountRounding, val runningCount: Int) : DrillCard<Int> {
     val decksDiscarded: Decks get() = Decks.whole(shoe) - decksLeft
 
+    /** The true count before [rounding], for showing only: [trueCount] is worked out exactly. */
+    val unroundedTrueCount: Double get() = runningCount.toDouble() * Decks.QUARTERS_PER_DECK / decksLeft.quarters
+
     val trueCount: Int get() = rounding.divide(runningCount * Decks.QUARTERS_PER_DECK, decksLeft.quarters)
 
     override val answer: Int get() = TRUE_COUNT_PAD.answer(trueCount)
