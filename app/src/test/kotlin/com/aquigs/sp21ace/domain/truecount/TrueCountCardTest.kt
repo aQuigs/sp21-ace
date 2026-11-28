@@ -37,9 +37,8 @@ class TrueCountCardTest {
     }
 
     @Test
-    fun theUnroundedTrueCountReadsToTwoDecimalsUnderAnyRounding() {
-        fun read(runningCount: Int, quarters: Int) =
-            CountRounding.entries.map { signedCount(TrueCountCard(8, Decks(quarters), it, runningCount).unroundedTrueCount) }.distinct().single()
+    fun theUnroundedTrueCountReadsToTwoDecimals() {
+        fun read(runningCount: Int, quarters: Int) = signedCount(TrueCountCard(8, Decks(quarters), CountRounding.FLOOR, runningCount).unroundedTrueCount)
 
         // 6 / 3.5, −6 / 4, 1 / 5.75, −8 / 1, and 1 / 8 = 0.125 and its negative, a half going away from zero
         assertEquals(

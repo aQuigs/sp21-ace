@@ -24,6 +24,7 @@ import com.aquigs.sp21ace.domain.drill.AnswerTimer
 import com.aquigs.sp21ace.domain.drill.DrillRun
 import com.aquigs.sp21ace.domain.indices.CountRounding
 import com.aquigs.sp21ace.domain.settings.Settings
+import com.aquigs.sp21ace.domain.truecount.DeckPrecision
 import com.aquigs.sp21ace.domain.truecount.Decks
 import com.aquigs.sp21ace.domain.truecount.DecksShown
 import com.aquigs.sp21ace.domain.truecount.TrueCountAnswer
@@ -54,9 +55,9 @@ class TrueCountFlashcardsScreenTest {
     private var now = 0L
 
     /** The run as the composition root carries it out, timed by the test's clock, with [oneDeck] dealt after any other card, and [plusSeven] after it. */
-    private inner class FakeRun(first: TrueCountCard, dealtBy: TrueCountOptions) : TrueCountActions {
+    private inner class FakeRun(first: TrueCountCard) : TrueCountActions {
         val answers = mutableListOf<TrueCountAnswer>()
-        var options by mutableStateOf(dealtBy)
+        var options by mutableStateOf(TrueCountOptions(precision = DeckPrecision.QUARTER))
         var run by mutableStateOf(DrillRun(first))
         private val dealer = TrueCountDealer(options)
         private val timer = AnswerTimer<TrueCountCard> { now }.also { it.dealt(first) }
@@ -89,9 +90,8 @@ class TrueCountFlashcardsScreenTest {
     private fun show(
         first: TrueCountCard = plusSeven,
         configuration: DeviceConfigurationOverride = DeviceConfigurationOverride { content -> content() },
-        options: TrueCountOptions = TrueCountOptions(),
     ): FakeRun {
-        val fake = FakeRun(first, options)
+        val fake = FakeRun(first)
 
         compose.setContent {
             DeviceConfigurationOverride(configuration) {
@@ -170,15 +170,15 @@ class TrueCountFlashcardsScreenTest {
 
     @Test
     fun onANarrowPhoneAtTheLargestFontSizeTheLongestBarFits() {
-        val longest = TrueCountCard(8, Decks(17), CountRounding.FLOOR, -33)
-        val fake = show(longest, DeviceConfigurationOverride.ForcedSize(DpSize(360.dp, 640.dp)) then DeviceConfigurationOverride.FontScale(2f), TrueCountOptions(shoe = 8))
+        val longest = TrueCountCard(6, Decks(17), CountRounding.FLOOR, -18)
+        val fake = show(longest, DeviceConfigurationOverride.ForcedSize(DpSize(360.dp, 640.dp)) then DeviceConfigurationOverride.FontScale(2f))
         fake.answers += List(999) { TrueCountAnswer(Instant.EPOCH, longest, longest.answer, null) }
         compose.waitForIdle()
         now += 999_900
 
         button("+6 or higher").performClick()
 
-        val bar = flashcardBarText("−33 with 4.25 decks left", "True count −8 (−7.76)", "You answered +6 or higher", "999.9 s", "Accuracy 99.9%")
+        val bar = flashcardBarText("−18 with 4.25 decks left", "True count −5 (−4.24)", "You answered +6 or higher", "999.9 s", "Accuracy 99.9%")
         compose.onNodeWithText(bar, useUnmergedTree = true).fetchSemanticsNode().textLayout().assertFits()
     }
 
