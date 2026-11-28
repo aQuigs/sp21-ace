@@ -84,7 +84,7 @@ fun TrueCountFlashcardsScreen(
     }
 }
 
-/** "+7 with 3.5 decks left", "True count +2" and, after a wrong answer, "You answered +1", whichever decks the card showed. */
+/** "+7 with 3.5 decks left", "True count +2 (+2.00)" and, after a wrong answer, "You answered +1", whichever decks the card showed. */
 @Composable
 private fun feedbackParts(grade: DrillGrade<TrueCountCard, Int>): List<String> {
     val card = grade.card
@@ -92,7 +92,7 @@ private fun feedbackParts(grade: DrillGrade<TrueCountCard, Int>): List<String> {
 
     return listOfNotNull(
         stringResource(R.string.count_with_decks, signedCount(card.runningCount), decksLeftText(card.decksLeft)),
-        stringResource(R.string.true_count_is, signedCount(card.trueCount)),
+        stringResource(R.string.true_count_is, signedCount(card.trueCount), signedCount(card.unroundedTrueCount)),
         answered,
     )
 }

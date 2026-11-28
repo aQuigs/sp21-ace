@@ -2,6 +2,7 @@ package com.aquigs.sp21ace.domain.indices
 
 import com.aquigs.sp21ace.domain.strategy.pairClass
 import com.aquigs.sp21ace.domain.strategy.totalClass
+import kotlin.math.abs
 
 /** "Hard 16", "Soft 18", "Pair of 8s", "Pair of aces", worded as the trainer words its hands. */
 val IndexHand.title: String get() = if (kind == HandKind.PAIR) pairClass(pairCard) else totalClass(total)
@@ -29,6 +30,13 @@ fun signedCount(count: Int): String = when {
     count < 0 -> "−${-count}"
     else -> "0"
 }
+
+/** A true count before its fraction goes, to two decimals: "+1.71", "0.00", or "−0.50". */
+fun signedCount(count: Double): String = when {
+    count > 0 -> "+"
+    count < 0 -> "−"
+    else -> ""
+} + "%.2f".format(abs(count))
 
 /** "or higher", or "or lower". */
 val IndexDirection.inPlainWords: String
